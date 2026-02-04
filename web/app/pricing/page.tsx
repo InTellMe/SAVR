@@ -13,12 +13,16 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function handleSubscribe(tier: 'free' | 'pro') {
-    if (tier === 'free') {
+  function handleFree() {
+    if (!user) {
       router.push('/sign-up');
       return;
     }
 
+    router.push('/dashboard');
+  }
+
+  async function handleStripeSubscribe() {
     if (!user) {
       router.push('/sign-in');
       return;
@@ -29,15 +33,54 @@ export default function PricingPage() {
 
     try {
       const createStripeCheckout = httpsCallable(functions, 'createStripeCheckout');
+      const appBaseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
       const result = await createStripeCheckout({
-        priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || 'price_pro',
+        priceId:
+          process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY ||
+          process.env.NEXT_PUBLIC_STRIPE_PRICE_ID ||
+          'price_pro',
+        successUrl: `${appBaseUrl}/dashboard?stripeSuccess=true`,
+        cancelUrl: `${appBaseUrl}/pricing?stripeCancelled=true`,
       });
 
       const data = result.data as { url: string };
       window.location.href = data.url;
     } catch (error) {
-      console.error('Error creating checkout:', error);
-      setError('Failed to start checkout. Please try again.');
+      console.error('Error creating Stripe checkout:', error);
+      setError('Failed to start Stripe checkout. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  async function handlePayPalSubscribe() {
+    if (!user) {
+      router.push('/sign-in');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const createPayPalCheckout = httpsCallable(functions, 'createPayPalCheckout');
+      const appBaseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
+      const result = await createPayPalCheckout({
+        planId:
+          process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID_PRO_MONTHLY ||
+          process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID_PRO_YEARLY,
+        successUrl: `${appBaseUrl}/dashboard?paypalSuccess=true`,
+        cancelUrl: `${appBaseUrl}/pricing?paypalCancelled=true`,
+      });
+
+      const data = result.data as { url: string };
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('Error creating PayPal checkout:', error);
+      setError('Failed to start PayPal checkout. Please try again.');
       setLoading(false);
     }
   }
@@ -84,7 +127,7 @@ export default function PricingPage() {
             ]}
             buttonText={userData?.subscriptionTier === 'free' ? 'Current Plan' : 'Get Started'}
             buttonDisabled={userData?.subscriptionTier === 'free'}
-            onSelect={() => handleSubscribe('free')}
+            onSelect={handleFree}
             loading={loading}
             recommended={false}
           />
@@ -108,9 +151,12 @@ export default function PricingPage() {
               'Priority support',
             ]}
             limitations={[]}
-            buttonText={userData?.subscriptionTier === 'pro' ? 'Current Plan' : 'Upgrade to Pro'}
+            buttonText={userData?.subscriptionTier === 'pro' ? 'Current Plan' : 'Pay with card (Stripe)'}
             buttonDisabled={userData?.subscriptionTier === 'pro'}
-            onSelect={() => handleSubscribe('pro')}
+            onSelect={handleStripeSubscribe}
+            secondaryButtonText="Pay with PayPal"
+            secondaryButtonDisabled={userData?.subscriptionTier === 'pro'}
+            onSecondarySelect={handlePayPalSubscribe}
             loading={loading}
             recommended={true}
           />
@@ -128,7 +174,7 @@ export default function PricingPage() {
             />
             <FAQItem
               question="What payment methods do you accept?"
-              answer="We accept all major credit cards including Visa, Mastercard, American Express, and Discover through our secure Stripe payment processor."
+              answer="We accept all major credit cards including Visa, Mastercard, American Express, and Discover through our secure Stripe payment processor, as well as PayPal."
             />
             <FAQItem
               question="Is my data secure?"
@@ -155,6 +201,9 @@ function PricingCard({
   buttonText,
   buttonDisabled,
   onSelect,
+  secondaryButtonText,
+  secondaryButtonDisabled,
+  onSecondarySelect,
   loading,
   recommended,
 }: {
@@ -167,6 +216,9 @@ function PricingCard({
   buttonText: string;
   buttonDisabled: boolean;
   onSelect: () => void;
+  secondaryButtonText?: string;
+  secondaryButtonDisabled?: boolean;
+  onSecondarySelect?: () => void;
   loading: boolean;
   recommended: boolean;
 }) {
@@ -200,6 +252,16 @@ function PricingCard({
       >
         {loading ? 'Processing...' : buttonText}
       </button>
+
+      {secondaryButtonText && onSecondarySelect && (
+        <button
+          onClick={onSecondarySelect}
+          disabled={secondaryButtonDisabled || loading}
+          className="w-full py-3 px-6 rounded-lg font-semibold transition mb-6 border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Processing...' : secondaryButtonText}
+        </button>
+      )}
 
       <div className="space-y-3 mb-6">
         <p className="font-semibold text-gray-900">Features:</p>

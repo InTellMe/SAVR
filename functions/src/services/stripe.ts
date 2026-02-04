@@ -1,5 +1,10 @@
 import Stripe from 'stripe';
 import { db } from '../utils/firebase';
+import {
+  SubscriptionStatus,
+  updateUserSubscription,
+  upsertUserSubscriptionRecord,
+} from '../utils/subscription';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2026-01-28.clover',
@@ -8,8 +13,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 export async function createCheckoutSession(
   userId: string,
   priceId: string,
-  successUrl: string,
-  cancelUrl: string
+  successUrl?: string,
+  cancelUrl?: string
 ): Promise<string> {
   // Get or create Stripe customer
   const userDoc = await db.collection('users').doc(userId).get();
@@ -30,6 +35,13 @@ export async function createCheckoutSession(
     });
   }
 
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
+
+  const resolvedSuccessUrl =
+    successUrl || `${appBaseUrl}/dashboard?stripeSuccess=true`;
+  const resolvedCancelUrl =
+    cancelUrl || `${appBaseUrl}/pricing?stripeCancelled=true`;
+
   // Create checkout session
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
@@ -41,8 +53,8 @@ export async function createCheckoutSession(
         quantity: 1,
       },
     ],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
+    success_url: resolvedSuccessUrl,
+    cancel_url: resolvedCancelUrl,
     metadata: { userId },
   });
 
@@ -93,22 +105,30 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     return;
   }
 
+  const stripeCustomerId =
+    typeof session.customer === 'string'
+      ? session.customer
+      : (session.customer as Stripe.Customer | null)?.id ?? null;
+
   // Update user subscription status
-  await db.collection('users').doc(userId).update({
+  await updateUserSubscription(userId, {
     subscriptionTier: 'pro',
     subscriptionStatus: 'active',
-    stripeCustomerId: session.customer,
-    updatedAt: new Date(),
+    stripeCustomerId,
   });
 
-  // Create subscription record
+  // Create / update subscription record
   if (session.subscription) {
-    await db.collection('subscriptions').doc(userId).set({
-      userId,
-      stripeSubscriptionId: session.subscription,
+    const subscriptionId =
+      typeof session.subscription === 'string'
+        ? session.subscription
+        : (session.subscription as Stripe.Subscription).id;
+
+    await upsertUserSubscriptionRecord(userId, {
+      provider: 'stripe',
+      subscriptionId,
       status: 'active',
       startDate: new Date(),
-      updatedAt: new Date(),
     });
   }
 }
@@ -116,35 +136,35 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
   const userId = subscription.metadata?.userId;
   
-  if (!userId) {
+  const internalStatus = mapStripeStatus(subscription.status);
+
+  let resolvedUserId = userId;
+
+  if (!resolvedUserId) {
     // Try to find user by customer ID
     const usersSnapshot = await db
       .collection('users')
       .where('stripeCustomerId', '==', subscription.customer)
       .limit(1)
       .get();
-    
+
     if (usersSnapshot.empty) {
       console.error('No user found for subscription update');
       return;
     }
-    
+
     const userDoc = usersSnapshot.docs[0];
-    await userDoc.ref.update({
-      subscriptionStatus: subscription.status,
-      updatedAt: new Date(),
-    });
-  } else {
-    await db.collection('users').doc(userId).update({
-      subscriptionStatus: subscription.status,
-      updatedAt: new Date(),
-    });
+    resolvedUserId = userDoc.id;
   }
 
-  // Update subscription record
-  await db.collection('subscriptions').doc(userId).update({
-    status: subscription.status,
-    updatedAt: new Date(),
+  await updateUserSubscription(resolvedUserId, {
+    subscriptionStatus: internalStatus,
+  });
+
+  await upsertUserSubscriptionRecord(resolvedUserId, {
+    provider: 'stripe',
+    subscriptionId: subscription.id,
+    status: internalStatus,
   });
 }
 
@@ -159,18 +179,20 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
     console.error('No user found for subscription deletion');
     return;
   }
-  
+
   const userDoc = usersSnapshot.docs[0];
-  await userDoc.ref.update({
+  const userId = userDoc.id;
+
+  await updateUserSubscription(userId, {
     subscriptionTier: 'free',
     subscriptionStatus: 'cancelled',
-    updatedAt: new Date(),
   });
 
-  await db.collection('subscriptions').doc(userDoc.id).update({
+  await upsertUserSubscriptionRecord(userId, {
+    provider: 'stripe',
+    subscriptionId: subscription.id,
     status: 'cancelled',
     endDate: new Date(),
-    updatedAt: new Date(),
   });
 }
 
@@ -185,12 +207,36 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     console.error('No user found for payment failure');
     return;
   }
-  
+
   const userDoc = usersSnapshot.docs[0];
-  await userDoc.ref.update({
+  const userId = userDoc.id;
+
+  await updateUserSubscription(userId, {
     subscriptionStatus: 'past_due',
-    updatedAt: new Date(),
   });
+
+  await upsertUserSubscriptionRecord(userId, {
+    provider: 'stripe',
+    subscriptionId: typeof invoice.subscription === 'string' ? invoice.subscription : null,
+    status: 'past_due',
+  });
+}
+
+function mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
+  switch (status) {
+    case 'active':
+    case 'trialing':
+      return 'active';
+    case 'canceled':
+      return 'cancelled';
+    case 'past_due':
+    case 'unpaid':
+    case 'incomplete':
+    case 'incomplete_expired':
+      return 'past_due';
+    default:
+      return 'past_due';
+  }
 }
 
 export async function createPortalSession(
