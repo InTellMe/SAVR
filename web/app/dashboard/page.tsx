@@ -110,7 +110,7 @@ function DashboardContent() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             <ActionButton
-              href="/inventory"
+              href="/upload"
               icon="📸"
               title="Upload Pantry Photo"
               description="Add new items to inventory"
