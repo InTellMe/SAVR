@@ -1,0 +1,327 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Modal,
+  TextInput,
+} from 'react-native';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { InventoryItem } from '../../types';
+import { Ionicons } from '@expo/vector-icons';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import ImagePickerComponent from '../../components/ImagePickerComponent';
+import { uploadImage } from '../../utils/imageUtils';
+
+export default function InventoryScreen() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [imageUri, setImageUri] = useState<string>('');
+  const [newItem, setNewItem] = useState({
+    name: '',
+    quantity: '',
+    unit: '',
+    category: '',
+  });
+
+  useEffect(() => {
+    loadInventory();
+  }, [user]);
+
+  const loadInventory = async () => {
+    if (!user) return;
+
+    try {
+      const q = query(collection(db, 'inventory'), where('userId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      const inventoryItems: InventoryItem[] = [];
+      querySnapshot.forEach((doc) => {
+        inventoryItems.push({ id: doc.id, ...doc.data() } as InventoryItem);
+      });
+      setItems(inventoryItems);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!user || !newItem.name || !newItem.quantity) {
+      Alert.alert('Error', 'Please fill in required fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let imageUrl = '';
+      
+      if (imageUri) {
+        const itemId = Date.now().toString();
+        imageUrl = await uploadImage(imageUri, user.uid, itemId);
+      }
+
+      await addDoc(collection(db, 'inventory'), {
+        userId: user.uid,
+        name: newItem.name,
+        quantity: parseFloat(newItem.quantity),
+        unit: newItem.unit || 'units',
+        category: newItem.category || 'other',
+        imageUrl,
+        addedAt: new Date(),
+      });
+
+      setModalVisible(false);
+      setNewItem({ name: '', quantity: '', unit: '', category: '' });
+      setImageUri('');
+      loadInventory();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add item');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    Alert.alert(
+      'Delete Item',
+      'Are you sure you want to delete this item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'inventory', itemId));
+              loadInventory();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete item');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (loading && items.length === 0) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.itemCard}>
+            <View style={styles.itemInfo}>
+              <Text style={styles.itemName}>{item.name}</Text>
+              <Text style={styles.itemDetails}>
+                {item.quantity} {item.unit} • {item.category}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => handleDeleteItem(item.id)}>
+              <Ionicons name="trash-outline" size={24} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="file-tray-outline" size={64} color="#9ca3af" />
+            <Text style={styles.emptyText}>No items in your pantry</Text>
+            <Text style={styles.emptySubtext}>Add items to get started</Text>
+          </View>
+        }
+        contentContainerStyle={items.length === 0 ? styles.emptyContainer : styles.listContent}
+      />
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setModalVisible(true)}
+      >
+        <Ionicons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Item</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#111827" />
+              </TouchableOpacity>
+            </View>
+
+            <ImagePickerComponent
+              onImageSelected={setImageUri}
+              currentImageUrl={imageUri}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Item name *"
+              value={newItem.name}
+              onChangeText={(text) => setNewItem({ ...newItem, name: text })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Quantity *"
+              value={newItem.quantity}
+              onChangeText={(text) => setNewItem({ ...newItem, quantity: text })}
+              keyboardType="numeric"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Unit (e.g., cups, lbs)"
+              value={newItem.unit}
+              onChangeText={(text) => setNewItem({ ...newItem, unit: text })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Category (e.g., dairy, produce)"
+              value={newItem.category}
+              onChangeText={(text) => setNewItem({ ...newItem, category: text })}
+            />
+
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddItem}
+            >
+              <Text style={styles.addButtonText}>Add Item</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  listContent: {
+    padding: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+  },
+  itemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  itemDetails: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 8,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#ea580c',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+  },
+  addButton: {
+    backgroundColor: '#ea580c',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
