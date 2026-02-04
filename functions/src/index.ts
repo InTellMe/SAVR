@@ -13,6 +13,18 @@ import {
   createPortalSession,
 } from './services/stripe';
 import { checkUsageLimit } from './utils/subscription';
+import {
+  AnalyzeImageRequest,
+  AnalyzeImageResponse,
+  ChatRequest,
+  ChatResponse,
+  CreateGroceryListRequest,
+  CreateGroceryListResponse,
+  CreateMealPlanRequest,
+  CreateMealPlanResponse,
+  CreateRecipeRequest,
+  CreateRecipeResponse,
+} from './types';
 
 // Image Analysis Function
 export const analyzeImage = functions
@@ -23,7 +35,13 @@ export const analyzeImage = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { imageUrl } = data;
+    const { imageUrl } = data as AnalyzeImageRequest;
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'imageUrl is required and must be a string'
+      );
+    }
     const userId = context.auth.uid;
 
     // Check usage limits
@@ -34,7 +52,8 @@ export const analyzeImage = functions
 
     try {
       const ingredients = await extractIngredientsFromImage(imageUrl);
-      return { success: true, ingredients };
+      const response: AnalyzeImageResponse = { success: true, ingredients };
+      return response;
     } catch (error: any) {
       console.error('Image analysis error:', error);
       throw new functions.https.HttpsError('internal', error.message || 'Failed to analyze image');
@@ -49,7 +68,13 @@ export const createRecipe = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { ingredients, preferences } = data;
+    const { ingredients, preferences } = data as CreateRecipeRequest;
+    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'ingredients must be a non-empty string array'
+      );
+    }
     const userId = context.auth.uid;
 
     // Check usage limits
@@ -73,7 +98,12 @@ export const createRecipe = functions
           createdAt: new Date(),
         });
 
-      return { success: true, recipeId: recipeRef.id, recipe };
+      const response: CreateRecipeResponse = {
+        success: true,
+        recipeId: recipeRef.id,
+        recipe,
+      };
+      return response;
     } catch (error: any) {
       console.error('Recipe generation error:', error);
       throw new functions.https.HttpsError('internal', error.message || 'Failed to generate recipe');
@@ -88,7 +118,19 @@ export const createMealPlan = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { days, ingredients, preferences } = data;
+    const { days, ingredients, preferences } = data as CreateMealPlanRequest;
+    if (typeof days !== 'number' || days < 1 || days > 14) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'days must be a number between 1 and 14'
+      );
+    }
+    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'ingredients must be a non-empty string array'
+      );
+    }
     const userId = context.auth.uid;
 
     // Check usage limits
@@ -117,7 +159,12 @@ export const createMealPlan = functions
           createdAt: new Date(),
         });
 
-      return { success: true, mealPlanId: mealPlanRef.id, mealPlan };
+      const response: CreateMealPlanResponse = {
+        success: true,
+        mealPlanId: mealPlanRef.id,
+        mealPlan,
+      };
+      return response;
     } catch (error: any) {
       console.error('Meal plan generation error:', error);
       throw new functions.https.HttpsError('internal', error.message || 'Failed to generate meal plan');
@@ -132,7 +179,13 @@ export const createGroceryList = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { recipeIds } = data;
+    const { recipeIds } = data as CreateGroceryListRequest;
+    if (!Array.isArray(recipeIds) || recipeIds.length === 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'recipeIds must be a non-empty string array'
+      );
+    }
     const userId = context.auth.uid;
 
     try {
@@ -173,7 +226,12 @@ export const createGroceryList = functions
           updatedAt: new Date(),
         });
 
-      return { success: true, listId: listRef.id, items: groceryItems };
+      const response: CreateGroceryListResponse = {
+        success: true,
+        listId: listRef.id,
+        items: groceryItems,
+      };
+      return response;
     } catch (error: any) {
       console.error('Grocery list generation error:', error);
       throw new functions.https.HttpsError('internal', error.message || 'Failed to generate grocery list');
@@ -188,7 +246,13 @@ export const chat = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { message, conversationHistory, contextData } = data;
+    const { message, conversationHistory, contextData } = data as ChatRequest;
+    if (!message || typeof message !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'message is required and must be a string'
+      );
+    }
     const userId = context.auth.uid;
 
     // Check usage limits (Pro only feature)
@@ -198,7 +262,11 @@ export const chat = functions
     }
 
     try {
-      const response = await chatAssistant(message, conversationHistory || [], contextData);
+      const responseText = await chatAssistant(
+        message,
+        conversationHistory || [],
+        contextData
+      );
       
       // Save chat message to Firestore
       await db
@@ -219,11 +287,12 @@ export const chat = functions
         .add({
           userId,
           role: 'assistant',
-          content: response,
+          content: responseText,
           timestamp: new Date(),
         });
 
-      return { success: true, response };
+      const response: ChatResponse = { success: true, response: responseText };
+      return response;
     } catch (error: any) {
       console.error('Chat error:', error);
       throw new functions.https.HttpsError('internal', error.message || 'Failed to process chat');

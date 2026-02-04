@@ -11,20 +11,22 @@ PantryHustler uses Firebase Cloud Functions as its backend API. All functions ar
 All API endpoints require a valid Firebase ID token in the request.
 
 **Web (Next.js)**:
-```typescript
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
 
-const myFunction = httpsCallable(functions, 'functionName');
+```typescript
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/lib/firebase";
+
+const myFunction = httpsCallable(functions, "functionName");
 const result = await myFunction({ data });
 ```
 
 **Mobile (React Native)**:
+
 ```typescript
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 const functions = getFunctions();
-const myFunction = httpsCallable(functions, 'functionName');
+const myFunction = httpsCallable(functions, "functionName");
 const result = await myFunction({ data });
 ```
 
@@ -37,6 +39,7 @@ Analyzes an uploaded image to extract ingredients using AI vision.
 **Function Name**: `analyzeImage`
 
 **Request**:
+
 ```typescript
 {
   imageUrl: string; // Firebase Storage URL or public URL
@@ -44,28 +47,32 @@ Analyzes an uploaded image to extract ingredients using AI vision.
 ```
 
 **Response**:
+
 ```typescript
 {
   success: boolean;
   ingredients: Array<{
     name: string;
     quantity: number;
-    unit: string;
+    unit: string; // Canonical unit when possible (e.g., 'g', 'kg', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'lb', 'oz', 'piece', 'can', 'bottle', 'package')
     confidence: number;
+    approximate?: boolean; // true when the quantity is estimated
   }>;
 }
 ```
 
 **Errors**:
+
 - `unauthenticated`: User not logged in
 - `resource-exhausted`: Free tier inventory limit reached
 - `internal`: Image analysis failed
 
 **Example**:
+
 ```typescript
-const analyzeImage = httpsCallable(functions, 'analyzeImage');
-const result = await analyzeImage({ 
-  imageUrl: 'https://storage.googleapis.com/.../image.jpg' 
+const analyzeImage = httpsCallable(functions, "analyzeImage");
+const result = await analyzeImage({
+  imageUrl: "https://storage.googleapis.com/.../image.jpg",
 });
 
 console.log(result.data.ingredients);
@@ -73,6 +80,7 @@ console.log(result.data.ingredients);
 ```
 
 **Usage Limits**:
+
 - Free: 50 total inventory items
 - Pro: Unlimited
 
@@ -85,6 +93,7 @@ Generates a recipe based on available ingredients using GPT-4.
 **Function Name**: `createRecipe`
 
 **Request**:
+
 ```typescript
 {
   ingredients: string[]; // Array of ingredient names
@@ -98,6 +107,7 @@ Generates a recipe based on available ingredients using GPT-4.
 ```
 
 **Response**:
+
 ```typescript
 {
   success: boolean;
@@ -108,7 +118,8 @@ Generates a recipe based on available ingredients using GPT-4.
     ingredients: Array<{
       name: string;
       quantity: number;
-      unit: string;
+      unit: string; // Canonical unit when possible
+      approximate?: boolean;
     }>;
     instructions: string[];
     prepTime: number; // minutes
@@ -122,20 +133,22 @@ Generates a recipe based on available ingredients using GPT-4.
 ```
 
 **Errors**:
+
 - `unauthenticated`: User not logged in
 - `resource-exhausted`: Monthly recipe limit reached (free tier)
 - `internal`: Recipe generation failed
 
 **Example**:
+
 ```typescript
-const createRecipe = httpsCallable(functions, 'createRecipe');
+const createRecipe = httpsCallable(functions, "createRecipe");
 const result = await createRecipe({
-  ingredients: ['chicken', 'tomatoes', 'pasta'],
+  ingredients: ["chicken", "tomatoes", "pasta"],
   preferences: {
-    cuisine: 'Italian',
-    difficulty: 'easy',
-    cookTime: 30
-  }
+    cuisine: "Italian",
+    difficulty: "easy",
+    cookTime: 30,
+  },
 });
 
 console.log(result.data.recipe.title);
@@ -143,6 +156,7 @@ console.log(result.data.recipe.title);
 ```
 
 **Usage Limits**:
+
 - Free: 10 recipes per month
 - Pro: Unlimited
 
@@ -155,6 +169,7 @@ Generates a multi-day meal plan with recipes.
 **Function Name**: `createMealPlan`
 
 **Request**:
+
 ```typescript
 {
   days: number; // 1-14
@@ -168,6 +183,7 @@ Generates a multi-day meal plan with recipes.
 ```
 
 **Response**:
+
 ```typescript
 {
   success: boolean;
@@ -176,35 +192,38 @@ Generates a multi-day meal plan with recipes.
     name: string;
     meals: Array<{
       day: number;
-      mealType: 'breakfast' | 'lunch' | 'dinner';
+      mealType: "breakfast" | "lunch" | "dinner";
       recipeName: string;
       ingredients: string[];
     }>;
-  };
+  }
 }
 ```
 
 **Errors**:
+
 - `unauthenticated`: User not logged in
 - `resource-exhausted`: Monthly meal plan limit reached (free tier)
 - `internal`: Meal plan generation failed
 
 **Example**:
+
 ```typescript
-const createMealPlan = httpsCallable(functions, 'createMealPlan');
+const createMealPlan = httpsCallable(functions, "createMealPlan");
 const result = await createMealPlan({
   days: 7,
-  ingredients: ['chicken', 'rice', 'vegetables', 'eggs'],
+  ingredients: ["chicken", "rice", "vegetables", "eggs"],
   preferences: {
     mealsPerDay: 3,
-    dietary: ['gluten-free']
-  }
+    dietary: ["gluten-free"],
+  },
 });
 
 console.log(result.data.mealPlan.meals);
 ```
 
 **Usage Limits**:
+
 - Free: 2 meal plans per month
 - Pro: Unlimited
 
@@ -217,6 +236,7 @@ Generates a grocery list based on recipes and current inventory.
 **Function Name**: `createGroceryList`
 
 **Request**:
+
 ```typescript
 {
   recipeIds: string[]; // Firestore recipe document IDs
@@ -224,6 +244,7 @@ Generates a grocery list based on recipes and current inventory.
 ```
 
 **Response**:
+
 ```typescript
 {
   success: boolean;
@@ -231,21 +252,24 @@ Generates a grocery list based on recipes and current inventory.
   items: Array<{
     name: string;
     quantity: number;
-    unit: string;
-    category: 'produce' | 'dairy' | 'meat' | 'pantry';
+    unit: string; // Canonical unit when possible
+    category: "produce" | "dairy" | "meat" | "pantry";
+    approximate?: boolean;
   }>;
 }
 ```
 
 **Errors**:
+
 - `unauthenticated`: User not logged in
 - `internal`: Grocery list generation failed
 
 **Example**:
+
 ```typescript
-const createGroceryList = httpsCallable(functions, 'createGroceryList');
+const createGroceryList = httpsCallable(functions, "createGroceryList");
 const result = await createGroceryList({
-  recipeIds: ['recipe123', 'recipe456']
+  recipeIds: ["recipe123", "recipe456"],
 });
 
 console.log(result.data.items);
@@ -253,6 +277,7 @@ console.log(result.data.items);
 ```
 
 **Usage Limits**:
+
 - Free: Unlimited
 - Pro: Unlimited
 
@@ -265,6 +290,7 @@ Provides conversational cooking assistance (Pro tier only).
 **Function Name**: `chat`
 
 **Request**:
+
 ```typescript
 {
   message: string; // User's question or message
@@ -280,6 +306,7 @@ Provides conversational cooking assistance (Pro tier only).
 ```
 
 **Response**:
+
 ```typescript
 {
   success: boolean;
@@ -288,19 +315,21 @@ Provides conversational cooking assistance (Pro tier only).
 ```
 
 **Errors**:
+
 - `unauthenticated`: User not logged in
 - `permission-denied`: Free tier users (Pro only feature)
 - `internal`: Chat processing failed
 
 **Example**:
+
 ```typescript
-const chat = httpsCallable(functions, 'chat');
+const chat = httpsCallable(functions, "chat");
 const result = await chat({
-  message: 'How do I prevent pasta from sticking?',
+  message: "How do I prevent pasta from sticking?",
   conversationHistory: [],
   contextData: {
-    currentRecipe: { title: 'Spaghetti Carbonara' }
-  }
+    currentRecipe: { title: "Spaghetti Carbonara" },
+  },
 });
 
 console.log(result.data.response);
@@ -308,10 +337,29 @@ console.log(result.data.response);
 ```
 
 **Usage Limits**:
+
 - Free: Not available
 - Pro: Unlimited
 
 ---
+
+## AI Models and Fallback Behavior
+
+Pantry Chef uses OpenAI models with built-in fallback logic for robustness and consistent typed responses:
+
+- **Image analysis (`analyzeImage`)**:
+  - Primary: OpenAI vision-capable model (default `gpt-4o`) via Chat Completions with image input.
+  - Fallback: Google Cloud Vision labels, post-processed by an OpenAI text model into structured ingredients.
+- **Recipe generation (`createRecipe`)**:
+  - Primary: OpenAI text model (default `gpt-4o`), with fallback to a smaller model (default `gpt-4o-mini`) on retryable errors (429, 5xx).
+- **Meal plan generation (`createMealPlan`)**:
+  - Primary: OpenAI text model (default `gpt-4o`), with fallback to `gpt-4o-mini` on retryable errors.
+- **Grocery list generation (`createGroceryList`)**:
+  - Primary: OpenAI text model (default `gpt-4o-mini`), with fallback to `gpt-4o` on retryable errors.
+- **Chat assistant (`chat`)**:
+  - Primary: OpenAI text model (default `gpt-4o`), with fallback to `gpt-4o-mini` on retryable errors.
+
+Model names can be overridden via environment variables (e.g., `OPENAI_MODEL_CHAT_PRIMARY`, `OPENAI_MODEL_CHAT_FALLBACK`) without changing client code. All AI endpoints normalize units and quantities in their responses so the API contracts above remain consistent regardless of which model handles the request.
 
 ### 6. createStripeCheckout
 
@@ -320,6 +368,7 @@ Creates a Stripe checkout session for subscription.
 **Function Name**: `createStripeCheckout`
 
 **Request**:
+
 ```typescript
 {
   priceId: string; // Stripe Price ID (monthly or yearly)
@@ -329,6 +378,7 @@ Creates a Stripe checkout session for subscription.
 ```
 
 **Response**:
+
 ```typescript
 {
   success: boolean;
@@ -337,16 +387,18 @@ Creates a Stripe checkout session for subscription.
 ```
 
 **Errors**:
+
 - `unauthenticated`: User not logged in
 - `internal`: Stripe error
 
 **Example**:
+
 ```typescript
-const createStripeCheckout = httpsCallable(functions, 'createStripeCheckout');
+const createStripeCheckout = httpsCallable(functions, "createStripeCheckout");
 const result = await createStripeCheckout({
   priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY,
   successUrl: `${window.location.origin}/dashboard?success=true`,
-  cancelUrl: `${window.location.origin}/pricing`
+  cancelUrl: `${window.location.origin}/pricing`,
 });
 
 // Redirect to Stripe Checkout
@@ -362,6 +414,7 @@ Creates a Stripe Customer Portal session for managing subscription.
 **Function Name**: `createStripePortal`
 
 **Request**:
+
 ```typescript
 {
   returnUrl: string; // URL to return to after portal session
@@ -369,6 +422,7 @@ Creates a Stripe Customer Portal session for managing subscription.
 ```
 
 **Response**:
+
 ```typescript
 {
   success: boolean;
@@ -377,14 +431,16 @@ Creates a Stripe Customer Portal session for managing subscription.
 ```
 
 **Errors**:
+
 - `unauthenticated`: User not logged in
 - `internal`: No Stripe customer found or other error
 
 **Example**:
+
 ```typescript
-const createStripePortal = httpsCallable(functions, 'createStripePortal');
+const createStripePortal = httpsCallable(functions, "createStripePortal");
 const result = await createStripePortal({
-  returnUrl: `${window.location.origin}/dashboard`
+  returnUrl: `${window.location.origin}/dashboard`,
 });
 
 // Redirect to Stripe Portal
@@ -400,11 +456,13 @@ Webhook endpoint for Stripe events (not directly callable).
 **Endpoint**: `POST /stripeWebhook`
 
 **Headers**:
+
 ```
 stripe-signature: [Stripe signature header]
 ```
 
 **Events Handled**:
+
 - `checkout.session.completed`: New subscription created
 - `customer.subscription.updated`: Subscription status changed
 - `customer.subscription.deleted`: Subscription cancelled
@@ -423,6 +481,7 @@ Automatically creates a user document in Firestore when a new user signs up.
 **Trigger**: `auth.user().onCreate`
 
 **Creates**:
+
 ```typescript
 {
   uid: string;
@@ -441,6 +500,7 @@ Automatically creates a user document in Firestore when a new user signs up.
 ## Data Models
 
 ### User Document
+
 **Collection**: `users/{userId}`
 
 ```typescript
@@ -458,6 +518,7 @@ Automatically creates a user document in Firestore when a new user signs up.
 ```
 
 ### Inventory Item
+
 **Collection**: `inventory/{userId}/items/{itemId}`
 
 ```typescript
@@ -475,6 +536,7 @@ Automatically creates a user document in Firestore when a new user signs up.
 ```
 
 ### Recipe
+
 **Collection**: `recipes/{userId}/items/{recipeId}`
 
 ```typescript
@@ -501,6 +563,7 @@ Automatically creates a user document in Firestore when a new user signs up.
 ```
 
 ### Meal Plan
+
 **Collection**: `mealPlans/{userId}/plans/{planId}`
 
 ```typescript
@@ -512,7 +575,7 @@ Automatically creates a user document in Firestore when a new user signs up.
   endDate: Date;
   meals: Array<{
     date: Date;
-    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    mealType: "breakfast" | "lunch" | "dinner" | "snack";
     recipeId?: string;
     recipeName: string;
   }>;
@@ -521,6 +584,7 @@ Automatically creates a user document in Firestore when a new user signs up.
 ```
 
 ### Grocery List
+
 **Collection**: `groceryLists/{userId}/lists/{listId}`
 
 ```typescript
@@ -541,13 +605,14 @@ Automatically creates a user document in Firestore when a new user signs up.
 ```
 
 ### Chat Message
+
 **Collection**: `chatHistory/{userId}/messages/{messageId}`
 
 ```typescript
 {
   id: string;
   userId: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: Date;
 }
@@ -558,18 +623,21 @@ Automatically creates a user document in Firestore when a new user signs up.
 ## Rate Limits
 
 ### Free Tier
+
 - 50 inventory items total
 - 10 recipe generations per month
 - 2 meal plans per month
 - No AI chat access
 
 ### Pro Tier
+
 - Unlimited inventory items
 - Unlimited recipe generations
 - Unlimited meal plans
 - Unlimited AI chat
 
 ### Global Limits (Both Tiers)
+
 - 100 API calls per minute per user
 - 10 MB max image size
 - 5 images per request (inventory)
@@ -589,6 +657,7 @@ All errors follow this format:
 ```
 
 **Common Error Codes**:
+
 - `unauthenticated`: User not logged in
 - `permission-denied`: Insufficient permissions or tier
 - `resource-exhausted`: Usage limit reached
@@ -598,16 +667,17 @@ All errors follow this format:
 - `internal`: Server error
 
 **Example Error Handling**:
+
 ```typescript
 try {
   const result = await myFunction({ data });
   console.log(result.data);
 } catch (error: any) {
-  console.error('Error:', error.code, error.message);
-  
-  if (error.code === 'resource-exhausted') {
+  console.error("Error:", error.code, error.message);
+
+  if (error.code === "resource-exhausted") {
     // Show upgrade prompt
-  } else if (error.code === 'unauthenticated') {
+  } else if (error.code === "unauthenticated") {
     // Redirect to login
   }
 }

@@ -3,12 +3,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
-import ImageUpload from '@/components/ImageUpload';
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { httpsCallable } from 'firebase/functions';
-import { db, storage, functions } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface InventoryItem {
@@ -16,10 +13,10 @@ interface InventoryItem {
   name: string;
   quantity: number;
   unit: string;
-  category: string;
+  category: 'pantry' | 'fridge' | 'freezer';
   expiryDate?: string;
-  imageUrl?: string;
-  createdAt: string;
+  imageUrl?: string | null;
+  addedDate?: string;
 }
 
 export default function InventoryPage() {
@@ -34,8 +31,13 @@ function InventoryContent() {
   const { user } = useAuth();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id'>>({
+    name: '',
+    quantity: 1,
+    unit: '',
+    category: 'pantry',
+  });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -46,7 +48,8 @@ function InventoryContent() {
     if (!user) return;
 
     try {
-      const q = query(collection(db, 'inventory'), where('userId', '==', user.uid));
+      const itemsCollection = collection(db, 'inventory', user.uid, 'items');
+      const q = query(itemsCollection, where('userId', '==', user.uid));
       const snapshot = await getDocs(q);
       const inventoryItems = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -61,46 +64,44 @@ function InventoryContent() {
     }
   }
 
-  async function handleImageUpload(file: File) {
-    if (!user) return;
-    
-    setUploading(true);
-    setError('');
+  async function handleAddItem() {
+    if (!user || !newItem.name.trim()) return;
 
     try {
-      // Upload image to Storage
-      const storageRef = ref(storage, `inventory/${user.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const imageUrl = await getDownloadURL(storageRef);
+      const itemsCollection = collection(db, 'inventory', user.uid, 'items');
+      const docRef = await addDoc(itemsCollection, {
+        userId: user.uid,
+        name: newItem.name.trim(),
+        quantity: newItem.quantity,
+        unit: newItem.unit.trim(),
+        category: newItem.category,
+        addedDate: new Date().toISOString(),
+        imageUrl: newItem.imageUrl || null,
+      });
 
-      // Call Cloud Function to analyze image
-      const analyzeImage = httpsCallable(functions, 'analyzeImage');
-      const result = await analyzeImage({ imageUrl });
-      const data = result.data as { items: Array<{ name: string; quantity: number; unit: string; category: string }> };
+      setItems([
+        ...items,
+        {
+          id: docRef.id,
+          ...newItem,
+        },
+      ]);
 
-      // Add items to Firestore
-      const batch = data.items.map(item => 
-        addDoc(collection(db, 'inventory'), {
-          ...item,
-          userId: user.uid,
-          imageUrl,
-          createdAt: new Date().toISOString(),
-        })
-      );
-
-      await Promise.all(batch);
-      await loadInventory();
-    } catch (error) {
-      console.error('Error analyzing image:', error);
-      setError('Failed to analyze image. Please try again.');
-    } finally {
-      setUploading(false);
+      setNewItem({
+        name: '',
+        quantity: 1,
+        unit: '',
+        category: 'pantry',
+      });
+    } catch (err) {
+      console.error('Error adding item:', err);
+      setError('Failed to add item');
     }
   }
 
   async function handleDeleteItem(itemId: string) {
     try {
-      await deleteDoc(doc(db, 'inventory', itemId));
+      await deleteDoc(doc(db, 'inventory', user!.uid, 'items', itemId));
       setItems(items.filter(item => item.id !== itemId));
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -111,7 +112,7 @@ function InventoryContent() {
   async function handleUpdateItem(item: InventoryItem) {
     try {
       const { id, ...updateData } = item;
-      await updateDoc(doc(db, 'inventory', id), updateData);
+      await updateDoc(doc(db, 'inventory', user!.uid, 'items', id), updateData);
       setItems(items.map(i => i.id === id ? item : i));
       setEditingItem(null);
     } catch (error) {
@@ -144,12 +145,71 @@ function InventoryContent() {
           </div>
         )}
 
-        {/* Upload Section */}
+        {/* Manual Add Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Add Items from Photo
+            Add Item Manually
           </h2>
-          <ImageUpload onUpload={handleImageUpload} loading={uploading} />
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+              <input
+                type="text"
+                value={newItem.name}
+                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+                placeholder="e.g., Chicken breast"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Quantity</label>
+              <input
+                type="number"
+                min={0}
+                value={newItem.quantity}
+                onChange={(e) =>
+                  setNewItem({ ...newItem, quantity: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Unit</label>
+              <input
+                type="text"
+                value={newItem.unit}
+                onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+                placeholder="e.g., pcs, kg"
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end">
+            <div className="md:w-48">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
+              <select
+                value={newItem.category}
+                onChange={(e) =>
+                  setNewItem({
+                    ...newItem,
+                    category: e.target.value as InventoryItem['category'],
+                  })
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              >
+                <option value="pantry">Pantry</option>
+                <option value="fridge">Fridge</option>
+                <option value="freezer">Freezer</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddItem}
+              className="mt-2 inline-flex items-center rounded-lg bg-orange-600 px-6 py-2 text-sm font-medium text-white hover:bg-orange-700 md:mt-0"
+            >
+              Add Item
+            </button>
+          </div>
         </div>
 
         {/* Inventory List */}

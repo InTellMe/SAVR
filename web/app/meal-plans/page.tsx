@@ -4,23 +4,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
+
+interface MealPlanMeal {
+  date: string;
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  recipeId?: string;
+  recipeName: string;
+}
 
 interface MealPlan {
   id: string;
   name: string;
   startDate: string;
   endDate: string;
-  meals: {
-    date: string;
-    breakfast?: string;
-    lunch?: string;
-    dinner?: string;
-  }[];
-  createdAt: string;
+  meals: MealPlanMeal[];
+  createdAt?: string;
 }
 
 export default function MealPlansPage() {
@@ -54,7 +56,8 @@ function MealPlansContent() {
     if (!user) return;
 
     try {
-      const q = query(collection(db, 'mealPlans'), where('userId', '==', user.uid));
+      const plansCollection = collection(db, 'mealPlans', user.uid, 'plans');
+      const q = query(plansCollection, where('userId', '==', user.uid));
       const snapshot = await getDocs(q);
       const plans = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -76,29 +79,44 @@ function MealPlansContent() {
     setError('');
 
     try {
-      const inventoryQuery = query(collection(db, 'inventory'), where('userId', '==', user.uid));
+      const inventoryCollection = collection(db, 'inventory', user.uid, 'items');
+      const inventoryQuery = query(inventoryCollection, where('userId', '==', user.uid));
       const inventorySnap = await getDocs(inventoryQuery);
-      const ingredients = inventorySnap.docs.map(doc => doc.data().name);
+      const ingredients = inventorySnap.docs.map(doc => doc.data().name as string);
 
       const createMealPlan = httpsCallable(functions, 'createMealPlan');
       const result = await createMealPlan({
+        days: formData.days,
         ingredients,
-        ...formData,
+        preferences: {
+          mealsPerDay: formData.mealsPerDay,
+          dietary: formData.dietaryRestrictions,
+          variety: true,
+        },
       });
 
-      const mealPlanData = result.data as Omit<MealPlan, 'id'>;
+      const data = result.data as {
+        success: boolean;
+        mealPlanId: string;
+        mealPlan: Omit<MealPlan, 'id'>;
+      };
 
-      await addDoc(collection(db, 'mealPlans'), {
-        ...mealPlanData,
-        userId: user.uid,
-        createdAt: new Date().toISOString(),
-      });
+      if (!data.success) {
+        throw new Error('Meal plan generation failed');
+      }
 
       await loadMealPlans();
       setShowForm(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating meal plan:', error);
-      setError('Failed to generate meal plan. Please try again.');
+      const code = error?.code as string | undefined;
+      if (code && code.includes('resource-exhausted')) {
+        setError('You have reached your free meal plan limit. Upgrade to Pro for unlimited meal plans.');
+      } else if (code && code.includes('unauthenticated')) {
+        setError('You must be signed in to create meal plans.');
+      } else {
+        setError('Failed to generate meal plan. Please try again.');
+      }
     } finally {
       setGenerating(false);
     }
@@ -106,7 +124,7 @@ function MealPlansContent() {
 
   async function handleDeletePlan(planId: string) {
     try {
-      await deleteDoc(doc(db, 'mealPlans', planId));
+      await deleteDoc(doc(db, 'mealPlans', user!.uid, 'plans', planId));
       setMealPlans(mealPlans.filter(plan => plan.id !== planId));
     } catch (error) {
       console.error('Error deleting meal plan:', error);
@@ -336,29 +354,16 @@ function MealPlanDetailsModal({
         <div className="space-y-4">
           {plan.meals.map((meal, index) => (
             <div key={index} className="border border-gray-200 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">
-                {new Date(meal.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              <h3 className="font-semibold text-gray-900 mb-2">
+                {new Date(meal.date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'short',
+                  day: 'numeric',
+                })}
               </h3>
-              <div className="grid md:grid-cols-3 gap-4">
-                {meal.breakfast && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">🌅 Breakfast</p>
-                    <p className="text-gray-900">{meal.breakfast}</p>
-                  </div>
-                )}
-                {meal.lunch && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">☀️ Lunch</p>
-                    <p className="text-gray-900">{meal.lunch}</p>
-                  </div>
-                )}
-                {meal.dinner && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">🌙 Dinner</p>
-                    <p className="text-gray-900">{meal.dinner}</p>
-                  </div>
-                )}
-              </div>
+              <p className="text-sm text-gray-700">
+                {meal.mealType.charAt(0).toUpperCase() + meal.mealType.slice(1)}: {meal.recipeName}
+              </p>
             </div>
           ))}
         </div>
