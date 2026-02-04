@@ -1,0 +1,58 @@
+# .cursorrules  (Repo Root) — PantryHustler
+
+You are Cursor operating in this repository. Follow these rules ALWAYS.
+
+PROJECT
+- Project: PantryHustler
+- Production URL: https://www.pantryhustler.com
+- Product type: consumer SaaS (web-first; mobile later)
+- Stack target: Next.js + Firebase (Auth/Firestore/Storage/Functions/Hosting), Stripe + PayPal
+- AI target: Phase 1 OpenAI Vision + GPT-4 via server; Phase 2 proprietary recognition trained from labeled corrections
+
+NON-NEGOTIABLE SECURITY
+- NEVER call OpenAI (or any AI provider) directly from the browser client or mobile client.
+  All AI calls MUST go through Firebase Cloud Functions.
+- NEVER print or write secrets into code, docs, or logs. Use env vars only.
+- All user data must be scoped to the authenticated user (uid) in Firestore rules.
+
+BACKUPS (Safety Net)
+- Before editing ANY existing file, create a copy in /_backups/ with:
+  YYYY-MM-DD_HHMM__<relative_path_with__separators>
+  Example: _backups/2026-02-04_2315__apps__web__src__app__page.tsx
+- If /_backups/ does not exist, create it.
+
+STATUS / MEMORY
+- Read repo-root status.md at the start of every task.
+- Update status.md at the end of every task:
+  - what changed, where, why
+  - what to do next
+  - any new constraints or risks discovered
+
+QUALITY BAR (No “half-brained” output)
+- No guessing. If something is unknown, locate it in repo files or write a TODO with an explicit retrieval plan.
+- Produce production-grade code: typed, lintable, minimal dependencies, consistent structure.
+- After changes: run local checks (lint/typecheck/tests if present) and report results.
+
+CODE STYLE
+- TypeScript-first.
+- Prefer small modules; no monolith files.
+- Prefer zod schemas for API input validation.
+- Shared types/contracts live in packages/shared (single source of truth).
+
+API & DATA CONTRACTS
+- Any new endpoint or changes MUST update:
+  - docs/api-contracts.md
+  - packages/shared/src/apiContracts.ts (or schemas.ts)
+- Any new Firestore collection/document shape MUST update:
+  - docs/data-model.md
+  - infra/firebase/firestore.rules (+ indexes if needed)
+
+DEPLOYMENT RULES
+- Web app deploy target: Firebase Hosting (primary).
+- Functions: Firebase Functions with authenticated HTTP endpoints.
+- Always keep a /health endpoint for smoke checks.
+- Keep logs useful but privacy-safe.
+
+REPORTING (After you work)
+- Provide: list of modified files, brief diff summary, and line-count deltas (approx OK).
+- Confirm backups created for each modified file.
