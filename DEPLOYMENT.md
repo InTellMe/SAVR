@@ -1,12 +1,12 @@
-# Deployment Guide for Pantry Chef
+# Deployment Guide for PantryHustler
 
-This guide covers deploying the Pantry Chef application to production.
+This guide covers deploying the PantryHustler application to production.
 
 ## Prerequisites
 
 - Firebase project created and configured
 - Firebase CLI installed: `npm install -g firebase-tools`
-- Domain configured: pantrychef.intellmeai.com
+- Domain configured: pantryhustler.com
 - API keys obtained:
   - OpenAI API key
   - Google Cloud Vision API (optional, for fallback)
@@ -19,7 +19,7 @@ This guide covers deploying the Pantry Chef application to production.
 
 1. Go to [Firebase Console](https://console.firebase.google.com)
 2. Click "Add project"
-3. Name it "pantry-chef" or similar
+3. Name it "pantryhustler" or similar
 4. Enable Google Analytics (optional)
 
 ### 1.2 Enable Firebase Services
@@ -28,7 +28,7 @@ This guide covers deploying the Pantry Chef application to production.
 1. Go to Authentication → Sign-in methods
 2. Enable Email/Password
 3. Enable Google
-4. Add authorized domains: `pantrychef.intellmeai.com`
+4. Add authorized domains: `pantryhustler.com`
 
 **Firestore:**
 1. Go to Firestore Database
@@ -50,7 +50,7 @@ This guide covers deploying the Pantry Chef application to production.
 1. Go to Project Settings → General
 2. Scroll to "Your apps"
 3. Click "Web" (</>) to add a web app
-4. Register app with nickname "Pantry Chef Web"
+4. Register app with nickname "PantryHustler Web"
 5. Copy the firebaseConfig object
 6. Repeat for mobile if needed
 
@@ -84,7 +84,7 @@ NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_secret
 
 # App
-NEXT_PUBLIC_APP_URL=https://pantrychef.intellmeai.com
+NEXT_PUBLIC_APP_URL=https://pantryhustler.com
 ```
 
 ### 2.2 Cloud Functions
@@ -193,7 +193,7 @@ firebase deploy --only hosting
 
 1. Go to Firebase Console → Hosting
 2. Click "Add custom domain"
-3. Enter: `pantrychef.intellmeai.com`
+3. Enter: `pantryhustler.com`
 4. Follow verification steps
 
 ### 7.2 Update DNS Records
@@ -202,11 +202,11 @@ Add these DNS records at your domain provider:
 
 ```
 Type: A
-Name: pantrychef
+Name: pantryhustler
 Value: [Firebase IP address from console]
 
 Type: TXT
-Name: pantrychef
+Name: pantryhustler
 Value: [Verification code from Firebase]
 ```
 
@@ -220,13 +220,13 @@ Firebase will automatically provision an SSL certificate. This can take up to 24
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Go to Products → Add Product
-3. Create "Pantry Chef Pro Monthly":
-   - Name: Pantry Chef Pro
+3. Create "PantryHustler Pro Monthly":
+   - Name: PantryHustler Pro
    - Price: $9.99/month
    - Recurring: Monthly
    - Copy Price ID
-4. Create "Pantry Chef Pro Yearly":
-   - Name: Pantry Chef Pro
+4. Create "PantryHustler Pro Yearly":
+   - Name: PantryHustler Pro
    - Price: $99/year
    - Recurring: Yearly
    - Copy Price ID
@@ -247,7 +247,7 @@ Firebase will automatically provision an SSL certificate. This can take up to 24
 
 ### 9.1 Test Web Application
 
-1. Visit `https://pantrychef.intellmeai.com`
+1. Visit `https://pantryhustler.com`
 2. Sign up with a test account
 3. Upload a test image
 4. Generate a recipe
@@ -395,7 +395,7 @@ firebase deploy --only functions:analyzeImage
 
 ### Domain Not Working
 
-1. Check DNS propagation: `dig pantrychef.intellmeai.com`
+1. Check DNS propagation: `dig pantryhustler.com`
 2. Verify in Firebase Console
 3. Wait up to 24 hours for SSL certificate
 

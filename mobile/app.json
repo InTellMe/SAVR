@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Pantry Chef",
-    "slug": "pantry-chef",
+    "name": "PantryHustler",
+    "slug": "pantryhustler",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,14 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pantrychef.app"
+      "bundleIdentifier": "com.pantryhustler.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.pantrychef.app",
+      "package": "com.pantryhustler.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]

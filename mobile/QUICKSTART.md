@@ -1,6 +1,6 @@
-# Pantry Chef Mobile - Quick Start
+# PantryHustler Mobile - Quick Start
 
-Get up and running with the Pantry Chef mobile app in 5 minutes!
+Get up and running with the PantryHustler mobile app in 5 minutes!
 
 ## Prerequisites
 

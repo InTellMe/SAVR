@@ -118,7 +118,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.version}>Pantry Chef v1.0.0</Text>
+        <Text style={styles.version}>PantryHustler v1.0.0</Text>
       </View>
     </ScrollView>
   );

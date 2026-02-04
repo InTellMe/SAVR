@@ -196,7 +196,7 @@ Only return the JSON array, no other text.`;
     }
 }
 async function chatAssistant(message, conversationHistory, context) {
-    const systemPrompt = `You are a helpful cooking assistant for Pantry Chef app. 
+    const systemPrompt = `You are a helpful cooking assistant for PantryHustler app. 
 ${context?.inventory?.length ? `User's current inventory: ${context.inventory.join(', ')}` : ''}
 ${context?.currentRecipe ? `Current recipe: ${context.currentRecipe.title}` : ''}
 
