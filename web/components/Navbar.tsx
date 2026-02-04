@@ -37,6 +37,14 @@ export default function Navbar() {
                   Dashboard
                 </Link>
                 <Link
+                  href="/upload"
+                  className={`text-gray-700 hover:text-orange-600 transition ${
+                    pathname === '/upload' ? 'text-orange-600 font-semibold' : ''
+                  }`}
+                >
+                  Upload
+                </Link>
+                <Link
                   href="/inventory"
                   className={`text-gray-700 hover:text-orange-600 transition ${
                     pathname === '/inventory' ? 'text-orange-600 font-semibold' : ''
@@ -75,6 +83,14 @@ export default function Navbar() {
                   }`}
                 >
                   Chat
+                </Link>
+                <Link
+                  href="/settings"
+                  className={`text-gray-700 hover:text-orange-600 transition ${
+                    pathname === '/settings' ? 'text-orange-600 font-semibold' : ''
+                  }`}
+                >
+                  Settings
                 </Link>
                 <button
                   onClick={handleLogout}

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -24,6 +24,11 @@ interface GroceryList {
   createdAt: string;
 }
 
+interface SimpleRecipe {
+  id: string;
+  title: string;
+}
+
 export default function GroceryListsPage() {
   return (
     <ProtectedRoute>
@@ -39,16 +44,20 @@ function GroceryListsContent() {
   const [generating, setGenerating] = useState(false);
   const [selectedList, setSelectedList] = useState<GroceryList | null>(null);
   const [error, setError] = useState('');
+  const [recipes, setRecipes] = useState<SimpleRecipe[]>([]);
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
 
   useEffect(() => {
     loadGroceryLists();
+    loadRecipes();
   }, [user]);
 
   async function loadGroceryLists() {
     if (!user) return;
 
     try {
-      const q = query(collection(db, 'groceryLists'), where('userId', '==', user.uid));
+      const listsCollection = collection(db, 'groceryLists', user.uid, 'lists');
+      const q = query(listsCollection, where('userId', '==', user.uid));
       const snapshot = await getDocs(q);
       const groceryLists = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -63,42 +72,62 @@ function GroceryListsContent() {
     }
   }
 
+  async function loadRecipes() {
+    if (!user) return;
+
+    try {
+      const recipesCollection = collection(db, 'recipes', user.uid, 'items');
+      const q = query(recipesCollection, where('userId', '==', user.uid));
+      const snapshot = await getDocs(q);
+      const recipeList = snapshot.docs.map(
+        (docSnap) =>
+          ({
+            id: docSnap.id,
+            title: (docSnap.data() as any).title as string,
+          }) as SimpleRecipe
+      );
+      setRecipes(recipeList);
+    } catch (err) {
+      console.error('Error loading recipes for grocery lists:', err);
+    }
+  }
+
   async function handleGenerateList() {
     if (!user) return;
+
+    if (selectedRecipeIds.length === 0) {
+      setError('Select at least one recipe to generate a grocery list.');
+      return;
+    }
 
     setGenerating(true);
     setError('');
 
     try {
-      const inventoryQuery = query(collection(db, 'inventory'), where('userId', '==', user.uid));
-      const inventorySnap = await getDocs(inventoryQuery);
-      const currentInventory = inventorySnap.docs.map(doc => ({
-        name: doc.data().name,
-        quantity: doc.data().quantity,
-      }));
-
-      const mealPlanQuery = query(collection(db, 'mealPlans'), where('userId', '==', user.uid));
-      const mealPlanSnap = await getDocs(mealPlanQuery);
-      const mealPlans = mealPlanSnap.docs.map(doc => doc.data());
-
       const createGroceryList = httpsCallable(functions, 'createGroceryList');
       const result = await createGroceryList({
-        currentInventory,
-        mealPlans,
+        recipeIds: selectedRecipeIds,
       });
 
-      const groceryListData = result.data as Omit<GroceryList, 'id'>;
+      const data = result.data as {
+        success: boolean;
+        listId: string;
+        items: GroceryItem[];
+      };
 
-      await addDoc(collection(db, 'groceryLists'), {
-        ...groceryListData,
-        userId: user.uid,
-        createdAt: new Date().toISOString(),
-      });
+      if (!data.success) {
+        throw new Error('Grocery list generation failed');
+      }
 
       await loadGroceryLists();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating grocery list:', error);
-      setError('Failed to generate grocery list. Please try again.');
+      const code = error?.code as string | undefined;
+      if (code && code.includes('unauthenticated')) {
+        setError('You must be signed in to generate grocery lists.');
+      } else {
+        setError('Failed to generate grocery list. Please try again.');
+      }
     } finally {
       setGenerating(false);
     }
@@ -106,7 +135,7 @@ function GroceryListsContent() {
 
   async function handleDeleteList(listId: string) {
     try {
-      await deleteDoc(doc(db, 'groceryLists', listId));
+      await deleteDoc(doc(db, 'groceryLists', user!.uid, 'lists', listId));
       setLists(lists.filter(list => list.id !== listId));
     } catch (error) {
       console.error('Error deleting grocery list:', error);
@@ -122,7 +151,7 @@ function GroceryListsContent() {
       const updatedItems = [...list.items];
       updatedItems[itemIndex].checked = !updatedItems[itemIndex].checked;
 
-      await updateDoc(doc(db, 'groceryLists', listId), {
+      await updateDoc(doc(db, 'groceryLists', user!.uid, 'lists', listId), {
         items: updatedItems,
       });
 
@@ -152,15 +181,64 @@ function GroceryListsContent() {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Grocery Lists</h1>
+        <div className="flex flex-col gap-6 mb-8 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Grocery Lists</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Select recipes to generate a smart grocery list from your saved meals.
+            </p>
+          </div>
           <button
             onClick={handleGenerateList}
-            disabled={generating}
+            disabled={generating || selectedRecipeIds.length === 0}
             className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
           >
             {generating ? 'Generating...' : '🛒 Generate List'}
           </button>
+        </div>
+
+        {/* Recipe selection */}
+        <div className="mb-8 rounded-lg bg-white p-6 shadow">
+          <h2 className="mb-3 text-lg font-semibold text-gray-900">Select recipes</h2>
+          {recipes.length === 0 ? (
+            <p className="text-sm text-gray-600">
+              You don&apos;t have any saved recipes yet. Generate recipes first to build grocery lists.
+            </p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {recipes.map((recipe) => {
+                const selected = selectedRecipeIds.includes(recipe.id);
+                return (
+                  <button
+                    key={recipe.id}
+                    type="button"
+                    onClick={() =>
+                      setSelectedRecipeIds((prev) =>
+                        selected ? prev.filter((id) => id !== recipe.id) : [...prev, recipe.id]
+                      )
+                    }
+                    className={`flex w-full items-start rounded-lg border p-3 text-left transition ${
+                      selected
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/40'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() =>
+                        setSelectedRecipeIds((prev) =>
+                          selected ? prev.filter((id) => id !== recipe.id) : [...prev, recipe.id]
+                        )
+                      }
+                      className="mt-1 mr-3 h-4 w-4 text-orange-600"
+                    />
+                    <span className="text-sm font-medium text-gray-900">{recipe.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {error && (

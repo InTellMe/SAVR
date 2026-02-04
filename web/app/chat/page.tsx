@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect, useRef } from 'react';
-import { collection, query, where, getDocs, addDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 
@@ -46,21 +46,21 @@ function ChatContent() {
   async function loadChatHistory() {
     if (!user) return;
 
-    try {
-      const q = query(
-        collection(db, 'chats'),
-        where('userId', '==', user.uid),
-        orderBy('timestamp', 'asc')
-      );
-      const snapshot = await getDocs(q);
-      const chatMessages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Message));
-      setMessages(chatMessages);
-    } catch (error) {
-      console.error('Error loading chat history:', error);
-    }
+      try {
+        const messagesCollection = collection(db, 'chatHistory', user.uid, 'messages');
+        const q = query(messagesCollection, where('userId', '==', user.uid), orderBy('timestamp', 'asc'));
+        const snapshot = await getDocs(q);
+        const chatMessages = snapshot.docs.map(
+          (docSnap) =>
+            ({
+              id: docSnap.id,
+              ...(docSnap.data() as Omit<Message, 'id'>),
+            } as Message)
+        );
+        setMessages(chatMessages);
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+      }
   }
 
   async function handleSendMessage(e: React.FormEvent) {
@@ -80,20 +80,22 @@ function ChatContent() {
     setError('');
 
     try {
-      // Save user message
-      await addDoc(collection(db, 'chats'), {
-        ...userMessage,
-        userId: user.uid,
-      });
-
-      // Call chat function
       const chat = httpsCallable(functions, 'chat');
+      const conversationHistory = [...messages.slice(-10), userMessage].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       const result = await chat({
         message: userMessage.content,
-        history: messages.slice(-10), // Send last 10 messages for context
+        conversationHistory,
       });
 
-      const data = result.data as { response: string };
+      const data = result.data as { success: boolean; response: string };
+      if (!data.success) {
+        throw new Error('Chat failed');
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -102,15 +104,16 @@ function ChatContent() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-
-      // Save assistant message
-      await addDoc(collection(db, 'chats'), {
-        ...assistantMessage,
-        userId: user.uid,
-      });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
-      setError('Failed to send message. Please try again.');
+      const code = error?.code as string | undefined;
+      if (code && code.includes('permission-denied')) {
+        setError('AI chat is a Pro-only feature. Upgrade your plan to continue.');
+      } else if (code && code.includes('unauthenticated')) {
+        setError('You must be signed in to use chat.');
+      } else {
+        setError('Failed to send message. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

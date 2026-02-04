@@ -4,22 +4,29 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
+interface RecipeIngredient {
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
 interface Recipe {
   id: string;
-  name: string;
+  title: string;
   description: string;
-  ingredients: string[];
+  ingredients: RecipeIngredient[];
   instructions: string[];
-  cookingTime: number;
+  prepTime: number;
+  cookTime: number;
   servings: number;
-  difficulty: string;
+  difficulty: 'easy' | 'medium' | 'hard';
   cuisine?: string;
-  createdAt: string;
+  dietaryTags?: string[];
 }
 
 export default function RecipesPage() {
@@ -54,7 +61,8 @@ function RecipesContent() {
     if (!user) return;
 
     try {
-      const q = query(collection(db, 'recipes'), where('userId', '==', user.uid));
+      const recipesCollection = collection(db, 'recipes', user.uid, 'items');
+      const q = query(recipesCollection, where('userId', '==', user.uid));
       const snapshot = await getDocs(q);
       const recipeList = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -77,31 +85,50 @@ function RecipesContent() {
 
     try {
       // Get user's inventory
-      const inventoryQuery = query(collection(db, 'inventory'), where('userId', '==', user.uid));
+      const inventoryCollection = collection(db, 'inventory', user.uid, 'items');
+      const inventoryQuery = query(inventoryCollection, where('userId', '==', user.uid));
       const inventorySnap = await getDocs(inventoryQuery);
-      const ingredients = inventorySnap.docs.map(doc => doc.data().name);
+      const ingredients = inventorySnap.docs.map(doc => doc.data().name as string);
 
       // Call Cloud Function
       const createRecipe = httpsCallable(functions, 'createRecipe');
       const result = await createRecipe({
         ingredients,
-        ...formData,
+        preferences: {
+          cuisine: formData.cuisinePreference || undefined,
+          dietary: formData.dietaryRestrictions,
+          difficulty:
+            formData.skillLevel === 'beginner'
+              ? 'easy'
+              : formData.skillLevel === 'advanced'
+              ? 'hard'
+              : 'medium',
+          cookTime: formData.maxCookingTime,
+        },
       });
 
-      const recipeData = result.data as Omit<Recipe, 'id'>;
+      const data = result.data as {
+        success: boolean;
+        recipeId: string;
+        recipe: Omit<Recipe, 'id'>;
+      };
 
-      // Save to Firestore
-      await addDoc(collection(db, 'recipes'), {
-        ...recipeData,
-        userId: user.uid,
-        createdAt: new Date().toISOString(),
-      });
+      if (!data.success) {
+        throw new Error('Recipe generation failed');
+      }
 
       await loadRecipes();
       setShowForm(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating recipe:', error);
-      setError('Failed to generate recipe. Please try again.');
+      const code = error?.code as string | undefined;
+      if (code && code.includes('resource-exhausted')) {
+        setError('You have reached your free recipe limit. Upgrade to Pro for unlimited recipes.');
+      } else if (code && code.includes('unauthenticated')) {
+        setError('You must be signed in to generate recipes.');
+      } else {
+        setError('Failed to generate recipe. Please try again.');
+      }
     } finally {
       setGenerating(false);
     }
@@ -109,7 +136,7 @@ function RecipesContent() {
 
   async function handleDeleteRecipe(recipeId: string) {
     try {
-      await deleteDoc(doc(db, 'recipes', recipeId));
+      await deleteDoc(doc(db, 'recipes', user!.uid, 'items', recipeId));
       setRecipes(recipes.filter(recipe => recipe.id !== recipeId));
     } catch (error) {
       console.error('Error deleting recipe:', error);
@@ -299,7 +326,7 @@ function RecipeCard({
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-lg transition p-6">
       <div className="flex justify-between items-start mb-3">
-        <h3 className="text-xl font-semibold text-gray-900">{recipe.name}</h3>
+        <h3 className="text-xl font-semibold text-gray-900">{recipe.title}</h3>
         <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded">
           {recipe.difficulty}
         </span>
@@ -308,7 +335,7 @@ function RecipeCard({
       <p className="text-gray-600 text-sm mb-4 line-clamp-2">{recipe.description}</p>
       
       <div className="flex items-center text-sm text-gray-500 space-x-4 mb-4">
-        <span>⏱️ {recipe.cookingTime} min</span>
+        <span>⏱️ {recipe.prepTime + recipe.cookTime} min</span>
         <span>🍽️ {recipe.servings} servings</span>
       </div>
 
@@ -341,7 +368,7 @@ function RecipeDetailsModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-start mb-4">
-          <h2 className="text-3xl font-bold text-gray-900">{recipe.name}</h2>
+          <h2 className="text-3xl font-bold text-gray-900">{recipe.title}</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -353,7 +380,7 @@ function RecipeDetailsModal({
         <p className="text-gray-600 mb-6">{recipe.description}</p>
 
         <div className="flex items-center space-x-6 mb-6 text-sm text-gray-600">
-          <span>⏱️ {recipe.cookingTime} minutes</span>
+          <span>⏱️ {recipe.prepTime + recipe.cookTime} minutes</span>
           <span>🍽️ {recipe.servings} servings</span>
           <span>📊 {recipe.difficulty}</span>
           {recipe.cuisine && <span>🌍 {recipe.cuisine}</span>}
@@ -365,7 +392,9 @@ function RecipeDetailsModal({
             {recipe.ingredients.map((ingredient, index) => (
               <li key={index} className="flex items-start">
                 <span className="text-orange-600 mr-2">•</span>
-                <span className="text-gray-700">{ingredient}</span>
+                <span className="text-gray-700">
+                  {ingredient.quantity} {ingredient.unit} {ingredient.name}
+                </span>
               </li>
             ))}
           </ul>
