@@ -33,11 +33,12 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onUserCreate = exports.createStripePortal = exports.stripeWebhook = exports.createStripeCheckout = exports.chat = exports.createGroceryList = exports.createMealPlan = exports.createRecipe = exports.analyzeImage = void 0;
+exports.onUserCreate = exports.createStripePortal = exports.paypalWebhook = exports.stripeWebhook = exports.createPayPalCheckout = exports.createStripeCheckout = exports.chat = exports.createGroceryList = exports.createMealPlan = exports.createRecipe = exports.analyzeImage = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const firebase_1 = require("./utils/firebase");
 const ai_1 = require("./services/ai");
 const stripe_1 = require("./services/stripe");
+const paypal_1 = require("./services/paypal");
 const subscription_1 = require("./utils/subscription");
 // Image Analysis Function
 exports.analyzeImage = functions
@@ -48,6 +49,9 @@ exports.analyzeImage = functions
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
     const { imageUrl } = data;
+    if (!imageUrl || typeof imageUrl !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'imageUrl is required and must be a string');
+    }
     const userId = context.auth.uid;
     // Check usage limits
     const usageCheck = await (0, subscription_1.checkUsageLimit)(userId, 'inventory');
@@ -56,7 +60,8 @@ exports.analyzeImage = functions
     }
     try {
         const ingredients = await (0, ai_1.extractIngredientsFromImage)(imageUrl);
-        return { success: true, ingredients };
+        const response = { success: true, ingredients };
+        return response;
     }
     catch (error) {
         console.error('Image analysis error:', error);
@@ -71,6 +76,9 @@ exports.createRecipe = functions
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
     const { ingredients, preferences } = data;
+    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'ingredients must be a non-empty string array');
+    }
     const userId = context.auth.uid;
     // Check usage limits
     const usageCheck = await (0, subscription_1.checkUsageLimit)(userId, 'recipes');
@@ -90,7 +98,12 @@ exports.createRecipe = functions
             generatedBy: 'ai',
             createdAt: new Date(),
         });
-        return { success: true, recipeId: recipeRef.id, recipe };
+        const response = {
+            success: true,
+            recipeId: recipeRef.id,
+            recipe,
+        };
+        return response;
     }
     catch (error) {
         console.error('Recipe generation error:', error);
@@ -105,6 +118,12 @@ exports.createMealPlan = functions
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
     const { days, ingredients, preferences } = data;
+    if (typeof days !== 'number' || days < 1 || days > 14) {
+        throw new functions.https.HttpsError('invalid-argument', 'days must be a number between 1 and 14');
+    }
+    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'ingredients must be a non-empty string array');
+    }
     const userId = context.auth.uid;
     // Check usage limits
     const usageCheck = await (0, subscription_1.checkUsageLimit)(userId, 'mealPlans');
@@ -128,7 +147,12 @@ exports.createMealPlan = functions
             endDate,
             createdAt: new Date(),
         });
-        return { success: true, mealPlanId: mealPlanRef.id, mealPlan };
+        const response = {
+            success: true,
+            mealPlanId: mealPlanRef.id,
+            mealPlan,
+        };
+        return response;
     }
     catch (error) {
         console.error('Meal plan generation error:', error);
@@ -143,6 +167,9 @@ exports.createGroceryList = functions
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
     const { recipeIds } = data;
+    if (!Array.isArray(recipeIds) || recipeIds.length === 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'recipeIds must be a non-empty string array');
+    }
     const userId = context.auth.uid;
     try {
         // Fetch recipes
@@ -175,7 +202,12 @@ exports.createGroceryList = functions
             createdAt: new Date(),
             updatedAt: new Date(),
         });
-        return { success: true, listId: listRef.id, items: groceryItems };
+        const response = {
+            success: true,
+            listId: listRef.id,
+            items: groceryItems,
+        };
+        return response;
     }
     catch (error) {
         console.error('Grocery list generation error:', error);
@@ -190,6 +222,9 @@ exports.chat = functions
         throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
     const { message, conversationHistory, contextData } = data;
+    if (!message || typeof message !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'message is required and must be a string');
+    }
     const userId = context.auth.uid;
     // Check usage limits (Pro only feature)
     const usageCheck = await (0, subscription_1.checkUsageLimit)(userId, 'aiChat');
@@ -197,7 +232,7 @@ exports.chat = functions
         throw new functions.https.HttpsError('permission-denied', usageCheck.reason || 'Feature not available');
     }
     try {
-        const response = await (0, ai_1.chatAssistant)(message, conversationHistory || [], contextData);
+        const responseText = await (0, ai_1.chatAssistant)(message, conversationHistory || [], contextData);
         // Save chat message to Firestore
         await firebase_1.db
             .collection('chatHistory')
@@ -216,10 +251,11 @@ exports.chat = functions
             .add({
             userId,
             role: 'assistant',
-            content: response,
+            content: responseText,
             timestamp: new Date(),
         });
-        return { success: true, response };
+        const response = { success: true, response: responseText };
+        return response;
     }
     catch (error) {
         console.error('Chat error:', error);
@@ -242,6 +278,30 @@ exports.createStripeCheckout = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', error.message || 'Failed to create checkout session');
     }
 });
+// PayPal Checkout Session Creation
+exports.createPayPalCheckout = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+    const { planId, successUrl, cancelUrl } = data;
+    const userId = context.auth.uid;
+    const defaultPlanId = process.env.PAYPAL_PLAN_ID_PRO_MONTHLY || process.env.PAYPAL_PLAN_ID_PRO_YEARLY;
+    const resolvedPlanId = planId || defaultPlanId;
+    if (!resolvedPlanId) {
+        throw new functions.https.HttpsError('invalid-argument', 'PayPal planId is required');
+    }
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
+    const resolvedSuccessUrl = successUrl || `${appBaseUrl}/dashboard?paypalSuccess=true`;
+    const resolvedCancelUrl = cancelUrl || `${appBaseUrl}/pricing?paypalCancelled=true`;
+    try {
+        const approvalUrl = await (0, paypal_1.createPayPalSubscription)(userId, resolvedPlanId, resolvedSuccessUrl, resolvedCancelUrl);
+        return { success: true, url: approvalUrl };
+    }
+    catch (error) {
+        console.error('PayPal checkout error:', error);
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to create PayPal checkout session');
+    }
+});
 // Stripe Webhook Handler
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     const signature = req.headers['stripe-signature'];
@@ -255,6 +315,17 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     }
     catch (error) {
         console.error('Webhook error:', error);
+        res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+});
+// PayPal Webhook Handler
+exports.paypalWebhook = functions.https.onRequest(async (req, res) => {
+    try {
+        await (0, paypal_1.handlePayPalWebhook)(req.rawBody.toString(), req.headers);
+        res.json({ received: true });
+    }
+    catch (error) {
+        console.error('PayPal webhook error:', error);
         res.status(400).send(`Webhook Error: ${error.message}`);
     }
 });
