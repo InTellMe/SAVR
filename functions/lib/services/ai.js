@@ -10,10 +10,58 @@ exports.generateGroceryList = generateGroceryList;
 exports.chatAssistant = chatAssistant;
 const openai_1 = __importDefault(require("openai"));
 const vision_1 = __importDefault(require("@google-cloud/vision"));
+const units_1 = require("../utils/units");
 const openai = new openai_1.default({
     apiKey: process.env.OPENAI_API_KEY,
 });
 const visionClient = new vision_1.default.ImageAnnotatorClient();
+function isRetryableOpenAIError(error) {
+    const status = error?.status ?? error?.response?.status;
+    if (!status)
+        return false;
+    if (status === 429)
+        return true;
+    if (status >= 500 && status < 600)
+        return true;
+    return false;
+}
+async function callOpenAIWithFallback(params, options) {
+    const primaryModel = options?.primaryModel || params.model || process.env.OPENAI_MODEL_PRIMARY || 'gpt-4o';
+    const fallbackModel = options?.fallbackModel || process.env.OPENAI_MODEL_FALLBACK || 'gpt-4o-mini';
+    try {
+        return await openai.chat.completions.create({
+            ...params,
+            model: primaryModel,
+        });
+    }
+    catch (error) {
+        if (!isRetryableOpenAIError(error)) {
+            throw error;
+        }
+        console.error(`OpenAI primary model "${primaryModel}" failed, falling back to "${fallbackModel}":`, error);
+        return await openai.chat.completions.create({
+            ...params,
+            model: fallbackModel,
+        });
+    }
+}
+function extractContentFromCompletion(completion) {
+    return completion.choices[0]?.message?.content || '';
+}
+function parseJsonFromModel(rawContent, defaultValue, logContext) {
+    const content = rawContent || '';
+    try {
+        const cleanContent = content.replace(/```json\n?|\n?```/gi, '').trim();
+        if (!cleanContent) {
+            return defaultValue;
+        }
+        return JSON.parse(cleanContent);
+    }
+    catch (error) {
+        console.error(`Failed to parse JSON from model for ${logContext}:`, content);
+        throw error;
+    }
+}
 async function extractIngredientsFromImage(imageUrl) {
     try {
         // Try OpenAI Vision first
@@ -26,7 +74,7 @@ async function extractIngredientsFromImage(imageUrl) {
     }
 }
 async function extractWithOpenAI(imageUrl) {
-    const response = await openai.chat.completions.create({
+    const completion = await callOpenAIWithFallback({
         model: 'gpt-4o',
         messages: [
             {
@@ -53,13 +101,17 @@ Only return the JSON array, no other text.`,
             },
         ],
         max_tokens: 1000,
+    }, {
+        // Ensure we stay on a vision-capable family of models
+        primaryModel: process.env.OPENAI_MODEL_VISION_PRIMARY || 'gpt-4o',
+        fallbackModel: process.env.OPENAI_MODEL_VISION_FALLBACK || 'gpt-4o-mini',
     });
-    const content = response.choices[0]?.message?.content || '[]';
+    const content = extractContentFromCompletion(completion) || '[]';
     // Parse the JSON response
     try {
         const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
         const ingredients = JSON.parse(cleanContent);
-        return ingredients;
+        return (0, units_1.normalizeAiIngredients)(ingredients);
     }
     catch (error) {
         console.error('Failed to parse OpenAI response:', content);
@@ -71,7 +123,7 @@ async function extractWithGoogleVision(imageUrl) {
     const labels = result.labelAnnotations || [];
     // Use GPT-4 to process Google Vision labels into structured ingredients
     const labelText = labels.map(label => `${label.description} (confidence: ${label.score})`).join(', ');
-    const response = await openai.chat.completions.create({
+    const completion = await callOpenAIWithFallback({
         model: 'gpt-4o-mini',
         messages: [
             {
@@ -85,11 +137,15 @@ Return as JSON array only, no other text.`,
             },
         ],
         max_tokens: 500,
+    }, {
+        primaryModel: process.env.OPENAI_MODEL_VISION_SECONDARY_PRIMARY || 'gpt-4o-mini',
+        fallbackModel: process.env.OPENAI_MODEL_VISION_SECONDARY_FALLBACK || 'gpt-4o',
     });
-    const content = response.choices[0]?.message?.content || '[]';
+    const content = extractContentFromCompletion(completion) || '[]';
     try {
         const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-        return JSON.parse(cleanContent);
+        const ingredients = JSON.parse(cleanContent);
+        return (0, units_1.normalizeAiIngredients)(ingredients);
     }
     catch (error) {
         console.error('Failed to parse Google Vision response:', content);
@@ -119,20 +175,16 @@ Return a JSON object with this exact structure:
 }
 
 Only return the JSON object, no other text.`;
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+    const completion = await callOpenAIWithFallback({
+        model: process.env.OPENAI_MODEL_RECIPE_PRIMARY || 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 2000,
+    }, {
+        primaryModel: process.env.OPENAI_MODEL_RECIPE_PRIMARY || 'gpt-4o',
+        fallbackModel: process.env.OPENAI_MODEL_RECIPE_FALLBACK || 'gpt-4o-mini',
     });
-    const content = response.choices[0]?.message?.content || '{}';
-    try {
-        const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-        return JSON.parse(cleanContent);
-    }
-    catch (error) {
-        console.error('Failed to parse recipe response:', content);
-        throw error;
-    }
+    const content = extractContentFromCompletion(completion) || '{}';
+    return parseJsonFromModel(content, {}, 'generateRecipe');
 }
 async function generateMealPlan(days, availableIngredients, preferences) {
     const mealsPerDay = preferences?.mealsPerDay || 3;
@@ -155,20 +207,16 @@ Return a JSON object with this structure:
 }
 
 Only return the JSON object, no other text.`;
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+    const completion = await callOpenAIWithFallback({
+        model: process.env.OPENAI_MODEL_MEAL_PLAN_PRIMARY || 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 3000,
+    }, {
+        primaryModel: process.env.OPENAI_MODEL_MEAL_PLAN_PRIMARY || 'gpt-4o',
+        fallbackModel: process.env.OPENAI_MODEL_MEAL_PLAN_FALLBACK || 'gpt-4o-mini',
     });
-    const content = response.choices[0]?.message?.content || '{}';
-    try {
-        const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-        return JSON.parse(cleanContent);
-    }
-    catch (error) {
-        console.error('Failed to parse meal plan response:', content);
-        throw error;
-    }
+    const content = extractContentFromCompletion(completion) || '{}';
+    return parseJsonFromModel(content, {}, 'generateMealPlan');
 }
 async function generateGroceryList(recipes, currentInventory) {
     const prompt = `Generate a grocery list for these recipes:
@@ -180,12 +228,15 @@ Return a JSON array of items needed (excluding current inventory):
 [{"name": "item", "quantity": 1, "unit": "unit", "category": "produce|dairy|meat|pantry"}]
 
 Only return the JSON array, no other text.`;
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+    const completion = await callOpenAIWithFallback({
+        model: process.env.OPENAI_MODEL_GROCERY_PRIMARY || 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 1000,
+    }, {
+        primaryModel: process.env.OPENAI_MODEL_GROCERY_PRIMARY || 'gpt-4o-mini',
+        fallbackModel: process.env.OPENAI_MODEL_GROCERY_FALLBACK || 'gpt-4o',
     });
-    const content = response.choices[0]?.message?.content || '[]';
+    const content = extractContentFromCompletion(completion) || '[]';
     try {
         const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
         return JSON.parse(cleanContent);
@@ -213,12 +264,16 @@ Be concise, friendly, and practical.`;
         ...conversationHistory,
         { role: 'user', content: message },
     ];
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+    const completion = await callOpenAIWithFallback({
+        model: process.env.OPENAI_MODEL_CHAT_PRIMARY || 'gpt-4o',
         messages,
         max_tokens: 500,
         temperature: 0.7,
+    }, {
+        primaryModel: process.env.OPENAI_MODEL_CHAT_PRIMARY || 'gpt-4o',
+        fallbackModel: process.env.OPENAI_MODEL_CHAT_FALLBACK || 'gpt-4o-mini',
     });
-    return response.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
+    const content = extractContentFromCompletion(completion);
+    return content || 'I apologize, but I could not generate a response.';
 }
 //# sourceMappingURL=ai.js.map
