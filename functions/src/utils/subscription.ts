@@ -1,10 +1,32 @@
 import { db } from '../utils/firebase';
 import { TIER_LIMITS } from '../types';
 
+export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due';
+
+/**
+ * Returns the effective subscription tier for a user, taking both
+ * the stored tier and subscriptionStatus into account.
+ *
+ * - If the stored tier is 'pro' but the status is not 'active',
+ *   the effective tier is downgraded to 'free' for limit checks.
+ */
 export async function getUserSubscriptionTier(userId: string): Promise<'free' | 'pro'> {
   const userDoc = await db.collection('users').doc(userId).get();
-  const userData = userDoc.data();
-  return userData?.subscriptionTier || 'free';
+  const userData = userDoc.data() as
+    | {
+        subscriptionTier?: 'free' | 'pro';
+        subscriptionStatus?: SubscriptionStatus;
+      }
+    | undefined;
+
+  const storedTier = userData?.subscriptionTier || 'free';
+  const status = userData?.subscriptionStatus;
+
+  if (storedTier === 'pro' && status !== 'active') {
+    return 'free';
+  }
+
+  return storedTier;
 }
 
 export async function checkUsageLimit(
@@ -28,7 +50,7 @@ export async function checkUsageLimit(
       .doc(userId)
       .collection('items')
       .get();
-    
+
     if (inventorySnapshot.size >= limits.maxInventoryItems) {
       return {
         allowed: false,
@@ -82,3 +104,85 @@ export async function checkUsageLimit(
 
   return { allowed: true };
 }
+
+/**
+ * Update subscription-related fields on the user document in a centralized way.
+ * Fields omitted from the payload will be left unchanged.
+ */
+export async function updateUserSubscription(
+  userId: string,
+  updates: {
+    subscriptionTier?: 'free' | 'pro';
+    subscriptionStatus?: SubscriptionStatus;
+    stripeCustomerId?: string | null;
+    paypalSubscriptionId?: string | null;
+  }
+): Promise<void> {
+  const updateData: Record<string, unknown> = {
+    updatedAt: new Date(),
+  };
+
+  if (updates.subscriptionTier) {
+    updateData.subscriptionTier = updates.subscriptionTier;
+  }
+
+  if (updates.subscriptionStatus) {
+    updateData.subscriptionStatus = updates.subscriptionStatus;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'stripeCustomerId')) {
+    updateData.stripeCustomerId = updates.stripeCustomerId ?? null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'paypalSubscriptionId')) {
+    updateData.paypalSubscriptionId = updates.paypalSubscriptionId ?? null;
+  }
+
+  await db.collection('users').doc(userId).update(updateData);
+}
+
+/**
+ * Upsert a per-user subscription record that tracks provider-specific identifiers
+ * and the latest status timestamps.
+ */
+export async function upsertUserSubscriptionRecord(
+  userId: string,
+  data: {
+    provider: 'stripe' | 'paypal';
+    subscriptionId?: string | null;
+    status?: SubscriptionStatus;
+    startDate?: Date | null;
+    endDate?: Date | null;
+  }
+): Promise<void> {
+  const now = new Date();
+
+  const payload: Record<string, unknown> = {
+    userId,
+    provider: data.provider,
+    updatedAt: now,
+  };
+
+  if (data.status) {
+    payload.status = data.status;
+  }
+
+  if (data.startDate) {
+    payload.startDate = data.startDate;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(data, 'endDate')) {
+    payload.endDate = data.endDate ?? null;
+  }
+
+  if (data.subscriptionId) {
+    if (data.provider === 'stripe') {
+      payload.stripeSubscriptionId = data.subscriptionId;
+    } else if (data.provider === 'paypal') {
+      payload.paypalSubscriptionId = data.subscriptionId;
+    }
+  }
+
+  await db.collection('subscriptions').doc(userId).set(payload, { merge: true });
+}
+
