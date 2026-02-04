@@ -1,8 +1,8 @@
-# Pantry Chef API Documentation
+# PantryHustler API Documentation
 
 ## Overview
 
-Pantry Chef uses Firebase Cloud Functions as its backend API. All functions are callable HTTPS functions that require Firebase Authentication.
+PantryHustler uses Firebase Cloud Functions as its backend API. All functions are callable HTTPS functions that require Firebase Authentication.
 
 **Base URL**: `https://us-central1-[project-id].cloudfunctions.net`
 

@@ -14,7 +14,7 @@ export default function WelcomeScreen({ navigation }: WelcomeScreenProps) {
     <View style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.icon}>🍳</Text>
-        <Text style={styles.title}>Pantry Chef</Text>
+        <Text style={styles.title}>PantryHustler</Text>
         <Text style={styles.subtitle}>
           Turn your pantry into delicious meals with AI-powered recipe generation
         </Text>

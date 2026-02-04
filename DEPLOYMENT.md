@@ -1,6 +1,6 @@
-# Deployment Guide for Pantry Chef
+# Deployment Guide for PantryHustler
 
-This guide covers deploying the Pantry Chef application to production.
+This guide covers deploying the PantryHustler application to production.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ This guide covers deploying the Pantry Chef application to production.
 
 1. Go to [Firebase Console](https://console.firebase.google.com)
 2. Click "Add project"
-3. Name it "pantry-chef" or similar
+3. Name it "pantryhustler" or similar
 4. Enable Google Analytics (optional)
 
 ### 1.2 Enable Firebase Services
@@ -54,7 +54,7 @@ This guide covers deploying the Pantry Chef application to production.
 1. Go to Project Settings → General
 2. Scroll to "Your apps"
 3. Click "Web" (</>) to add a web app
-4. Register app with nickname "Pantry Chef Web"
+4. Register app with nickname "PantryHustler Web"
 5. Copy the firebaseConfig object
 6. Repeat for mobile if needed
 
@@ -229,13 +229,13 @@ Firebase provisions SSL automatically. Propagation can take from a few minutes u
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Go to Products → Add Product
-3. Create "Pantry Chef Pro Monthly":
-   - Name: Pantry Chef Pro
+3. Create "PantryHustler Pro Monthly":
+   - Name: PantryHustler Pro
    - Price: $9.99/month
    - Recurring: Monthly
    - Copy Price ID
-4. Create "Pantry Chef Pro Yearly":
-   - Name: Pantry Chef Pro
+4. Create "PantryHustler Pro Yearly":
+   - Name: PantryHustler Pro
    - Price: $99/year
    - Recurring: Yearly
    - Copy Price ID

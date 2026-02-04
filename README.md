@@ -1,6 +1,6 @@
-# Pantry Chef by InTellMe
+# PantryHustler by InTellMe
 
-Pantry Chef is an AI-powered food management platform that helps you manage your pantry inventory, generate recipes, plan meals, and create grocery lists. Built as a Firebase-hosted React/Next.js web application with mobile expansion via Expo React Native.
+PantryHustler is an AI-powered food management platform that helps you manage your pantry inventory, generate recipes, plan meals, and create grocery lists. Built as a Firebase-hosted React/Next.js web application focusing on a web-based MVP where users upload photos of their pantry and fridge to manage inventory.
 
 ## 🌟 Features
 
@@ -23,17 +23,21 @@ Pantry Chef is an AI-powered food management platform that helps you manage your
 
 ## 🏗️ Architecture
 
-### Web Application (`/web`)
+**Note**: This is currently a web-based MVP. Users upload photos through the web application to manage their pantry inventory. Mobile apps are available but the primary focus is on the web platform.
+
+### Web Application (`/web`) - Primary Platform
 - **Framework**: Next.js 15 with TypeScript
 - **Styling**: Tailwind CSS
 - **Backend**: Firebase (Auth, Firestore, Cloud Functions, Storage)
-- **Hosting**: Firebase Hosting at pantrychef.intellmeai.com
+- **Hosting**: Firebase Hosting at pantryhustler.com
+- **Key Feature**: Photo upload for pantry/fridge inventory management
 
-### Mobile Application (`/mobile`)
+### Mobile Application (`/mobile`) - Future Expansion
 - **Framework**: Expo React Native with TypeScript
 - **Navigation**: React Navigation
 - **Backend**: Shared Firebase infrastructure with web app
 - **Platforms**: iOS and Android
+- **Status**: Available for future development, but web is the current focus
 
 ### Cloud Functions (`/functions`)
 - **Runtime**: Node.js 20 with TypeScript
@@ -114,15 +118,15 @@ cd ..
 firebase deploy --only functions
 ```
 
-5. **Run the web app locally**
+5. **Run the web app locally** (Primary Platform)
 ```bash
 cd web
 npm run dev
 ```
 
-Visit `http://localhost:3000`
+Visit `http://localhost:3000` to access the web application where you can upload photos of your pantry and fridge!
 
-6. **Run the mobile app locally** (optional)
+6. **Run the mobile app locally** (optional - future expansion)
 ```bash
 cd mobile
 npm start
@@ -206,7 +210,7 @@ firebase deploy --only functions
 ```
 
 ### Custom Domain
-Configure `pantrychef.intellmeai.com` in Firebase Hosting settings.
+Configure `pantryhustler.com` in Firebase Hosting settings.
 
 ## 📊 Tech Stack
 
@@ -227,7 +231,7 @@ Proprietary - © 2026 InTellMe. All rights reserved.
 
 ## 🔗 Links
 
-- **Production**: https://pantrychef.intellmeai.com
+- **Production**: https://pantryhustler.com
 - **InTellMe**: https://intellmeai.com
 - **Documentation**: See `/web/docs` and `/mobile/docs`
 
