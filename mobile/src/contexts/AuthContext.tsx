@@ -13,6 +13,7 @@ import { auth, db } from '../config/firebase';
 import { UserData } from '../types';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -38,7 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: 'YOUR_GOOGLE_CLIENT_ID',
+    clientId: Constants.expoConfig?.extra?.googleClientId || '',
+    iosClientId: Constants.expoConfig?.extra?.googleIosClientId,
+    androidClientId: Constants.expoConfig?.extra?.googleAndroidClientId,
   });
 
   useEffect(() => {
