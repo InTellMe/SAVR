@@ -8,6 +8,7 @@ exports.handleStripeWebhook = handleStripeWebhook;
 exports.createPortalSession = createPortalSession;
 const stripe_1 = __importDefault(require("stripe"));
 const firebase_1 = require("../utils/firebase");
+const subscription_1 = require("../utils/subscription");
 const stripe = new stripe_1.default(process.env.STRIPE_SECRET_KEY || '', {
     apiVersion: '2026-01-28.clover',
 });
@@ -27,6 +28,9 @@ async function createCheckoutSession(userId, priceId, successUrl, cancelUrl) {
             stripeCustomerId: customerId,
         });
     }
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
+    const resolvedSuccessUrl = successUrl || `${appBaseUrl}/dashboard?stripeSuccess=true`;
+    const resolvedCancelUrl = cancelUrl || `${appBaseUrl}/pricing?stripeCancelled=true`;
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
         customer: customerId,
@@ -38,8 +42,8 @@ async function createCheckoutSession(userId, priceId, successUrl, cancelUrl) {
                 quantity: 1,
             },
         ],
-        success_url: successUrl,
-        cancel_url: cancelUrl,
+        success_url: resolvedSuccessUrl,
+        cancel_url: resolvedCancelUrl,
         metadata: { userId },
     });
     return session.url || '';
@@ -79,27 +83,33 @@ async function handleCheckoutCompleted(session) {
         console.error('No userId in checkout session metadata');
         return;
     }
+    const stripeCustomerId = typeof session.customer === 'string'
+        ? session.customer
+        : session.customer?.id ?? null;
     // Update user subscription status
-    await firebase_1.db.collection('users').doc(userId).update({
+    await (0, subscription_1.updateUserSubscription)(userId, {
         subscriptionTier: 'pro',
         subscriptionStatus: 'active',
-        stripeCustomerId: session.customer,
-        updatedAt: new Date(),
+        stripeCustomerId,
     });
-    // Create subscription record
+    // Create / update subscription record
     if (session.subscription) {
-        await firebase_1.db.collection('subscriptions').doc(userId).set({
-            userId,
-            stripeSubscriptionId: session.subscription,
+        const subscriptionId = typeof session.subscription === 'string'
+            ? session.subscription
+            : session.subscription.id;
+        await (0, subscription_1.upsertUserSubscriptionRecord)(userId, {
+            provider: 'stripe',
+            subscriptionId,
             status: 'active',
             startDate: new Date(),
-            updatedAt: new Date(),
         });
     }
 }
 async function handleSubscriptionUpdated(subscription) {
     const userId = subscription.metadata?.userId;
-    if (!userId) {
+    const internalStatus = mapStripeStatus(subscription.status);
+    let resolvedUserId = userId;
+    if (!resolvedUserId) {
         // Try to find user by customer ID
         const usersSnapshot = await firebase_1.db
             .collection('users')
@@ -111,21 +121,15 @@ async function handleSubscriptionUpdated(subscription) {
             return;
         }
         const userDoc = usersSnapshot.docs[0];
-        await userDoc.ref.update({
-            subscriptionStatus: subscription.status,
-            updatedAt: new Date(),
-        });
+        resolvedUserId = userDoc.id;
     }
-    else {
-        await firebase_1.db.collection('users').doc(userId).update({
-            subscriptionStatus: subscription.status,
-            updatedAt: new Date(),
-        });
-    }
-    // Update subscription record
-    await firebase_1.db.collection('subscriptions').doc(userId).update({
-        status: subscription.status,
-        updatedAt: new Date(),
+    await (0, subscription_1.updateUserSubscription)(resolvedUserId, {
+        subscriptionStatus: internalStatus,
+    });
+    await (0, subscription_1.upsertUserSubscriptionRecord)(resolvedUserId, {
+        provider: 'stripe',
+        subscriptionId: subscription.id,
+        status: internalStatus,
     });
 }
 async function handleSubscriptionDeleted(subscription) {
@@ -139,15 +143,16 @@ async function handleSubscriptionDeleted(subscription) {
         return;
     }
     const userDoc = usersSnapshot.docs[0];
-    await userDoc.ref.update({
+    const userId = userDoc.id;
+    await (0, subscription_1.updateUserSubscription)(userId, {
         subscriptionTier: 'free',
         subscriptionStatus: 'cancelled',
-        updatedAt: new Date(),
     });
-    await firebase_1.db.collection('subscriptions').doc(userDoc.id).update({
+    await (0, subscription_1.upsertUserSubscriptionRecord)(userId, {
+        provider: 'stripe',
+        subscriptionId: subscription.id,
         status: 'cancelled',
         endDate: new Date(),
-        updatedAt: new Date(),
     });
 }
 async function handlePaymentFailed(invoice) {
@@ -161,10 +166,31 @@ async function handlePaymentFailed(invoice) {
         return;
     }
     const userDoc = usersSnapshot.docs[0];
-    await userDoc.ref.update({
+    const userId = userDoc.id;
+    await (0, subscription_1.updateUserSubscription)(userId, {
         subscriptionStatus: 'past_due',
-        updatedAt: new Date(),
     });
+    await (0, subscription_1.upsertUserSubscriptionRecord)(userId, {
+        provider: 'stripe',
+        subscriptionId: typeof invoice.subscription === 'string' ? invoice.subscription : null,
+        status: 'past_due',
+    });
+}
+function mapStripeStatus(status) {
+    switch (status) {
+        case 'active':
+        case 'trialing':
+            return 'active';
+        case 'canceled':
+            return 'cancelled';
+        case 'past_due':
+        case 'unpaid':
+        case 'incomplete':
+        case 'incomplete_expired':
+            return 'past_due';
+        default:
+            return 'past_due';
+    }
 }
 async function createPortalSession(userId, returnUrl) {
     const userDoc = await firebase_1.db.collection('users').doc(userId).get();

@@ -7,8 +7,10 @@ export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due';
  * Returns the effective subscription tier for a user, taking both
  * the stored tier and subscriptionStatus into account.
  *
- * - If the stored tier is 'pro' but the status is not 'active',
- *   the effective tier is downgraded to 'free' for limit checks.
+ * - If the stored tier is 'pro' and status is explicitly set to a non-active
+ *   state ('cancelled' or 'past_due'), the effective tier is downgraded to 'free'.
+ * - If the status is undefined (e.g., legacy users), the stored tier is used as-is
+ *   for backward compatibility.
  */
 export async function getUserSubscriptionTier(userId: string): Promise<'free' | 'pro'> {
   const userDoc = await db.collection('users').doc(userId).get();
@@ -22,7 +24,10 @@ export async function getUserSubscriptionTier(userId: string): Promise<'free' | 
   const storedTier = userData?.subscriptionTier || 'free';
   const status = userData?.subscriptionStatus;
 
-  if (storedTier === 'pro' && status !== 'active') {
+  // Only downgrade Pro users if their status is explicitly set to a non-active state
+  // (e.g., 'cancelled' or 'past_due'). If status is undefined and tier is 'pro',
+  // assume 'active' for backward compatibility with legacy users.
+  if (storedTier === 'pro' && status !== undefined && status !== 'active') {
     return 'free';
   }
 
