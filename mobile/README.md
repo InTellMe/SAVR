@@ -276,5 +276,5 @@ Proprietary - All rights reserved
 ## Support
 
 For issues or questions:
-- Email: support@pantrychef.com
-- GitHub Issues: [Create an issue](https://github.com/yourorg/pantrychef/issues)
+- Email: support@pantryhustler.com
+- GitHub Issues: [Create an issue](https://github.com/InTellMe/PantryHustler/issues)

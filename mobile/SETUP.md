@@ -31,7 +31,7 @@ npm install
 ### 2.1 Get Firebase Credentials
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your Pantry Chef project
+2. Select your PantryHustler project
 3. Go to Project Settings (gear icon)
 4. Under "Your apps", select or add a Web app
 5. Copy the configuration values

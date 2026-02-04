@@ -312,7 +312,7 @@ Suggested improvements (documented in IMPLEMENTATION.md):
 
 **Status**: ✅ COMPLETE
 
-The Pantry Chef mobile application is fully implemented, documented, and ready for:
+The PantryHustler mobile application is fully implemented, documented, and ready for:
 - Device/emulator testing
 - Firebase backend connection
 - User acceptance testing
