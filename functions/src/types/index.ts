@@ -250,3 +250,15 @@ export const TIER_LIMITS: Record<'free' | 'pro', SubscriptionTier> = {
     advancedFeatures: true,
   },
 };
+
+// Labeled training data rows for future ML pipelines
+export interface LabeledDataRow {
+  uid: string; // source user id (may be anonymized before export)
+  imageRef: string; // storage path or gs:// URL for source image
+  extractedItems: AiIngredient[]; // model output before user corrections
+  correctedItems: AiIngredient[]; // user-corrected ground truth
+  modelVersion: string; // e.g. 'vision-v1'
+  source: 'inventory_ai' | 'recipe_ai' | 'other';
+  createdAt: Date;
+  usedForTraining?: boolean;
+}
