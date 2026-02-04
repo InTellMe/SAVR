@@ -262,3 +262,147 @@ export interface LabeledDataRow {
   createdAt: Date;
   usedForTraining?: boolean;
 }
+
+// Dataset Labeling Pipeline Types
+
+export type ImageSource = 'photo' | 'video_frame';
+export type LabelStatus = 'unlabeled' | 'ai_labeled' | 'in_review' | 'approved';
+export type AnnotationSource = 'ai' | 'user';
+export type AnnotationStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
+export interface PolygonPoint {
+  x: number;
+  y: number;
+}
+
+export interface AnnotationObject {
+  id: string; // object instance ID (for tracking/analytics or cross-frame tracking)
+  categoryId: string; // ID of semantic class (e.g., "jar", "can", "box_cereal")
+  attributes?: Record<string, any>; // key-value map for extra info (e.g., {"brand": "Heinz", "isTransparent": true})
+  polygon: PolygonPoint[]; // array of {x, y} points normalized to [0, 1] or in pixel coordinates
+  confidence?: number; // float 0-1 (for AI predictions)
+  isOccluded?: boolean;
+  isTruncated?: boolean;
+}
+
+export interface ImageDocument {
+  id: string; // Firestore doc ID
+  ownerUid: string; // user who uploaded
+  source: ImageSource;
+  videoId?: string; // reference to original video asset (for frames)
+  frameIndex?: number; // frame number in video
+  storagePathOriginal: string; // path/URL in object storage
+  thumbnailPath?: string; // path to thumbnail version
+  width: number;
+  height: number;
+  createdAt: Date | any; // Firestore Timestamp
+  updatedAt: Date | any; // Firestore Timestamp
+  labelStatus: LabelStatus;
+  currentAnnotationId?: string; // reference to the latest accepted annotation set
+}
+
+export interface AnnotationDocument {
+  id: string; // annotation ID
+  imageId: string; // reference to images doc
+  version: number; // integer version counter per image
+  source: AnnotationSource;
+  parentAnnotationId?: string; // previous annotation this was derived from
+  status: AnnotationStatus;
+  createdByUid: string; // annotator user ID (or system for AI)
+  createdAt: Date | any; // Firestore Timestamp
+  updatedAt: Date | any; // Firestore Timestamp
+  objects: AnnotationObject[];
+}
+
+export interface CategoryDocument {
+  id: string; // stable categoryId used in annotations
+  name: string; // human-readable label
+  color?: string; // optional hex color for UI
+  metadata?: Record<string, any>; // optional map (e.g., {"group": "container"})
+}
+
+// Request/Response types for labeling pipeline endpoints
+
+export interface UploadImageRequest {
+  file?: any; // File object (for direct upload)
+  imageUrl?: string; // URL of already uploaded image
+  source?: ImageSource;
+  videoId?: string;
+  frameIndex?: number;
+}
+
+export interface UploadImageResponse {
+  success: boolean;
+  imageId: string;
+  image: ImageDocument;
+}
+
+export interface GetImageAnnotationsRequest {
+  imageId: string;
+}
+
+export interface GetImageAnnotationsResponse {
+  success: boolean;
+  image: ImageDocument;
+  annotations: AnnotationDocument[];
+  categories: CategoryDocument[];
+}
+
+export interface SaveAnnotationRequest {
+  imageId: string;
+  objects: AnnotationObject[];
+  parentAnnotationId?: string;
+  status?: AnnotationStatus;
+}
+
+export interface SaveAnnotationResponse {
+  success: boolean;
+  annotationId: string;
+  annotation: AnnotationDocument;
+}
+
+export interface ExportDatasetRequest {
+  labelStatus?: LabelStatus[];
+  ownerUid?: string;
+  startDate?: Date;
+  endDate?: Date;
+  format?: 'coco' | 'yolo' | 'custom';
+}
+
+export interface ExportDatasetResponse {
+  success: boolean;
+  exportUrl?: string;
+  exportData?: any; // COCO/YOLO format data
+  imageCount: number;
+  annotationCount: number;
+}
+
+// COCO format types for export
+export interface CocoImage {
+  id: number;
+  file_name: string;
+  width: number;
+  height: number;
+}
+
+export interface CocoAnnotation {
+  id: number;
+  image_id: number;
+  category_id: number;
+  segmentation: number[][]; // flattened polygon coordinates [x1, y1, x2, y2, ...]
+  area: number;
+  bbox: [number, number, number, number]; // [x, y, width, height]
+  iscrowd: 0 | 1;
+}
+
+export interface CocoCategory {
+  id: number;
+  name: string;
+  supercategory?: string;
+}
+
+export interface CocoDataset {
+  images: CocoImage[];
+  annotations: CocoAnnotation[];
+  categories: CocoCategory[];
+}
