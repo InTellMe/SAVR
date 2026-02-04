@@ -79,3 +79,91 @@ export interface WebChatMessage {
   timestamp: string;
 }
 
+// Dataset Labeling Pipeline Types (Web)
+
+export type WebImageSource = 'photo' | 'video_frame';
+export type WebLabelStatus = 'unlabeled' | 'ai_labeled' | 'in_review' | 'approved';
+export type WebAnnotationSource = 'ai' | 'user';
+export type WebAnnotationStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
+export interface WebPolygonPoint {
+  x: number;
+  y: number;
+}
+
+export interface WebAnnotationObject {
+  id: string;
+  categoryId: string;
+  attributes?: Record<string, any>;
+  polygon: WebPolygonPoint[];
+  confidence?: number;
+  isOccluded?: boolean;
+  isTruncated?: boolean;
+}
+
+export interface WebImageDocument {
+  id: string;
+  ownerUid: string;
+  source: WebImageSource;
+  videoId?: string;
+  frameIndex?: number;
+  storagePathOriginal: string;
+  thumbnailPath?: string;
+  width: number;
+  height: number;
+  createdAt: any;
+  updatedAt: any;
+  labelStatus: WebLabelStatus;
+  currentAnnotationId?: string;
+}
+
+export interface WebAnnotationDocument {
+  id: string;
+  imageId: string;
+  version: number;
+  source: WebAnnotationSource;
+  parentAnnotationId?: string;
+  status: WebAnnotationStatus;
+  createdByUid: string;
+  createdAt: any;
+  updatedAt: any;
+  objects: WebAnnotationObject[];
+}
+
+export interface WebCategoryDocument {
+  id: string;
+  name: string;
+  color?: string;
+  metadata?: Record<string, any>;
+}
+
+// COCO export format types
+export interface CocoImage {
+  id: number;
+  file_name: string;
+  width: number;
+  height: number;
+}
+
+export interface CocoAnnotation {
+  id: number;
+  image_id: number;
+  category_id: number;
+  segmentation: number[][];
+  area: number;
+  bbox: [number, number, number, number];
+  iscrowd: 0 | 1;
+}
+
+export interface CocoCategory {
+  id: number;
+  name: string;
+  supercategory?: string;
+}
+
+export interface CocoDataset {
+  images: CocoImage[];
+  annotations: CocoAnnotation[];
+  categories: CocoCategory[];
+}
+

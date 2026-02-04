@@ -28,7 +28,26 @@ import {
   CreateMealPlanResponse,
   CreateRecipeRequest,
   CreateRecipeResponse,
+  UploadImageRequest,
+  UploadImageResponse,
+  GetImageAnnotationsRequest,
+  GetImageAnnotationsResponse,
+  SaveAnnotationRequest,
+  SaveAnnotationResponse,
+  ExportDatasetRequest,
+  ExportDatasetResponse,
 } from './types';
+import {
+  createImageDocument,
+  getImageDocument,
+  updateImageLabelStatus,
+  createAnnotationDocument,
+  getImageAnnotations as getImageAnnotationsFromStorage,
+  getAllCategories,
+  getImageSignedUrl,
+} from './utils/datasetStorage';
+import { runSegmentationInference } from './services/segmentation';
+import { exportToCocoFormat } from './utils/datasetExport';
 
 // Image Analysis Function
 export const analyzeImage = functions
@@ -440,3 +459,317 @@ export const onUserCreate = functions.auth.user().onCreate(async (user: any) => 
     updatedAt: new Date(),
   });
 });
+
+// Dataset Labeling Pipeline Functions
+
+/**
+ * Upload image for labeling
+ */
+export const uploadLabelingImage = functions
+  .runWith({ timeoutSeconds: 300, memory: '512MB' })
+  .https.onCall(async (data: any, context: functions.https.CallableContext) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageUrl, source, videoId, frameIndex } = data as UploadImageRequest;
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'imageUrl is required and must be a string'
+      );
+    }
+
+    const userId = context.auth.uid;
+
+    try {
+      // For now, we assume imageUrl is already uploaded and we just need to create the document
+      // In production, you might want to handle file upload here
+      // Extract image dimensions (would need to fetch image or pass as params)
+      const imageId = db.collection('images').doc().id;
+      
+      // Default dimensions - in production, fetch actual dimensions from image
+      const width = data.width || 1920;
+      const height = data.height || 1080;
+
+      const imageDoc = await createImageDocument(
+        userId,
+        imageId,
+        imageUrl,
+        width,
+        height,
+        source || 'photo',
+        videoId,
+        frameIndex
+      );
+
+      // Optionally trigger AI inference automatically
+      if (data.autoLabel !== false) {
+        // Trigger inference asynchronously
+        triggerSegmentationInference(imageId, imageUrl, width, height).catch(err => {
+          console.error('Failed to trigger segmentation inference:', err);
+        });
+      }
+
+      const response: UploadImageResponse = {
+        success: true,
+        imageId,
+        image: imageDoc,
+      };
+      return response;
+    } catch (error: any) {
+      console.error('Image upload error:', error);
+      throw new functions.https.HttpsError('internal', error.message || 'Failed to upload image');
+    }
+  });
+
+/**
+ * Get image annotations
+ */
+export const getImageAnnotations = functions.https.onCall(
+  async (data: any, context: functions.https.CallableContext) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageId } = data as GetImageAnnotationsRequest;
+    if (!imageId || typeof imageId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'imageId is required and must be a string'
+      );
+    }
+
+    const userId = context.auth.uid;
+
+    try {
+      const image = await getImageDocument(imageId);
+      if (!image) {
+        throw new functions.https.HttpsError('not-found', 'Image not found');
+      }
+
+      // Check ownership
+      if (image.ownerUid !== userId) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied');
+      }
+
+      const annotations = await getImageAnnotationsFromStorage(imageId);
+      const categories = await getAllCategories();
+
+      const response: GetImageAnnotationsResponse = {
+        success: true,
+        image,
+        annotations,
+        categories,
+      };
+      return response;
+    } catch (error: any) {
+      console.error('Get annotations error:', error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError('internal', error.message || 'Failed to get annotations');
+    }
+  }
+);
+
+/**
+ * Save annotation (user corrections)
+ */
+export const saveAnnotation = functions.https.onCall(
+  async (data: any, context: functions.https.CallableContext) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageId, objects, parentAnnotationId, status } = data as SaveAnnotationRequest;
+    if (!imageId || typeof imageId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'imageId is required and must be a string'
+      );
+    }
+    if (!Array.isArray(objects)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'objects must be an array'
+      );
+    }
+
+    const userId = context.auth.uid;
+
+    try {
+      const image = await getImageDocument(imageId);
+      if (!image) {
+        throw new functions.https.HttpsError('not-found', 'Image not found');
+      }
+
+      // Check ownership
+      if (image.ownerUid !== userId) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied');
+      }
+
+      const annotation = await createAnnotationDocument(
+        imageId,
+        userId,
+        objects,
+        'user',
+        parentAnnotationId,
+        status || 'submitted'
+      );
+
+      // Update image status
+      await updateImageLabelStatus(
+        imageId,
+        status === 'approved' ? 'approved' : 'in_review',
+        annotation.id
+      );
+
+      const response: SaveAnnotationResponse = {
+        success: true,
+        annotationId: annotation.id,
+        annotation,
+      };
+      return response;
+    } catch (error: any) {
+      console.error('Save annotation error:', error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError('internal', error.message || 'Failed to save annotation');
+    }
+  }
+);
+
+/**
+ * Trigger segmentation inference (can be called manually or automatically)
+ */
+export const triggerSegmentation = functions
+  .runWith({ timeoutSeconds: 300, memory: '1GB' })
+  .https.onCall(async (data: any, context: functions.https.CallableContext) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageId } = data;
+    if (!imageId || typeof imageId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'imageId is required and must be a string'
+      );
+    }
+
+    const userId = context.auth.uid;
+
+    try {
+      const image = await getImageDocument(imageId);
+      if (!image) {
+        throw new functions.https.HttpsError('not-found', 'Image not found');
+      }
+
+      if (image.ownerUid !== userId) {
+        throw new functions.https.HttpsError('permission-denied', 'Access denied');
+      }
+
+      // Get signed URL for image
+      const imageUrl = await getImageSignedUrl(image.storagePathOriginal);
+
+      // Run segmentation
+      const objects = await runSegmentationInference(
+        imageUrl,
+        image.width,
+        image.height
+      );
+
+      // Create AI annotation
+      const annotation = await createAnnotationDocument(
+        imageId,
+        'system',
+        objects,
+        'ai',
+        undefined,
+        'draft'
+      );
+
+      // Update image status
+      await updateImageLabelStatus(imageId, 'ai_labeled', annotation.id);
+
+      return {
+        success: true,
+        annotationId: annotation.id,
+        objectCount: objects.length,
+      };
+    } catch (error: any) {
+      console.error('Segmentation inference error:', error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError('internal', error.message || 'Failed to run segmentation');
+    }
+  });
+
+/**
+ * Helper function to trigger segmentation asynchronously
+ */
+async function triggerSegmentationInference(
+  imageId: string,
+  imageUrl: string,
+  width: number,
+  height: number
+): Promise<void> {
+  try {
+    const objects = await runSegmentationInference(imageUrl, width, height);
+    const annotation = await createAnnotationDocument(
+      imageId,
+      'system',
+      objects,
+      'ai',
+      undefined,
+      'draft'
+    );
+    await updateImageLabelStatus(imageId, 'ai_labeled', annotation.id);
+  } catch (error) {
+    console.error('Async segmentation failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Export dataset for training
+ */
+export const exportDataset = functions
+  .runWith({ timeoutSeconds: 300, memory: '512MB' })
+  .https.onCall(async (data: any, context: functions.https.CallableContext) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { labelStatus, ownerUid, startDate, endDate, format } = data as ExportDatasetRequest;
+    const userId = context.auth.uid;
+
+    // Only allow users to export their own data (unless admin)
+    const filterUid = ownerUid || userId;
+    if (filterUid !== userId) {
+      throw new functions.https.HttpsError('permission-denied', 'Can only export your own data');
+    }
+
+    try {
+      const exportData = await exportToCocoFormat({
+        labelStatus: labelStatus || ['approved'],
+        ownerUid: filterUid,
+        startDate,
+        endDate,
+      });
+
+      const response: ExportDatasetResponse = {
+        success: true,
+        exportData,
+        imageCount: exportData.images.length,
+        annotationCount: exportData.annotations.length,
+      };
+      return response;
+    } catch (error: any) {
+      console.error('Export dataset error:', error);
+      throw new functions.https.HttpsError('internal', error.message || 'Failed to export dataset');
+    }
+  });
