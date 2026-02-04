@@ -1,0 +1,58 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user has pro subscription
+    function isPro() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier == 'pro';
+    }
+    
+    // Users collection - users can read/write their own profile
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+    
+    // Inventory collection - users can manage their own inventory
+    match /inventory/{userId}/items/{itemId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Recipes collection - users can manage their own recipes
+    match /recipes/{userId}/items/{recipeId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Meal plans collection - users can manage their own meal plans
+    match /mealPlans/{userId}/plans/{planId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Grocery lists collection - users can manage their own grocery lists
+    match /groceryLists/{userId}/lists/{listId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Chat history - users can access their own chat history
+    match /chatHistory/{userId}/messages/{messageId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Subscription data - only readable by owner
+    match /subscriptions/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Only server can write subscriptions
+    }
+  }
+}
