@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -36,15 +36,22 @@ export default function SignUpPage() {
     try {
       await signUp(email, password);
       
-      // Create user document in Firestore
+      // Get the current user UID
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User not found after signup');
+      }
+      
+      // Create user document in Firestore with UID as document ID
       const userDoc = {
+        uid: currentUser.uid,
         email,
         subscriptionTier: 'free',
         subscriptionStatus: 'active',
         createdAt: new Date().toISOString(),
       };
       
-      await setDoc(doc(db, 'users', email), userDoc);
+      await setDoc(doc(db, 'users', currentUser.uid), userDoc);
       
       router.push('/dashboard');
     } catch (err: unknown) {
@@ -60,6 +67,23 @@ export default function SignUpPage() {
 
     try {
       await signInWithGoogle();
+      
+      // Get the current user after Google sign-in
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        // Check if user document exists, if not create it
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDoc = {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          displayName: currentUser.displayName,
+          subscriptionTier: 'free',
+          subscriptionStatus: 'active',
+          createdAt: new Date().toISOString(),
+        };
+        await setDoc(userDocRef, userDoc, { merge: true });
+      }
+      
       router.push('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign up with Google');
