@@ -1,6 +1,6 @@
-# Pantry Chef Mobile - Setup Guide
+# PantryHustler Mobile - Setup Guide
 
-This guide walks you through setting up the Pantry Chef mobile application.
+This guide walks you through setting up the PantryHustler mobile application.
 
 ## Prerequisites
 

@@ -1,8 +1,8 @@
-# Pantry Chef Mobile App - Implementation Summary
+# PantryHustler Mobile App - Implementation Summary
 
 ## Overview
 
-Complete React Native mobile application for Pantry Chef, built with Expo and TypeScript.
+Complete React Native mobile application for PantryHustler, built with Expo and TypeScript.
 
 ## Project Statistics
 

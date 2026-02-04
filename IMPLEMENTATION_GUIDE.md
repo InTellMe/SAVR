@@ -1,8 +1,8 @@
-# Pantry Chef Web Application - Complete Implementation Guide
+# PantryHustler Web Application - Complete Implementation Guide
 
 ## Overview
 
-This is a fully functional Next.js 14 web application for Pantry Chef - a smart cooking assistant that helps users manage their pantry inventory, generate recipes, plan meals, and get AI-powered cooking assistance.
+This is a fully functional Next.js 14 web application for PantryHustler - a smart cooking assistant that helps users manage their pantry inventory, generate recipes, plan meals, and get AI-powered cooking assistance.
 
 ## Application Structure
 

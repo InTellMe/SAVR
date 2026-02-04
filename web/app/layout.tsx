@@ -3,7 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 export const metadata: Metadata = {
-  title: "Pantry Chef - Smart Cooking Assistant",
+  title: "PantryHustler - Smart Cooking Assistant",
   description: "Turn your pantry into delicious meals with AI-powered recipe generation",
 };
 

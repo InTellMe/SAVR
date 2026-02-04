@@ -1,12 +1,12 @@
-# Deployment Guide for Pantry Chef
+# Deployment Guide for PantryHustler
 
-This guide covers deploying the Pantry Chef application to production.
+This guide covers deploying the PantryHustler application to production.
 
 ## Prerequisites
 
 - Firebase project created and configured
 - Firebase CLI installed: `npm install -g firebase-tools`
-- Domain configured: pantrychef.intellmeai.com
+- Domain configured: pantryhustler.com
 - API keys obtained:
   - OpenAI API key
   - Google Cloud Vision API (optional, for fallback)
@@ -19,7 +19,7 @@ This guide covers deploying the Pantry Chef application to production.
 
 1. Go to [Firebase Console](https://console.firebase.google.com)
 2. Click "Add project"
-3. Name it "pantry-chef" or similar
+3. Name it "pantryhustler" or similar
 4. Enable Google Analytics (optional)
 
 ### 1.2 Enable Firebase Services
@@ -28,7 +28,7 @@ This guide covers deploying the Pantry Chef application to production.
 1. Go to Authentication → Sign-in methods
 2. Enable Email/Password
 3. Enable Google
-4. Add authorized domains: `pantrychef.intellmeai.com`
+4. Add authorized domains: `pantryhustler.com`
 
 **Firestore:**
 1. Go to Firestore Database
@@ -84,7 +84,7 @@ NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_secret
 
 # App
-NEXT_PUBLIC_APP_URL=https://pantrychef.intellmeai.com
+NEXT_PUBLIC_APP_URL=https://pantryhustler.com
 ```
 
 ### 2.2 Cloud Functions
@@ -193,7 +193,7 @@ firebase deploy --only hosting
 
 1. Go to Firebase Console → Hosting
 2. Click "Add custom domain"
-3. Enter: `pantrychef.intellmeai.com`
+3. Enter: `pantryhustler.com`
 4. Follow verification steps
 
 ### 7.2 Update DNS Records
@@ -247,7 +247,7 @@ Firebase will automatically provision an SSL certificate. This can take up to 24
 
 ### 9.1 Test Web Application
 
-1. Visit `https://pantrychef.intellmeai.com`
+1. Visit `https://pantryhustler.com`
 2. Sign up with a test account
 3. Upload a test image
 4. Generate a recipe
@@ -395,7 +395,7 @@ firebase deploy --only functions:analyzeImage
 
 ### Domain Not Working
 
-1. Check DNS propagation: `dig pantrychef.intellmeai.com`
+1. Check DNS propagation: `dig pantryhustler.com`
 2. Verify in Firebase Console
 3. Wait up to 24 hours for SSL certificate
 

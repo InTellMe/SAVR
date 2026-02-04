@@ -1,4 +1,4 @@
-# Pantry Chef Web Application
+# PantryHustler Web Application
 
 A modern Next.js web application for smart pantry management, recipe generation, meal planning, and AI-powered cooking assistance.
 

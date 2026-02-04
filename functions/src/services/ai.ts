@@ -230,7 +230,7 @@ export async function chatAssistant(
     currentRecipe?: any;
   }
 ): Promise<string> {
-  const systemPrompt = `You are a helpful cooking assistant for Pantry Chef app. 
+  const systemPrompt = `You are a helpful cooking assistant for PantryHustler app. 
 ${context?.inventory?.length ? `User's current inventory: ${context.inventory.join(', ')}` : ''}
 ${context?.currentRecipe ? `Current recipe: ${context.currentRecipe.title}` : ''}
 

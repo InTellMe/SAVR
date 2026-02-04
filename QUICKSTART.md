@@ -1,4 +1,4 @@
-# Pantry Chef - Quick Start Guide
+# PantryHustler - Quick Start Guide
 
 ## Setup Instructions (5 Minutes)
 

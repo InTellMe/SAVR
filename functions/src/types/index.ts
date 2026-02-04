@@ -1,4 +1,4 @@
-// Type definitions for Pantry Chef
+// Type definitions for PantryHustler
 export interface User {
   uid: string;
   email: string;

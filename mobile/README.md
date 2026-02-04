@@ -1,6 +1,6 @@
-# Pantry Chef Mobile App
+# PantryHustler Mobile App
 
-A React Native mobile application for Pantry Chef - your smart cooking assistant.
+A React Native mobile application for PantryHustler - your smart cooking assistant.
 
 ## Features
 
