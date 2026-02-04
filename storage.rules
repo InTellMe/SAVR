@@ -2,8 +2,8 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow users to upload and read their own pantry images
-    match /pantry-images/{userId}/{imageId} {
+    // Allow users to upload and read their own inventory images
+    match /inventory/{userId}/{imageId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow write: if request.resource.size < 10 * 1024 * 1024 // Max 10MB
                    && request.resource.contentType.matches('image/.*');

@@ -45,7 +45,7 @@ npm run dev
 
 ```
 web/
-├── app/                    # Next.js 14 App Router
+├── app/                    # Next.js 16 App Router
 │   ├── page.tsx           # Landing page
 │   ├── sign-in/           # Sign in page
 │   ├── sign-up/           # Sign up page
@@ -80,7 +80,7 @@ See `.env.example` for required environment variables.
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Authentication**: Firebase Auth
