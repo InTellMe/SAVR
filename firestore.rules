@@ -18,41 +18,73 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier == 'pro';
     }
     
-    // Users collection - users can read/write their own profile
+    // Users collection - users can read their own profile and only update non-entitlement fields
     match /users/{userId} {
       allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
+
+      // Creation and deletion are handled by backend (admin SDK / Cloud Functions)
+      allow create, delete: if false;
+
+      // Users may update profile fields (e.g., displayName, photoURL) but cannot change
+      // subscription tier/status or payment identifiers.
+      allow update: if isOwner(userId)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.subscriptionTier == resource.data.subscriptionTier
+        && request.resource.data.subscriptionStatus == resource.data.subscriptionStatus
+        && request.resource.data.stripeCustomerId == resource.data.stripeCustomerId
+        && request.resource.data.paypalSubscriptionId == resource.data.paypalSubscriptionId;
     }
     
-    // Inventory collection - users can manage their own inventory
+    // Inventory collection - users can manage their own inventory under their UID
     match /inventory/{userId}/items/{itemId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId;
+      allow delete: if isOwner(userId);
     }
     
-    // Recipes collection - users can manage their own recipes
+    // Recipes collection - users can manage their own recipes under their UID
     match /recipes/{userId}/items/{recipeId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId;
+      allow delete: if isOwner(userId);
     }
     
-    // Meal plans collection - users can manage their own meal plans
+    // Meal plans collection - users can manage their own meal plans under their UID
     match /mealPlans/{userId}/plans/{planId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId;
+      allow delete: if isOwner(userId);
     }
     
-    // Grocery lists collection - users can manage their own grocery lists
+    // Grocery lists collection - users can manage their own grocery lists under their UID
     match /groceryLists/{userId}/lists/{listId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId;
+      allow delete: if isOwner(userId);
     }
     
-    // Chat history - users can access their own chat history
+    // Chat history - users can access their own chat history under their UID
     match /chatHistory/{userId}/messages/{messageId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId;
+      allow delete: if isOwner(userId);
     }
     
     // Subscription data - only readable by owner
     match /subscriptions/{userId} {
       allow read: if isOwner(userId);
       allow write: if false; // Only server can write subscriptions
+    }
+
+    // Labeled training data - only backend services (admin SDK) may access
+    match /labeled_data/{rowId} {
+      allow read, write: if false;
     }
   }
 }
