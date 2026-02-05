@@ -51,7 +51,7 @@ export async function checkAndIncrement(
       
       transaction.set(rateLimitRef, {
         requests: recentRequests,
-        lastUpdated: new Date(),
+        lastUpdated: now,
       });
 
       return { allowed: true };
