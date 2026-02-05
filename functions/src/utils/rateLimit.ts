@@ -5,6 +5,11 @@ interface RateLimitResult {
   reason?: string;
 }
 
+interface RateLimitDoc {
+  requests: Array<{ timestamp: number }>;
+  lastUpdated: number;
+}
+
 /**
  * Rate limiter using Firestore for distributed tracking.
  * Implements a sliding window rate limit algorithm.
@@ -30,7 +35,7 @@ export async function checkAndIncrement(
     // Use Firestore transaction to ensure atomic read-modify-write
     const result = await db.runTransaction(async (transaction) => {
       const doc = await transaction.get(rateLimitRef);
-      const data = doc.data() as { requests: Array<{ timestamp: number }> } | undefined;
+      const data = doc.data() as RateLimitDoc | undefined;
 
       // Filter out requests outside the current window
       // This cleanup prevents unbounded array growth
