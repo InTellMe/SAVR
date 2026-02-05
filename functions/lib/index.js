@@ -33,13 +33,16 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onUserCreate = exports.createStripePortal = exports.paypalWebhook = exports.stripeWebhook = exports.createPayPalCheckout = exports.createStripeCheckout = exports.chat = exports.createGroceryList = exports.createMealPlan = exports.createRecipe = exports.analyzeImage = void 0;
+exports.exportDataset = exports.triggerSegmentation = exports.saveAnnotation = exports.getImageAnnotations = exports.uploadLabelingImage = exports.onUserCreate = exports.createStripePortal = exports.stripeWebhook = exports.createStripeCheckout = exports.chat = exports.createGroceryList = exports.createMealPlan = exports.createRecipe = exports.analyzeImage = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const firebase_1 = require("./utils/firebase");
 const ai_1 = require("./services/ai");
 const stripe_1 = require("./services/stripe");
-const paypal_1 = require("./services/paypal");
 const subscription_1 = require("./utils/subscription");
+const rateLimit_1 = require("./utils/rateLimit");
+const datasetStorage_1 = require("./utils/datasetStorage");
+const segmentation_1 = require("./services/segmentation");
+const datasetExport_1 = require("./utils/datasetExport");
 // Image Analysis Function
 exports.analyzeImage = functions
     .runWith({ timeoutSeconds: 300, memory: '512MB' })
@@ -53,6 +56,10 @@ exports.analyzeImage = functions
         throw new functions.https.HttpsError('invalid-argument', 'imageUrl is required and must be a string');
     }
     const userId = context.auth.uid;
+    const rateCheck = await (0, rateLimit_1.checkAndIncrement)(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+        throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
     // Check usage limits
     const usageCheck = await (0, subscription_1.checkUsageLimit)(userId, 'inventory');
     if (!usageCheck.allowed) {
@@ -80,6 +87,10 @@ exports.createRecipe = functions
         throw new functions.https.HttpsError('invalid-argument', 'ingredients must be a non-empty string array');
     }
     const userId = context.auth.uid;
+    const rateCheck = await (0, rateLimit_1.checkAndIncrement)(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+        throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
     // Check usage limits
     const usageCheck = await (0, subscription_1.checkUsageLimit)(userId, 'recipes');
     if (!usageCheck.allowed) {
@@ -125,6 +136,10 @@ exports.createMealPlan = functions
         throw new functions.https.HttpsError('invalid-argument', 'ingredients must be a non-empty string array');
     }
     const userId = context.auth.uid;
+    const rateCheck = await (0, rateLimit_1.checkAndIncrement)(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+        throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
     // Check usage limits
     const usageCheck = await (0, subscription_1.checkUsageLimit)(userId, 'mealPlans');
     if (!usageCheck.allowed) {
@@ -226,6 +241,10 @@ exports.chat = functions
         throw new functions.https.HttpsError('invalid-argument', 'message is required and must be a string');
     }
     const userId = context.auth.uid;
+    const rateCheck = await (0, rateLimit_1.checkAndIncrement)(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+        throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
     // Check usage limits (Pro only feature)
     const usageCheck = await (0, subscription_1.checkUsageLimit)(userId, 'aiChat');
     if (!usageCheck.allowed) {
@@ -278,30 +297,6 @@ exports.createStripeCheckout = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', error.message || 'Failed to create checkout session');
     }
 });
-// PayPal Checkout Session Creation
-exports.createPayPalCheckout = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-    }
-    const { planId, successUrl, cancelUrl } = data;
-    const userId = context.auth.uid;
-    const defaultPlanId = process.env.PAYPAL_PLAN_ID_PRO_MONTHLY || process.env.PAYPAL_PLAN_ID_PRO_YEARLY;
-    const resolvedPlanId = planId || defaultPlanId;
-    if (!resolvedPlanId) {
-        throw new functions.https.HttpsError('invalid-argument', 'PayPal planId is required');
-    }
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
-    const resolvedSuccessUrl = successUrl || `${appBaseUrl}/dashboard?paypalSuccess=true`;
-    const resolvedCancelUrl = cancelUrl || `${appBaseUrl}/pricing?paypalCancelled=true`;
-    try {
-        const approvalUrl = await (0, paypal_1.createPayPalSubscription)(userId, resolvedPlanId, resolvedSuccessUrl, resolvedCancelUrl);
-        return { success: true, url: approvalUrl };
-    }
-    catch (error) {
-        console.error('PayPal checkout error:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'Failed to create PayPal checkout session');
-    }
-});
 // Stripe Webhook Handler
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     const signature = req.headers['stripe-signature'];
@@ -315,17 +310,6 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
     }
     catch (error) {
         console.error('Webhook error:', error);
-        res.status(400).send(`Webhook Error: ${error.message}`);
-    }
-});
-// PayPal Webhook Handler
-exports.paypalWebhook = functions.https.onRequest(async (req, res) => {
-    try {
-        await (0, paypal_1.handlePayPalWebhook)(req.rawBody.toString(), req.headers);
-        res.json({ received: true });
-    }
-    catch (error) {
-        console.error('PayPal webhook error:', error);
         res.status(400).send(`Webhook Error: ${error.message}`);
     }
 });
@@ -357,5 +341,223 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
         createdAt: new Date(),
         updatedAt: new Date(),
     });
+});
+// Dataset Labeling Pipeline Functions
+/**
+ * Upload image for labeling
+ */
+exports.uploadLabelingImage = functions
+    .runWith({ timeoutSeconds: 300, memory: '512MB' })
+    .https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+    const { imageUrl, source, videoId, frameIndex } = data;
+    if (!imageUrl || typeof imageUrl !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'imageUrl is required and must be a string');
+    }
+    const userId = context.auth.uid;
+    try {
+        // For now, we assume imageUrl is already uploaded and we just need to create the document
+        // In production, you might want to handle file upload here
+        // Extract image dimensions (would need to fetch image or pass as params)
+        const imageId = firebase_1.db.collection('images').doc().id;
+        // Default dimensions - in production, fetch actual dimensions from image
+        const width = data.width || 1920;
+        const height = data.height || 1080;
+        const imageDoc = await (0, datasetStorage_1.createImageDocument)(userId, imageId, imageUrl, width, height, source || 'photo', videoId, frameIndex);
+        // Optionally trigger AI inference automatically
+        if (data.autoLabel !== false) {
+            // Trigger inference asynchronously
+            triggerSegmentationInference(imageId, imageUrl, width, height).catch(err => {
+                console.error('Failed to trigger segmentation inference:', err);
+            });
+        }
+        const response = {
+            success: true,
+            imageId,
+            image: imageDoc,
+        };
+        return response;
+    }
+    catch (error) {
+        console.error('Image upload error:', error);
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to upload image');
+    }
+});
+/**
+ * Get image annotations
+ */
+exports.getImageAnnotations = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+    const { imageId } = data;
+    if (!imageId || typeof imageId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'imageId is required and must be a string');
+    }
+    const userId = context.auth.uid;
+    try {
+        const image = await (0, datasetStorage_1.getImageDocument)(imageId);
+        if (!image) {
+            throw new functions.https.HttpsError('not-found', 'Image not found');
+        }
+        // Check ownership
+        if (image.ownerUid !== userId) {
+            throw new functions.https.HttpsError('permission-denied', 'Access denied');
+        }
+        const annotations = await (0, datasetStorage_1.getImageAnnotations)(imageId);
+        const categories = await (0, datasetStorage_1.getAllCategories)();
+        const response = {
+            success: true,
+            image,
+            annotations,
+            categories,
+        };
+        return response;
+    }
+    catch (error) {
+        console.error('Get annotations error:', error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to get annotations');
+    }
+});
+/**
+ * Save annotation (user corrections)
+ */
+exports.saveAnnotation = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+    const { imageId, objects, parentAnnotationId, status } = data;
+    if (!imageId || typeof imageId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'imageId is required and must be a string');
+    }
+    if (!Array.isArray(objects)) {
+        throw new functions.https.HttpsError('invalid-argument', 'objects must be an array');
+    }
+    const userId = context.auth.uid;
+    try {
+        const image = await (0, datasetStorage_1.getImageDocument)(imageId);
+        if (!image) {
+            throw new functions.https.HttpsError('not-found', 'Image not found');
+        }
+        // Check ownership
+        if (image.ownerUid !== userId) {
+            throw new functions.https.HttpsError('permission-denied', 'Access denied');
+        }
+        const annotation = await (0, datasetStorage_1.createAnnotationDocument)(imageId, userId, objects, 'user', parentAnnotationId, status || 'submitted');
+        // Update image status
+        await (0, datasetStorage_1.updateImageLabelStatus)(imageId, status === 'approved' ? 'approved' : 'in_review', annotation.id);
+        const response = {
+            success: true,
+            annotationId: annotation.id,
+            annotation,
+        };
+        return response;
+    }
+    catch (error) {
+        console.error('Save annotation error:', error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to save annotation');
+    }
+});
+/**
+ * Trigger segmentation inference (can be called manually or automatically)
+ */
+exports.triggerSegmentation = functions
+    .runWith({ timeoutSeconds: 300, memory: '1GB' })
+    .https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+    const { imageId } = data;
+    if (!imageId || typeof imageId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'imageId is required and must be a string');
+    }
+    const userId = context.auth.uid;
+    try {
+        const image = await (0, datasetStorage_1.getImageDocument)(imageId);
+        if (!image) {
+            throw new functions.https.HttpsError('not-found', 'Image not found');
+        }
+        if (image.ownerUid !== userId) {
+            throw new functions.https.HttpsError('permission-denied', 'Access denied');
+        }
+        // Get signed URL for image
+        const imageUrl = await (0, datasetStorage_1.getImageSignedUrl)(image.storagePathOriginal);
+        // Run segmentation
+        const objects = await (0, segmentation_1.runSegmentationInference)(imageUrl, image.width, image.height);
+        // Create AI annotation
+        const annotation = await (0, datasetStorage_1.createAnnotationDocument)(imageId, 'system', objects, 'ai', undefined, 'draft');
+        // Update image status
+        await (0, datasetStorage_1.updateImageLabelStatus)(imageId, 'ai_labeled', annotation.id);
+        return {
+            success: true,
+            annotationId: annotation.id,
+            objectCount: objects.length,
+        };
+    }
+    catch (error) {
+        console.error('Segmentation inference error:', error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to run segmentation');
+    }
+});
+/**
+ * Helper function to trigger segmentation asynchronously
+ */
+async function triggerSegmentationInference(imageId, imageUrl, width, height) {
+    try {
+        const objects = await (0, segmentation_1.runSegmentationInference)(imageUrl, width, height);
+        const annotation = await (0, datasetStorage_1.createAnnotationDocument)(imageId, 'system', objects, 'ai', undefined, 'draft');
+        await (0, datasetStorage_1.updateImageLabelStatus)(imageId, 'ai_labeled', annotation.id);
+    }
+    catch (error) {
+        console.error('Async segmentation failed:', error);
+        throw error;
+    }
+}
+/**
+ * Export dataset for training
+ */
+exports.exportDataset = functions
+    .runWith({ timeoutSeconds: 300, memory: '512MB' })
+    .https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
+    const { labelStatus, ownerUid, startDate, endDate, format } = data;
+    const userId = context.auth.uid;
+    // Only allow users to export their own data (unless admin)
+    const filterUid = ownerUid || userId;
+    if (filterUid !== userId) {
+        throw new functions.https.HttpsError('permission-denied', 'Can only export your own data');
+    }
+    try {
+        const exportData = await (0, datasetExport_1.exportToCocoFormat)({
+            labelStatus: labelStatus || ['approved'],
+            ownerUid: filterUid,
+            startDate,
+            endDate,
+        });
+        const response = {
+            success: true,
+            exportData,
+            imageCount: exportData.images.length,
+            annotationCount: exportData.annotations.length,
+        };
+        return response;
+    }
+    catch (error) {
+        console.error('Export dataset error:', error);
+        throw new functions.https.HttpsError('internal', error.message || 'Failed to export dataset');
+    }
 });
 //# sourceMappingURL=index.js.map
