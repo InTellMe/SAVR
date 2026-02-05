@@ -12,11 +12,8 @@ import {
   handleStripeWebhook,
   createPortalSession,
 } from './services/stripe';
-import {
-  createPayPalSubscription,
-  handlePayPalWebhook,
-} from './services/paypal';
 import { checkUsageLimit } from './utils/subscription';
+import { checkAndIncrement } from './utils/rateLimit';
 import {
   AnalyzeImageRequest,
   AnalyzeImageResponse,
@@ -67,6 +64,11 @@ export const analyzeImage = functions
     }
     const userId = context.auth.uid;
 
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
+
     // Check usage limits
     const usageCheck = await checkUsageLimit(userId, 'inventory');
     if (!usageCheck.allowed) {
@@ -99,6 +101,11 @@ export const createRecipe = functions
       );
     }
     const userId = context.auth.uid;
+
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
 
     // Check usage limits
     const usageCheck = await checkUsageLimit(userId, 'recipes');
@@ -155,6 +162,11 @@ export const createMealPlan = functions
       );
     }
     const userId = context.auth.uid;
+
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
 
     // Check usage limits
     const usageCheck = await checkUsageLimit(userId, 'mealPlans');
@@ -278,6 +290,11 @@ export const chat = functions
     }
     const userId = context.auth.uid;
 
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
+
     // Check usage limits (Pro only feature)
     const usageCheck = await checkUsageLimit(userId, 'aiChat');
     if (!usageCheck.allowed) {
@@ -340,62 +357,6 @@ export const createStripeCheckout = functions.https.onCall(async (data: any, con
   }
 });
 
-// PayPal Checkout Session Creation
-export const createPayPalCheckout = functions.https.onCall(
-  async (data: any, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated',
-        'User must be authenticated'
-      );
-    }
-
-    const { planId, successUrl, cancelUrl } = data as {
-      planId?: string;
-      successUrl?: string;
-      cancelUrl?: string;
-    };
-
-    const userId = context.auth.uid;
-
-    const defaultPlanId =
-      process.env.PAYPAL_PLAN_ID_PRO_MONTHLY || process.env.PAYPAL_PLAN_ID_PRO_YEARLY;
-
-    const resolvedPlanId = planId || defaultPlanId;
-
-    if (!resolvedPlanId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'PayPal planId is required'
-      );
-    }
-
-    const appBaseUrl =
-      process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
-
-    const resolvedSuccessUrl =
-      successUrl || `${appBaseUrl}/dashboard?paypalSuccess=true`;
-    const resolvedCancelUrl =
-      cancelUrl || `${appBaseUrl}/pricing?paypalCancelled=true`;
-
-    try {
-      const approvalUrl = await createPayPalSubscription(
-        userId,
-        resolvedPlanId,
-        resolvedSuccessUrl,
-        resolvedCancelUrl
-      );
-      return { success: true, url: approvalUrl };
-    } catch (error: any) {
-      console.error('PayPal checkout error:', error);
-      throw new functions.https.HttpsError(
-        'internal',
-        error.message || 'Failed to create PayPal checkout session'
-      );
-    }
-  }
-);
-
 // Stripe Webhook Handler
 export const stripeWebhook = functions.https.onRequest(async (req, res) => {
   const signature = req.headers['stripe-signature'] as string;
@@ -410,20 +371,6 @@ export const stripeWebhook = functions.https.onRequest(async (req, res) => {
     res.json({ received: true });
   } catch (error: any) {
     console.error('Webhook error:', error);
-    res.status(400).send(`Webhook Error: ${error.message}`);
-  }
-});
-
-// PayPal Webhook Handler
-export const paypalWebhook = functions.https.onRequest(async (req, res) => {
-  try {
-    await handlePayPalWebhook(
-      req.rawBody.toString(),
-      req.headers as Record<string, string | string[] | undefined>
-    );
-    res.json({ received: true });
-  } catch (error: any) {
-    console.error('PayPal webhook error:', error);
     res.status(400).send(`Webhook Error: ${error.message}`);
   }
 });

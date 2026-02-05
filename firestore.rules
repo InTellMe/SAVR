@@ -18,7 +18,9 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier == 'pro';
     }
     
-    // Users collection - users can read their own profile and only update non-entitlement fields
+    // Users collection - users can read their own profile and only update non-entitlement fields.
+    // subscriptionTier, subscriptionStatus, stripeCustomerId, paypalSubscriptionId are
+    // updated only by Cloud Functions (Stripe and PayPal webhooks); clients cannot write them.
     match /users/{userId} {
       allow read: if isOwner(userId);
 
@@ -32,8 +34,7 @@ service cloud.firestore {
         && request.resource.data.email == resource.data.email
         && request.resource.data.subscriptionTier == resource.data.subscriptionTier
         && request.resource.data.subscriptionStatus == resource.data.subscriptionStatus
-        && request.resource.data.stripeCustomerId == resource.data.stripeCustomerId
-        && request.resource.data.paypalSubscriptionId == resource.data.paypalSubscriptionId;
+        && request.resource.data.stripeCustomerId == resource.data.stripeCustomerId;
     }
     
     // Inventory collection - users can manage their own inventory under their UID
@@ -76,10 +77,15 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
     
-    // Subscription data - only readable by owner
+    // Subscription data - only readable by owner; written only by Cloud Functions (webhooks)
     match /subscriptions/{userId} {
       allow read: if isOwner(userId);
-      allow write: if false; // Only server can write subscriptions
+      allow write: if false;
+    }
+
+    // API usage (rate limiting) - written only by Cloud Functions
+    match /apiUsage/{userId} {
+      allow read, write: if false;
     }
 
     // Labeled training data - only backend services (admin SDK) may access
