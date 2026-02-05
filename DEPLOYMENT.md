@@ -1,17 +1,16 @@
-# Deployment Guide for PantryHustler
+# Deployment Guide for SAVR
 
-This guide covers deploying the PantryHustler application to production.
+This guide covers deploying the SAVR application to production.
 
 ## Prerequisites
 
 - Firebase project created and configured
 - Firebase CLI installed: `npm install -g firebase-tools`
-- Domain configured: www.pantryhustler.com
+- Domain configured: www.SAVR.cam
 - API keys obtained:
   - OpenAI API key
   - Google Cloud Vision API (optional, for fallback)
   - Stripe API keys
-  - PayPal API keys (optional)
 
 ## Step 1: Firebase Project Setup
 
@@ -19,7 +18,7 @@ This guide covers deploying the PantryHustler application to production.
 
 1. Go to [Firebase Console](https://console.firebase.google.com)
 2. Click "Add project"
-3. Name it "pantryhustler" or similar
+3. Name it "savr" or similar
 4. Enable Google Analytics (optional)
 
 ### 1.2 Enable Firebase Services
@@ -29,7 +28,7 @@ This guide covers deploying the PantryHustler application to production.
 1. Go to Authentication → Sign-in methods
 2. Enable Email/Password
 3. Enable Google
-4. Add authorized domains: `www.pantryhustler.com`, `pantryhustler.com`
+4. Add authorized domains: `www.SAVR.cam`, `SAVR.cam`
 
 **Firestore:**
 
@@ -54,7 +53,7 @@ This guide covers deploying the PantryHustler application to production.
 1. Go to Project Settings → General
 2. Scroll to "Your apps"
 3. Click "Web" (</>) to add a web app
-4. Register app with nickname "PantryHustler Web"
+4. Register app with nickname "SAVR Web"
 5. Copy the firebaseConfig object
 6. Repeat for mobile if needed
 
@@ -88,7 +87,7 @@ NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_secret
 
 # App
-NEXT_PUBLIC_APP_URL=https://www.pantryhustler.com
+NEXT_PUBLIC_APP_URL=https://www.SAVR.cam
 ```
 
 ### 2.2 Cloud Functions
@@ -99,18 +98,12 @@ Cloud Functions read `process.env`. Set these **once** in Google Cloud (the depl
 
 **Required variables:**
 
-| Variable                                             | Purpose                                                  |
-| ---------------------------------------------------- | -------------------------------------------------------- |
-| `OPENAI_API_KEY`                                     | OpenAI API                                               |
-| `STRIPE_SECRET_KEY`                                  | Stripe API                                               |
-| `STRIPE_WEBHOOK_SECRET`                              | Stripe webhook verification                              |
-| `NEXT_PUBLIC_APP_URL`                                | Redirect/base URL (e.g. `https://www.pantryhustler.com`) |
-| `PAYPAL_CLIENT_ID` or `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | PayPal client ID                                         |
-| `PAYPAL_CLIENT_SECRET`                               | PayPal API                                               |
-| `PAYPAL_WEBHOOK_ID`                                  | PayPal webhook verification                              |
-| `PAYPAL_PLAN_ID_PRO_MONTHLY`                         | PayPal subscription plan ID (monthly)                    |
-| `PAYPAL_PLAN_ID_PRO_YEARLY`                          | PayPal subscription plan ID (yearly)                     |
-| `PAYPAL_ENV`                                         | `live` or `sandbox`                                      |
+| Variable                  | Purpose                                         |
+| ------------------------- | ----------------------------------------------- |
+| `OPENAI_API_KEY`          | OpenAI API                                      |
+| `STRIPE_SECRET_KEY`       | Stripe API                                      |
+| `STRIPE_WEBHOOK_SECRET`   | Stripe webhook verification                     |
+| `NEXT_PUBLIC_APP_URL`     | Redirect/base URL (e.g. `https://www.SAVR.cam`) |
 
 **Optional (have defaults in code):** `OPENAI_MODEL_*`, `OPENAI_MODEL_VISION_*`, etc. (see `functions/src/services/ai.ts`).
 
@@ -152,17 +145,13 @@ cd ..
 firebase deploy --only functions
 ```
 
-This will deploy all 9 Cloud Functions:
+This will deploy all Cloud Functions including:
 
-- analyzeImage
-- createRecipe
-- createMealPlan
-- createGroceryList
-- chat
-- createStripeCheckout
-- createStripePortal
-- stripeWebhook
+- analyzeImage, createRecipe, createMealPlan, createGroceryList, chat
+- createStripeCheckout, createStripePortal, stripeWebhook
+- createPayPalCheckout, paypalWebhook
 - onUserCreate
+- (dataset labeling: uploadLabelingImage, getImageAnnotations, saveAnnotation, triggerSegmentation, exportDataset)
 
 ## Step 6: Build and Deploy Web Application
 
@@ -199,18 +188,18 @@ A workflow in `.github/workflows/firebase-deploy.yml` deploys Hosting, Functions
 - `FIREBASE_PROJECT_ID` — your Firebase project ID.
 - All web build-time vars (same names as in `web/.env.example`):
   - `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`
-  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `NEXT_PUBLIC_APP_URL`
+  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_APP_URL`
 
 **Note:** Cloud Functions environment variables are **not** set by the workflow. Configure them once in Google Cloud Console (see Step 2.2).
 
-## Step 7: Configure Custom Domain (www.pantryhustler.com)
+## Step 7: Configure Custom Domain (www.SAVR.cam)
 
 ### 7.1 Add custom domain in Firebase
 
 1. Go to Firebase Console → Hosting
 2. Click "Add custom domain" (or "Connect domain")
-3. Enter: `www.pantryhustler.com`
-4. If offered, add root `pantryhustler.com` as well (redirect to www recommended)
+3. Enter: `www.SAVR.cam`
+4. If offered, add root `SAVR.cam` as well (redirect to www recommended)
 
 ### 7.2 DNS records
 
@@ -229,18 +218,18 @@ Firebase provisions SSL automatically. Propagation can take from a few minutes u
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Go to Products → Add Product
-3. Create "PantryHustler Pro Monthly":
-   - Name: PantryHustler Pro
+3. Create "SAVR Pro Monthly":
+   - Name: SAVR Pro
    - Price: $9.99/month
    - Recurring: Monthly
    - Copy Price ID
-4. Create "PantryHustler Pro Yearly":
-   - Name: PantryHustler Pro
+4. Create "SAVR Pro Yearly":
+   - Name: SAVR Pro
    - Price: $99/year
    - Recurring: Yearly
    - Copy Price ID
 
-### 8.2 Configure Webhook
+### 8.2 Configure Stripe Webhook
 
 1. Go to Developers → Webhooks → Add endpoint
 2. Endpoint URL: `https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/stripeWebhook`
@@ -250,13 +239,25 @@ Firebase provisions SSL automatically. Propagation can take from a few minutes u
    - customer.subscription.deleted
    - invoice.payment_failed
 4. Copy webhook signing secret
-5. Add to Firebase Functions config
+5. Set in Google Cloud Console as `STRIPE_WEBHOOK_SECRET` for your functions
+
+### 8.3 Configure PayPal Webhook
+
+1. Go to [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/) → Your app → Webhooks
+2. Add webhook URL: `https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/paypalWebhook`
+3. Subscribe to events, e.g.:
+   - BILLING.SUBSCRIPTION.ACTIVATED
+   - BILLING.SUBSCRIPTION.CANCELLED
+   - BILLING.SUBSCRIPTION.SUSPENDED
+   - BILLING.SUBSCRIPTION.RE-ACTIVATED
+   - PAYMENT.SALE.DENIED (optional, for payment failures)
+4. Copy the Webhook ID and set it as `PAYPAL_WEBHOOK_ID` in Google Cloud Console (Cloud Functions environment variables)
 
 ## Step 9: Test the Deployment
 
 ### 9.1 Test Web Application
 
-1. Visit `https://www.pantryhustler.com`
+1. Visit `https://www.SAVR.cam`
 2. Sign up with a test account
 3. Upload a test image
 4. Generate a recipe
@@ -343,7 +344,7 @@ firebase hosting:rollback
 - [ ] Rate limiting implemented
 - [ ] Input validation in all Cloud Functions
 - [ ] Stripe webhook signature verification enabled
-- [ ] Pro tier features gated server-side
+- [ ] Pro tier features gated server-side (entitlements from Firestore only; subscription fields updated by webhooks only)
 
 ## Performance Optimization
 
@@ -410,7 +411,7 @@ firebase deploy --only functions:analyzeImage
 
 ### Domain Not Working
 
-1. Check DNS propagation: `dig www.pantryhustler.com`
+1. Check DNS propagation: `dig www.SAVR.cam`
 2. Verify in Firebase Console
 3. Wait up to 24 hours for SSL certificate
 

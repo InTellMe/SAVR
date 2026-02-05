@@ -54,37 +54,6 @@ export default function PricingPage() {
     }
   }
 
-  async function handlePayPalSubscribe() {
-    if (!user) {
-      router.push('/sign-in');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const createPayPalCheckout = httpsCallable(functions, 'createPayPalCheckout');
-      const appBaseUrl =
-        process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-
-      const result = await createPayPalCheckout({
-        planId:
-          process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID_PRO_MONTHLY ||
-          process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID_PRO_YEARLY,
-        successUrl: `${appBaseUrl}/dashboard?paypalSuccess=true`,
-        cancelUrl: `${appBaseUrl}/pricing?paypalCancelled=true`,
-      });
-
-      const data = result.data as { url: string };
-      window.location.href = data.url;
-    } catch (error) {
-      console.error('Error creating PayPal checkout:', error);
-      setError('Failed to start PayPal checkout. Please try again.');
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
       <Navbar />
@@ -151,12 +120,9 @@ export default function PricingPage() {
               'Priority support',
             ]}
             limitations={[]}
-            buttonText={userData?.subscriptionTier === 'pro' ? 'Current Plan' : 'Pay with card (Stripe)'}
+            buttonText={userData?.subscriptionTier === 'pro' ? 'Current Plan' : 'Subscribe'}
             buttonDisabled={userData?.subscriptionTier === 'pro'}
             onSelect={handleStripeSubscribe}
-            secondaryButtonText="Pay with PayPal"
-            secondaryButtonDisabled={userData?.subscriptionTier === 'pro'}
-            onSecondarySelect={handlePayPalSubscribe}
             loading={loading}
             recommended={true}
           />
@@ -174,7 +140,7 @@ export default function PricingPage() {
             />
             <FAQItem
               question="What payment methods do you accept?"
-              answer="We accept all major credit cards including Visa, Mastercard, American Express, and Discover through our secure Stripe payment processor, as well as PayPal."
+              answer="We accept all major credit cards including Visa, Mastercard, American Express, and Discover through our secure Stripe payment processor."
             />
             <FAQItem
               question="Is my data secure?"

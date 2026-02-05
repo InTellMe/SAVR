@@ -1,16 +1,18 @@
-PROJECT: PantryHustler
-PRODUCTION: https://www.pantryhustler.com
+PROJECT: SAVR
+PRODUCTION: https://www.SAVR.cam
 
 CORE PRINCIPLES:
+
 - Web-first SaaS MVP with Firebase backend
 - All AI calls happen server-side via Firebase Functions
 - No API keys or AI logic in frontend
 - Proprietary recognition pipeline phased in over time
 - User edits become labeled training data
 - Auth = Firebase Auth only
-- Payments = Stripe + PayPal with webhook entitlement gating
+- Payments = Stripe with webhook entitlement gating
 
 ENGINEERING RULES:
+
 - Modular monorepo (apps/, functions/, packages/, infra/, docs/)
 - Strong typing for shared contracts
 - All features behind tier limits
@@ -18,11 +20,13 @@ ENGINEERING RULES:
 - Log every AI request + cost metadata
 
 QUALITY:
+
 - Each slice deployable independently
 - No breaking schema changes without migration
 - Status.md updated after every milestone
 
 AGENTS:
+
 - Orchestrator controls sequencing
 - Others execute only their domain
 

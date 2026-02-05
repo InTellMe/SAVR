@@ -1,8 +1,8 @@
-# PantryHustler API Documentation
+# SAVR API Documentation
 
 ## Overview
 
-PantryHustler uses Firebase Cloud Functions as its backend API. All functions are callable HTTPS functions that require Firebase Authentication.
+SAVR uses Firebase Cloud Functions as its backend API. All functions are callable HTTPS functions that require Firebase Authentication.
 
 **Base URL**: `https://us-central1-[project-id].cloudfunctions.net`
 
@@ -503,6 +503,8 @@ Automatically creates a user document in Firestore when a new user signs up.
 
 **Collection**: `users/{userId}`
 
+Entitlement fields (`subscriptionTier`, `subscriptionStatus`, `stripeCustomerId`) are updated only by Cloud Functions via Stripe webhooks; clients cannot write them.
+
 ```typescript
 {
   uid: string;
@@ -600,6 +602,24 @@ Automatically creates a user document in Firestore when a new user signs up.
     category?: string;
   }>;
   createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### Subscription Record
+
+**Collection**: `subscriptions/{userId}`
+
+Written only by Cloud Functions (Stripe and PayPal webhooks). One document per user; merges provider-specific fields.
+
+```typescript
+{
+  userId: string;
+  provider: 'stripe';
+  stripeSubscriptionId?: string;
+  status: 'active' | 'cancelled' | 'past_due';
+  startDate?: Date;
+  endDate?: Date | null;
   updatedAt: Date;
 }
 ```
