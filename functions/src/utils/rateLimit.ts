@@ -33,6 +33,7 @@ export async function checkAndIncrement(
       const data = doc.data() as { requests: Array<{ timestamp: number }> } | undefined;
 
       // Filter out requests outside the current window
+      // This cleanup prevents unbounded array growth
       const recentRequests = (data?.requests || []).filter(
         (req) => req.timestamp > windowStart
       );
@@ -57,12 +58,13 @@ export async function checkAndIncrement(
     });
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Rate limit check error:', error);
-    // In case of error, allow the request but log the issue
+    // Fail closed to prevent abuse during errors
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
-      allowed: true,
-      reason: 'Rate limit check failed, allowing request',
+      allowed: false,
+      reason: `Rate limit check unavailable: ${errorMessage}`,
     };
   }
 }
