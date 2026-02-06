@@ -1,14 +1,15 @@
-# PantryHustler Web Application - Complete Implementation Guide
+# SAVR Web Application - Complete Implementation Guide
 
 ## Overview
 
-This is a fully functional Next.js 14 web application for PantryHustler - a smart cooking assistant that helps users manage their pantry inventory, generate recipes, plan meals, and get AI-powered cooking assistance.
+This is a fully functional Next.js 14 web application for SAVR - a smart cooking assistant that helps users manage their pantry inventory, generate recipes, plan meals, and get AI-powered cooking assistance.
 
 ## Application Structure
 
 ### Pages
 
 1. **Landing Page (`/`)**
+
    - Hero section with value proposition
    - Features showcase (6 key features)
    - How it works (4-step process)
@@ -16,6 +17,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
    - Footer
 
 2. **Authentication**
+
    - **Sign In (`/sign-in`)**: Email/password and Google OAuth
    - **Sign Up (`/sign-up`)**: Account creation with validation
 
@@ -31,6 +33,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ## Key Features
 
 ### 1. Smart Inventory Management
+
 - **Image Upload**: Drag-and-drop or click to upload pantry photos
 - **AI Analysis**: Automatically identifies ingredients from photos
 - **CRUD Operations**: Add, edit, delete inventory items
@@ -38,6 +41,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 - **Expiry Tracking**: Optional expiration date tracking
 
 ### 2. Recipe Generation
+
 - **AI-Powered**: Generates recipes based on available ingredients
 - **Customization Options**:
   - Dietary restrictions (vegetarian, vegan, gluten-free, etc.)
@@ -48,24 +52,28 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 - **Save & Manage**: Store favorite recipes
 
 ### 3. Meal Planning
+
 - **Multi-Day Plans**: Create plans for 1-14 days
 - **Flexible Meals**: 1-3 meals per day
 - **Calendar View**: Visual weekly meal schedule
 - **Dietary Preferences**: Apply restrictions to entire plan
 
 ### 4. Grocery Lists
+
 - **Smart Generation**: Based on meal plans and current inventory
 - **Categorized Items**: Organized by food categories
 - **Interactive Checkboxes**: Track shopping progress
 - **Progress Tracking**: Visual progress bar
 
 ### 5. AI Chat Assistant (Pro Feature)
+
 - **Conversational Interface**: Real-time chat with AI chef
 - **Cooking Tips**: Get advice on techniques and substitutions
 - **Recipe Help**: Ask questions about any recipe
 - **History**: Full conversation history preserved
 
 ### 6. Subscription Management
+
 - **Free Tier**: Basic features with limits
 - **Pro Tier**: Unlimited access and AI chat
 - **Stripe Integration**: Secure payment processing
@@ -74,12 +82,14 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ## Technical Implementation
 
 ### Frontend Stack
+
 - **Next.js 14**: React framework with App Router
 - **TypeScript**: Type-safe code
 - **Tailwind CSS**: Utility-first styling
 - **React Hooks**: Modern state management
 
 ### Backend Integration
+
 - **Firebase Authentication**: User management
 - **Cloud Firestore**: NoSQL database
 - **Firebase Storage**: Image storage
@@ -89,24 +99,28 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ### Key Components
 
 #### 1. Navbar (`components/Navbar.tsx`)
+
 - Responsive navigation
 - Auth state display
 - Dynamic menu based on authentication
 - Active page highlighting
 
 #### 2. ProtectedRoute (`components/ProtectedRoute.tsx`)
+
 - Authentication guard
 - Pro tier checking
 - Automatic redirects
 - Loading states
 
 #### 3. ImageUpload (`components/ImageUpload.tsx`)
+
 - Drag-and-drop interface
 - Image preview
 - File type validation
 - Loading feedback
 
 #### 4. LoadingSpinner (`components/LoadingSpinner.tsx`)
+
 - Reusable loading indicator
 - Multiple sizes
 - Consistent styling
@@ -114,29 +128,32 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ### Authentication Flow
 
 1. **Sign Up**:
+
    ```
-   User submits form → Firebase creates user → 
-   Create Firestore user document (UID as ID) → 
+   User submits form → Firebase creates user →
+   Create Firestore user document (UID as ID) →
    Redirect to dashboard
    ```
 
 2. **Sign In**:
+
    ```
-   User submits credentials → Firebase authenticates → 
-   Load user data from Firestore → 
+   User submits credentials → Firebase authenticates →
+   Load user data from Firestore →
    Redirect to dashboard
    ```
 
 3. **Google OAuth**:
    ```
-   User clicks Google button → OAuth popup → 
-   Create/merge user document → 
+   User clicks Google button → OAuth popup →
+   Create/merge user document →
    Redirect to dashboard
    ```
 
 ### Data Models
 
 #### User Document (`users/{uid}`)
+
 ```typescript
 {
   uid: string;
@@ -149,6 +166,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ```
 
 #### Inventory Item (`inventory/{id}`)
+
 ```typescript
 {
   userId: string;
@@ -163,6 +181,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ```
 
 #### Recipe (`recipes/{id}`)
+
 ```typescript
 {
   userId: string;
@@ -179,6 +198,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ```
 
 #### Meal Plan (`mealPlans/{id}`)
+
 ```typescript
 {
   userId: string;
@@ -196,6 +216,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ```
 
 #### Grocery List (`groceryLists/{id}`)
+
 ```typescript
 {
   userId: string;
@@ -212,10 +233,11 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ```
 
 #### Chat Message (`chats/{id}`)
+
 ```typescript
 {
   userId: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: string;
 }
@@ -224,12 +246,14 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 ## Cloud Functions Integration
 
 ### 1. analyzeImage
+
 - **Input**: `{ imageUrl: string }`
 - **Output**: `{ items: Array<{name, quantity, unit, category}> }`
 - **Purpose**: Analyze pantry photos using Vision API
 
 ### 2. createRecipe
-- **Input**: 
+
+- **Input**:
   ```typescript
   {
     ingredients: string[];
@@ -243,6 +267,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 - **Purpose**: Generate recipes using OpenAI
 
 ### 3. createMealPlan
+
 - **Input**:
   ```typescript
   {
@@ -256,6 +281,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 - **Purpose**: Create weekly meal plans
 
 ### 4. createGroceryList
+
 - **Input**:
   ```typescript
   {
@@ -267,6 +293,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 - **Purpose**: Generate smart shopping lists
 
 ### 5. chat
+
 - **Input**:
   ```typescript
   {
@@ -278,6 +305,7 @@ This is a fully functional Next.js 14 web application for PantryHustler - a smar
 - **Purpose**: AI cooking assistant
 
 ### 6. createStripeCheckout
+
 - **Input**: `{ priceId: string }`
 - **Output**: `{ url: string }`
 - **Purpose**: Create Stripe checkout session
@@ -303,16 +331,19 @@ NEXT_PUBLIC_STRIPE_PRICE_ID=
 ## Development Workflow
 
 1. **Start Development Server**:
+
    ```bash
    npm run dev
    ```
 
 2. **Build for Production**:
+
    ```bash
    npm run build
    ```
 
 3. **Start Production Server**:
+
    ```bash
    npm start
    ```
@@ -325,24 +356,28 @@ NEXT_PUBLIC_STRIPE_PRICE_ID=
 ## User Experience Features
 
 ### Loading States
+
 - Spinners during async operations
 - Skeleton screens for data loading
 - Disabled buttons during processing
 - Clear feedback messages
 
 ### Error Handling
+
 - User-friendly error messages
 - Form validation feedback
 - Network error handling
 - Graceful fallbacks
 
 ### Responsive Design
+
 - Mobile-first approach
 - Breakpoints: sm, md, lg
 - Touch-friendly interfaces
 - Optimized layouts
 
 ### Accessibility
+
 - Semantic HTML
 - ARIA labels
 - Keyboard navigation
@@ -351,16 +386,19 @@ NEXT_PUBLIC_STRIPE_PRICE_ID=
 ## Security Considerations
 
 1. **Authentication**:
+
    - Firebase handles password security
    - Secure token management
    - Protected route enforcement
 
 2. **Data Access**:
+
    - User-scoped queries
    - Firestore security rules
    - No direct database access
 
 3. **API Security**:
+
    - Cloud Functions authentication
    - HTTPS only
    - CORS configured
@@ -381,6 +419,7 @@ NEXT_PUBLIC_STRIPE_PRICE_ID=
 ## Future Enhancements
 
 Potential features for future versions:
+
 - Recipe sharing and social features
 - Nutrition tracking
 - Barcode scanning
@@ -397,16 +436,19 @@ Potential features for future versions:
 ### Common Issues
 
 1. **Build Errors**:
+
    - Ensure all environment variables are set
    - Check Firebase configuration
    - Verify Node.js version (18+)
 
 2. **Authentication Issues**:
+
    - Check Firebase console for enabled providers
    - Verify authorized domains
    - Check API key validity
 
 3. **Upload Failures**:
+
    - Verify Storage bucket configuration
    - Check file size limits
    - Ensure proper permissions

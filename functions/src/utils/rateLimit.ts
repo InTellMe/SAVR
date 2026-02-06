@@ -1,75 +1,46 @@
 import { db } from './firebase';
 
-interface RateLimitResult {
-  allowed: boolean;
-  reason?: string;
-}
-
-interface RateLimitDoc {
-  requests: Array<{ timestamp: number }>;
-  lastUpdated: number;
-}
+const DEFAULT_WINDOW_MS = 60_000; // 1 minute
+const DEFAULT_LIMIT = 100;
 
 /**
- * Rate limiter using Firestore for distributed tracking.
- * Implements a sliding window rate limit algorithm.
+ * Per-user, per-key rate limit using a rolling window in Firestore.
+ * Uses collection apiUsage/{uid} with fields: { [key]: { windowStart, count } }.
  *
- * @param userId - The user ID to track
- * @param bucket - The rate limit bucket (e.g., 'global', 'api', etc.)
- * @param maxRequests - Maximum number of requests allowed in the window
- * @param windowMs - Time window in milliseconds
- * @returns Promise resolving to rate limit result
+ * @param uid User ID
+ * @param key Rate limit key (e.g. 'global' for all callables)
+ * @param limit Max requests per window
+ * @param windowMs Window length in milliseconds
+ * @returns { allowed: true } or { allowed: false, reason: string }
  */
 export async function checkAndIncrement(
-  userId: string,
-  bucket: string,
-  maxRequests: number,
-  windowMs: number
-): Promise<RateLimitResult> {
-  try {
-    const now = Date.now();
-    const windowStart = now - windowMs;
-    const rateLimitKey = `${userId}_${bucket}`;
-    const rateLimitRef = db.collection('rateLimits').doc(rateLimitKey);
+  uid: string,
+  key: string,
+  limit: number = DEFAULT_LIMIT,
+  windowMs: number = DEFAULT_WINDOW_MS
+): Promise<{ allowed: boolean; reason?: string }> {
+  const ref = db.collection('apiUsage').doc(uid);
+  const now = Date.now();
 
-    // Use Firestore transaction to ensure atomic read-modify-write
-    const result = await db.runTransaction(async (transaction) => {
-      const doc = await transaction.get(rateLimitRef);
-      const data = doc.data() as RateLimitDoc | undefined;
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data: Record<string, unknown> = snap.data() ?? {};
+    const bucket = (data[key] as { windowStart?: number; count?: number } | undefined) ?? {};
+    const windowStart = bucket.windowStart ?? 0;
+    const count = bucket.count ?? 0;
 
-      // Filter out requests outside the current window
-      // This cleanup prevents unbounded array growth
-      const recentRequests = (data?.requests || []).filter(
-        (req) => req.timestamp > windowStart
-      );
+    const inWindow = now - windowStart < windowMs;
+    const newWindowStart = inWindow ? windowStart : now;
+    const newCount = inWindow ? count + 1 : 1;
 
-      // Check if limit is exceeded
-      if (recentRequests.length >= maxRequests) {
-        return {
-          allowed: false,
-          reason: `Rate limit exceeded. Maximum ${maxRequests} requests per ${windowMs / 1000} seconds.`,
-        };
-      }
+    if (newCount > limit) {
+      return {
+        allowed: false,
+        reason: 'API rate limit exceeded. Please try again in a minute.',
+      };
+    }
 
-      // Add current request and update document
-      recentRequests.push({ timestamp: now });
-      
-      transaction.set(rateLimitRef, {
-        requests: recentRequests,
-        lastUpdated: now,
-      });
-
-      return { allowed: true };
-    });
-
-    return result;
-  } catch (error: unknown) {
-    console.error('Rate limit check error:', error);
-    // Fail closed to prevent abuse during errors
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return {
-      allowed: false,
-      reason: `Rate limit check unavailable: ${errorMessage}`,
-    };
-  }
+    tx.set(ref, { [key]: { windowStart: newWindowStart, count: newCount } }, { merge: true });
+    return { allowed: true };
+  });
 }

@@ -4,11 +4,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import PwaRegister from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
-  title: "SAVR - Smart Assistant for Virtual Recipes",
-  description: "AI cooking assistant for you and your pets. Recipes from your pantry, meal plans, and pet-safe treats.",
-  manifest: "/manifest.json",
-  themeColor: "#ea580c",
-  viewport: "width=device-width, initial-scale=1",
+  title: "SAVR - Smart Cooking Assistant",
+  description: "Turn your pantry into delicious meals with AI-powered recipe generation",
 };
 
 export default function RootLayout({

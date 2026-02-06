@@ -1,6 +1,4 @@
-// Type definitions for PantryHustler
-export type SubscriptionTierName = 'basic' | 'plus' | 'premium';
-
+// Type definitions for SAVR
 export interface User {
   uid: string;
   email: string;

@@ -1,8 +1,8 @@
-# PantryHustler Mobile App - Implementation Summary
+# SAVR Mobile App - Implementation Summary
 
 ## Overview
 
-Complete React Native mobile application for PantryHustler, built with Expo and TypeScript.
+Complete React Native mobile application for SAVR, built with Expo and TypeScript.
 
 ## Project Statistics
 
@@ -75,6 +75,7 @@ mobile/
 ## Features Implemented
 
 ### 1. Authentication (Firebase Auth)
+
 - ✅ Email/password sign-up
 - ✅ Email/password sign-in
 - ✅ Google OAuth (configured, requires client IDs)
@@ -83,6 +84,7 @@ mobile/
 - ✅ Sign out functionality
 
 ### 2. Inventory Management
+
 - ✅ View pantry items
 - ✅ Add items with camera
 - ✅ Add items from gallery
@@ -92,6 +94,7 @@ mobile/
 - ✅ Real-time sync with Firestore
 
 ### 3. Recipe Discovery
+
 - ✅ View saved recipes
 - ✅ Generate recipes from inventory (AI)
 - ✅ Recipe details with ingredients/instructions
@@ -100,18 +103,21 @@ mobile/
 - ✅ Integration with Cloud Functions
 
 ### 4. Meal Planning
+
 - ✅ View weekly meal plans
 - ✅ Generate meal plans (AI)
 - ✅ Breakfast, lunch, dinner organization
 - ✅ Calendar-based view
 
 ### 5. Grocery Lists
+
 - ✅ View shopping lists
 - ✅ Check/uncheck items
 - ✅ Category grouping
 - ✅ Sync with meal plans
 
 ### 6. AI Chef Chat (Pro Feature)
+
 - ✅ Chat interface
 - ✅ Send/receive messages
 - ✅ Pro subscription check
@@ -119,12 +125,14 @@ mobile/
 - ✅ Cloud Function integration
 
 ### 7. Profile & Settings
+
 - ✅ User profile display
 - ✅ Subscription tier badge
 - ✅ Settings menu
 - ✅ Sign out
 
 ### 8. Navigation
+
 - ✅ Bottom tab navigation
 - ✅ Stack navigation for details
 - ✅ Protected routes (auth required)
@@ -132,6 +140,7 @@ mobile/
 - ✅ Consistent header styling
 
 ### 9. UI/UX
+
 - ✅ Mobile-optimized layouts
 - ✅ Loading states
 - ✅ Empty states
@@ -144,20 +153,26 @@ mobile/
 ## Key Components
 
 ### AuthContext
+
 Provides authentication state to entire app:
+
 - `user`: Current Firebase user
 - `userData`: Firestore user data (subscription tier, etc.)
 - `loading`: Auth initialization state
 - `signIn()`, `signUp()`, `signInWithGoogle()`, `signOut()`
 
 ### Navigation Structure
+
 Three-level hierarchy:
+
 1. **RootNavigator**: Switches between Auth and Main based on auth state
 2. **AuthNavigator**: Stack with Welcome → SignIn/SignUp
 3. **MainNavigator**: Bottom tabs + stack for details
 
 ### Image Handling
+
 Complete camera integration:
+
 - Permission requests
 - Camera capture
 - Gallery selection
@@ -165,7 +180,9 @@ Complete camera integration:
 - Image compression
 
 ### Cloud Functions Integration
+
 API calls to backend:
+
 - `generateRecipes()`: AI recipe generation
 - `generateMealPlan()`: Weekly meal planning
 - `chatWithAI()`: AI chef conversations
@@ -176,6 +193,7 @@ API calls to backend:
 Mirrors web app Firestore structure:
 
 ### Collections
+
 - `users`: User profiles and subscriptions
 - `inventory`: Pantry items with images
 - `recipes`: Generated recipes
@@ -183,6 +201,7 @@ Mirrors web app Firestore structure:
 - `groceryLists`: Shopping lists
 
 ### Security
+
 - User-specific data isolation
 - Authentication required for all operations
 - Image uploads scoped to user ID
@@ -190,11 +209,13 @@ Mirrors web app Firestore structure:
 ## Dependencies
 
 ### Core
+
 - react: 19.1.0
 - react-native: 0.81.5
 - expo: ~54.0.33
 
 ### Navigation
+
 - @react-navigation/native: ^7.1.28
 - @react-navigation/native-stack: ^7.7.1
 - @react-navigation/bottom-tabs
@@ -202,9 +223,11 @@ Mirrors web app Firestore structure:
 - react-native-safe-area-context: ^5.6.2
 
 ### Firebase
+
 - firebase: ^12.8.0
 
 ### Utilities
+
 - expo-image-picker: ^17.0.10
 - expo-camera: ^17.0.10
 - expo-auth-session
@@ -214,12 +237,14 @@ Mirrors web app Firestore structure:
 - @expo/vector-icons
 
 ### Development
+
 - typescript: ~5.9.2
 - @types/react: ~19.1.0
 
 ## Configuration Required
 
 ### 1. Firebase Setup
+
 - Firebase project configuration in `app.json`
 - Authentication providers enabled
 - Firestore rules deployed
@@ -227,11 +252,13 @@ Mirrors web app Firestore structure:
 - Cloud Functions deployed
 
 ### 2. Google OAuth (Optional)
+
 - Google Cloud Console project
 - OAuth client IDs (Web, iOS, Android)
 - Configuration in AuthContext
 
 ### 3. Permissions
+
 - Camera (iOS: NSCameraUsageDescription)
 - Photo Library (iOS: NSPhotoLibraryUsageDescription)
 - Android: CAMERA, READ/WRITE_EXTERNAL_STORAGE
@@ -297,15 +324,18 @@ Mirrors web app Firestore structure:
 ## Deployment
 
 ### Development
+
 ```bash
 npm start
 ```
 
 ### Production
+
 - iOS: `expo build:ios` → App Store
 - Android: `expo build:android` → Play Store
 
 ### Continuous Integration
+
 - Automated builds with Expo EAS
 - Testing pipeline (future)
 - Automated deployments (future)
@@ -321,6 +351,7 @@ npm start
 ## Support
 
 For issues or questions:
+
 - Review documentation files
 - Check Firebase configuration
 - Verify Cloud Functions are deployed
@@ -330,6 +361,7 @@ For issues or questions:
 ## Conclusion
 
 This is a production-ready React Native mobile application that:
+
 - Shares the same backend as the web app
 - Provides a native mobile experience
 - Implements all core features

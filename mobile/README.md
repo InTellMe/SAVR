@@ -1,6 +1,6 @@
-# PantryHustler Mobile App
+# SAVR Mobile App
 
-A React Native mobile application for PantryHustler - your smart cooking assistant.
+A React Native mobile application for SAVR - your smart cooking assistant.
 
 ## Features
 
@@ -73,14 +73,16 @@ mobile/
 ### Installation
 
 1. **Install dependencies:**
+
    ```bash
    cd mobile
    npm install
    ```
 
 2. **Configure Firebase:**
-   
+
    Update `app.json` with your Firebase configuration:
+
    ```json
    {
      "expo": {
@@ -97,6 +99,7 @@ mobile/
    ```
 
    Alternatively, create a `.env` file (requires expo-constants):
+
    ```env
    EXPO_PUBLIC_FIREBASE_API_KEY=your-api-key
    EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
@@ -107,11 +110,12 @@ mobile/
    ```
 
 3. **Configure Google Sign-In:**
-   
+
    Update the Google Client ID in `src/contexts/AuthContext.tsx`:
+
    ```typescript
    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-     clientId: 'YOUR_GOOGLE_CLIENT_ID',
+     clientId: "YOUR_GOOGLE_CLIENT_ID",
    });
    ```
 
@@ -138,11 +142,13 @@ npm run web
 ### Production Build
 
 #### iOS
+
 ```bash
 expo build:ios
 ```
 
 #### Android
+
 ```bash
 expo build:android
 ```
@@ -152,6 +158,7 @@ expo build:android
 ### Authentication
 
 The app uses Firebase Authentication with support for:
+
 - Email/password sign-in and sign-up
 - Google OAuth
 - Persistent authentication state with AsyncStorage
@@ -159,6 +166,7 @@ The app uses Firebase Authentication with support for:
 ### Camera Integration
 
 Uses `expo-image-picker` for:
+
 - Taking photos with camera
 - Selecting images from library
 - Image upload to Firebase Storage
@@ -166,6 +174,7 @@ Uses `expo-image-picker` for:
 ### Navigation
 
 Three-level navigation structure:
+
 1. **Root Navigator**: Switches between Auth and Main flows
 2. **Auth Navigator**: Welcome, Sign In, Sign Up screens
 3. **Main Navigator**: Tab navigation with stack screens
@@ -173,6 +182,7 @@ Three-level navigation structure:
 ### Data Sync
 
 All data is stored in Firebase Firestore and syncs in real-time:
+
 - Inventory items
 - Recipes
 - Meal plans
@@ -191,6 +201,7 @@ The app uses the same Firebase collections as the web app:
 ## Cloud Functions
 
 Integrates with Firebase Cloud Functions:
+
 - `generateRecipes`: Generate recipes from inventory
 - `generateMealPlan`: Create weekly meal plans
 - `chatWithAI`: Chat with AI chef (Pro only)
@@ -198,6 +209,7 @@ Integrates with Firebase Cloud Functions:
 ## Permissions
 
 The app requires the following permissions:
+
 - **Camera**: For taking photos of pantry items
 - **Photo Library**: For selecting existing images
 - **Internet**: For Firebase and API communication
@@ -207,6 +219,7 @@ The app requires the following permissions:
 ### Build Issues
 
 If you encounter build issues:
+
 ```bash
 # Clear cache and reinstall
 rm -rf node_modules
@@ -217,6 +230,7 @@ expo start -c
 ### Firebase Connection
 
 Ensure your Firebase configuration is correct and:
+
 - Firebase project is set up
 - Authentication providers are enabled
 - Firestore security rules allow read/write
@@ -225,6 +239,7 @@ Ensure your Firebase configuration is correct and:
 ### Camera Permissions
 
 On iOS, add to `app.json`:
+
 ```json
 {
   "ios": {
@@ -276,5 +291,6 @@ Proprietary - All rights reserved
 ## Support
 
 For issues or questions:
-- Email: support@pantryhustler.com
-- GitHub Issues: [Create an issue](https://github.com/InTellMe/PantryHustler/issues)
+
+- Email: support@SAVR.cam
+- GitHub Issues: [Create an issue](https://github.com/InTellMe/SAVR/issues)

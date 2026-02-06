@@ -98,12 +98,12 @@ Cloud Functions read `process.env`. Set these **once** in Google Cloud (the depl
 
 **Required variables:**
 
-| Variable                  | Purpose                                         |
-| ------------------------- | ----------------------------------------------- |
-| `OPENAI_API_KEY`          | OpenAI API                                      |
-| `STRIPE_SECRET_KEY`       | Stripe API                                      |
-| `STRIPE_WEBHOOK_SECRET`   | Stripe webhook verification                     |
-| `NEXT_PUBLIC_APP_URL`     | Redirect/base URL (e.g. `https://www.SAVR.cam`) |
+| Variable                | Purpose                                         |
+| ----------------------- | ----------------------------------------------- |
+| `OPENAI_API_KEY`        | OpenAI API                                      |
+| `STRIPE_SECRET_KEY`     | Stripe API                                      |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook verification                     |
+| `NEXT_PUBLIC_APP_URL`   | Redirect/base URL (e.g. `https://www.SAVR.cam`) |
 
 **Optional (have defaults in code):** `OPENAI_MODEL_*`, `OPENAI_MODEL_VISION_*`, etc. (see `functions/src/services/ai.ts`).
 
