@@ -25,23 +25,22 @@ SAVR is an AI-powered food management platform that helps you manage your pantry
 
 ## 🏗️ Architecture
 
-**Note**: This is currently a web-based MVP. Users upload photos through the web application to manage their pantry inventory. Mobile apps are available but the primary focus is on the web platform.
+### Web Application (`/web`)
 
-### Web Application (`/web`) - Primary Platform
-
-- **Framework**: Next.js 15 with TypeScript
-- **Styling**: Tailwind CSS
+- **Framework**: Next.js 16 with TypeScript
+- **Styling**: Tailwind CSS 4
 - **Backend**: Firebase (Auth, Firestore, Cloud Functions, Storage)
 - **Hosting**: Firebase Hosting at www.SAVR.cam
 - **Key Feature**: Photo upload for pantry/fridge inventory management
 
-### Mobile Application (`/mobile`) - Future Expansion
+### Mobile Application (`/mobile`)
 
-- **Framework**: Expo React Native with TypeScript
-- **Navigation**: React Navigation
+- **Framework**: Expo 54 + React Native 0.81 with TypeScript
+- **Navigation**: React Navigation 7.x (bottom tabs + stack)
 - **Backend**: Shared Firebase infrastructure with web app
-- **Platforms**: iOS and Android
-- **Status**: Available for future development, but web is the current focus
+- **Platforms**: Android (Google Play Store) and iOS (App Store)
+- **Key Feature**: Camera-based AI pantry scanning, full feature parity with web
+- **Build System**: EAS Build for production releases
 
 ### Cloud Functions (`/functions`)
 
@@ -137,10 +136,11 @@ npm run dev
 
 Visit `http://localhost:3000` to access the web application where you can upload photos of your pantry and fridge!
 
-6. **Run the mobile app locally** (optional - future expansion)
+6. **Run the mobile app locally**
 
 ```bash
 cd mobile
+npm install
 npm start
 # Then press 'a' for Android or 'i' for iOS
 ```
@@ -229,14 +229,100 @@ firebase deploy --only functions
 
 Configure `www.SAVR.cam` in Firebase Hosting settings.
 
+### Mobile App - Google Play Store Deployment
+
+The mobile app uses [EAS Build](https://docs.expo.dev/build/introduction/) for building and submitting to the Google Play Store.
+
+#### Prerequisites
+
+- [Expo account](https://expo.dev/signup) and EAS CLI installed: `npm install -g eas-cli`
+- [Google Play Developer account](https://play.google.com/console/) ($25 one-time fee)
+- Google Play service account JSON key for automated submissions
+- Firebase project configured with Android app (SHA-1 certificate fingerprint)
+
+#### One-time Setup
+
+1. **Log in to EAS and link the project:**
+
+```bash
+cd mobile
+eas login
+eas init
+```
+
+2. **Configure Firebase for Android:**
+
+   - Go to [Firebase Console](https://console.firebase.google.com/) > Project Settings > Add App > Android
+   - Use package name: `com.savr.app`
+   - Download `google-services.json` and place it in `mobile/`
+   - Add your debug/release SHA-1 fingerprint (required for Google Sign-In)
+
+3. **Set up Google Play service account for automated submission:**
+
+   - In Google Play Console, go to Setup > API access
+   - Create a service account with "Release manager" permissions
+   - Download the JSON key and save it as `mobile/google-play-service-account.json`
+
+4. **Configure environment secrets on Expo:**
+
+```bash
+eas secret:create --name FIREBASE_API_KEY --value "your-api-key" --scope project
+eas secret:create --name FIREBASE_AUTH_DOMAIN --value "your-auth-domain" --scope project
+eas secret:create --name FIREBASE_PROJECT_ID --value "your-project-id" --scope project
+eas secret:create --name FIREBASE_STORAGE_BUCKET --value "your-storage-bucket" --scope project
+eas secret:create --name FIREBASE_MESSAGING_SENDER_ID --value "your-sender-id" --scope project
+eas secret:create --name FIREBASE_APP_ID --value "your-app-id" --scope project
+```
+
+#### Building for Play Store
+
+```bash
+cd mobile
+
+# Development build (APK for testing)
+eas build --platform android --profile development
+
+# Preview build (APK for internal testing)
+eas build --platform android --profile preview
+
+# Production build (AAB for Play Store)
+eas build --platform android --profile production
+```
+
+#### Submitting to Google Play Store
+
+```bash
+# Submit the latest production build to Google Play (internal track)
+eas submit --platform android --latest
+
+# Or submit a specific build
+eas submit --platform android --id BUILD_ID
+```
+
+#### Play Store Release Process
+
+1. **Internal Testing**: Build with `production` profile, submit via `eas submit`. Test on internal track.
+2. **Closed Testing**: Promote from internal to closed testing in Google Play Console.
+3. **Open Testing / Production**: After testing, promote to open testing or production in Google Play Console.
+
+#### CI/CD Automated Builds
+
+The GitHub Actions workflow (`.github/workflows/mobile-build.yml`) automatically:
+- Builds an Android preview APK on every push to `main` that changes `mobile/` files
+- Supports manual dispatch for production builds and Play Store submission
+- Runs TypeScript checks before building
+
+Required GitHub secrets: `EXPO_TOKEN`, plus all `NEXT_PUBLIC_FIREBASE_*` secrets.
+
 ## 📊 Tech Stack
 
-- **Frontend**: React, Next.js 15, TypeScript, Tailwind CSS
-- **Mobile**: React Native, Expo, TypeScript
+- **Frontend**: React 19, Next.js 16, TypeScript, Tailwind CSS 4
+- **Mobile**: React Native 0.81, Expo 54, TypeScript
 - **Backend**: Firebase (Auth, Firestore, Functions, Storage, Hosting)
-- **AI**: OpenAI GPT-4, OpenAI Vision, Google Cloud Vision
+- **AI**: OpenAI GPT-4o, OpenAI Vision, Google Cloud Vision
 - **Payments**: Stripe
-- **Deployment**: Firebase Hosting, Cloud Functions
+- **Web Deployment**: Firebase Hosting, Cloud Functions, GitHub Actions CI/CD
+- **Mobile Deployment**: EAS Build, Google Play Store, GitHub Actions CI/CD
 
 ## 🤝 Contributing
 
