@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Linking } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { isPaidTier } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
+
+const APP_URL = 'https://www.savr.cam';
 
 export default function ProfileScreen() {
   const { user, userData, signOut } = useAuth();
@@ -86,25 +88,25 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Support</Text>
         
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL(`${APP_URL}/help`)}>
           <Ionicons name="help-circle-outline" size={24} color="#6b7280" />
           <Text style={styles.menuItemText}>Help Center</Text>
           <Ionicons name="chevron-forward" size={24} color="#9ca3af" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL('mailto:support@savr.cam')}>
           <Ionicons name="mail-outline" size={24} color="#6b7280" />
           <Text style={styles.menuItemText}>Contact Us</Text>
           <Ionicons name="chevron-forward" size={24} color="#9ca3af" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL(`${APP_URL}/privacy`)}>
           <Ionicons name="document-text-outline" size={24} color="#6b7280" />
           <Text style={styles.menuItemText}>Privacy Policy</Text>
           <Ionicons name="chevron-forward" size={24} color="#9ca3af" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => Linking.openURL(`${APP_URL}/terms`)}>
           <Ionicons name="shield-checkmark-outline" size={24} color="#6b7280" />
           <Text style={styles.menuItemText}>Terms of Service</Text>
           <Ionicons name="chevron-forward" size={24} color="#9ca3af" />

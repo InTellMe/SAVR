@@ -9,15 +9,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-/**
- * Polygon Annotation Component for Mobile
- * 
- * NOTE: For full polygon rendering, install react-native-svg:
- *   npm install react-native-svg
- * 
- * This component currently provides basic structure and can be enhanced
- * with full SVG rendering once react-native-svg is installed.
- */
+import Svg, { G, Polygon, Circle } from 'react-native-svg';
 
 interface PolygonPoint {
   x: number;

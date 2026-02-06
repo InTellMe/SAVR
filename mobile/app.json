@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "savr",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -14,7 +15,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.savr.app"
+      "bundleIdentifier": "com.savr.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "SAVR uses your camera to scan and photograph pantry items for inventory management.",
+        "NSPhotoLibraryUsageDescription": "SAVR needs access to your photo library to select images of pantry items.",
+        "NSPhotoLibraryAddUsageDescription": "SAVR saves recipe photos and inventory images to your photo library."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,14 +28,29 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.savr.app",
+      "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      "expo-camera",
+      "expo-image-picker"
+    ],
     "extra": {
+      "eas": {
+        "projectId": ""
+      },
       "firebaseApiKey": "",
       "firebaseAuthDomain": "",
       "firebaseProjectId": "",
@@ -39,6 +60,7 @@
       "googleClientId": "",
       "googleIosClientId": "",
       "googleAndroidClientId": ""
-    }
+    },
+    "owner": "intellme"
   }
 }

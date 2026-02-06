@@ -8,9 +8,11 @@ import {
   Alert,
   Modal,
   TextInput,
+  RefreshControl,
 } from 'react-native';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { InventoryItem } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +23,8 @@ import { uploadImage } from '../../utils/imageUtils';
 export default function InventoryScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [imageUri, setImageUri] = useState<string>('');
@@ -42,14 +46,84 @@ export default function InventoryScreen() {
       const q = query(collection(db, 'inventory'), where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       const inventoryItems: InventoryItem[] = [];
-      querySnapshot.forEach((doc) => {
-        inventoryItems.push({ id: doc.id, ...doc.data() } as InventoryItem);
+      querySnapshot.forEach((docSnap) => {
+        inventoryItems.push({ id: docSnap.id, ...docSnap.data() } as InventoryItem);
       });
       setItems(inventoryItems);
     } catch (error) {
       Alert.alert('Error', 'Failed to load inventory');
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadInventory();
+  };
+
+  const handleAIScan = async () => {
+    if (!user) return;
+
+    try {
+      setScanning(true);
+      // Use the image picker to get a photo
+      const ImagePicker = require('expo-image-picker');
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Camera permission is needed to scan pantry items.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (result.canceled) {
+        setScanning(false);
+        return;
+      }
+
+      const uri = result.assets[0].uri;
+
+      // Upload the image first
+      const imageUrl = await uploadImage(uri, user.uid, `scan_${Date.now()}`);
+
+      // Call the AI analysis cloud function
+      const analyzeImage = httpsCallable(functions, 'analyzeImage');
+      const response = await analyzeImage({ imageUrl });
+      const data = response.data as { success: boolean; ingredients: Array<{ name: string; quantity: number; unit: string; confidence: number }> };
+
+      if (data.success && data.ingredients.length > 0) {
+        // Add each detected ingredient to inventory
+        const addPromises = data.ingredients.map((ingredient) =>
+          addDoc(collection(db, 'inventory'), {
+            userId: user.uid,
+            name: ingredient.name,
+            quantity: ingredient.quantity,
+            unit: ingredient.unit || 'units',
+            category: 'scanned',
+            imageUrl,
+            addedAt: new Date(),
+          })
+        );
+        await Promise.all(addPromises);
+        Alert.alert(
+          'Scan Complete',
+          `Found ${data.ingredients.length} item${data.ingredients.length !== 1 ? 's' : ''}. They have been added to your pantry.`
+        );
+        loadInventory();
+      } else {
+        Alert.alert('No Items Found', 'Could not detect any food items in the photo. Try taking a clearer picture.');
+      }
+    } catch (error: any) {
+      const msg = error?.message || 'Failed to scan image';
+      Alert.alert('Scan Error', msg);
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -62,7 +136,7 @@ export default function InventoryScreen() {
     try {
       setLoading(true);
       let imageUrl = '';
-      
+
       if (imageUri) {
         const itemId = Date.now().toString();
         imageUrl = await uploadImage(imageUri, user.uid, itemId);
@@ -120,6 +194,9 @@ export default function InventoryScreen() {
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#ea580c']} />
+        }
         renderItem={({ item }) => (
           <View style={styles.itemCard}>
             <View style={styles.itemInfo}>
@@ -137,12 +214,26 @@ export default function InventoryScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="file-tray-outline" size={64} color="#9ca3af" />
             <Text style={styles.emptyText}>No items in your pantry</Text>
-            <Text style={styles.emptySubtext}>Add items to get started</Text>
+            <Text style={styles.emptySubtext}>Scan your pantry or add items manually</Text>
           </View>
         }
         contentContainerStyle={items.length === 0 ? styles.emptyContainer : styles.listContent}
       />
 
+      {/* AI Scan FAB */}
+      <TouchableOpacity
+        style={styles.scanFab}
+        onPress={handleAIScan}
+        disabled={scanning}
+      >
+        {scanning ? (
+          <LoadingSpinner size="small" color="#fff" />
+        ) : (
+          <Ionicons name="camera" size={28} color="#fff" />
+        )}
+      </TouchableOpacity>
+
+      {/* Manual Add FAB */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => setModalVisible(true)}
@@ -262,6 +353,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     marginTop: 8,
+  },
+  scanFab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#7c3aed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   fab: {
     position: 'absolute',

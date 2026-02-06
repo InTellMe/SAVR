@@ -48,5 +48,19 @@ ui-debug.log
 mobile/.expo/
 mobile/.expo-shared/
 
+# Mobile build artifacts
+mobile/android/
+mobile/ios/
+mobile/*.apk
+mobile/*.aab
+mobile/*.ipa
+
+# Google Services (contains API keys - do not commit)
+mobile/google-services.json
+mobile/GoogleService-Info.plist
+
+# Play Store service account key
+mobile/google-play-service-account.json
+
 # Lock files (keep only package-lock.json)
 yarn.lock

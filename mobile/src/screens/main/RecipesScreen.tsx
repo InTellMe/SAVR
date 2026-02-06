@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
+import { View, FlatList, StyleSheet, Alert, TouchableOpacity, Text, RefreshControl } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -21,6 +21,7 @@ interface RecipesScreenProps {
 export default function RecipesScreen({ navigation }: RecipesScreenProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
 
@@ -44,7 +45,13 @@ export default function RecipesScreen({ navigation }: RecipesScreenProps) {
       Alert.alert('Error', 'Failed to load recipes');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadRecipes();
   };
 
   const handleGenerateRecipes = async () => {
@@ -85,6 +92,9 @@ export default function RecipesScreen({ navigation }: RecipesScreenProps) {
       <FlatList
         data={recipes}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#ea580c']} />
+        }
         renderItem={({ item }) => (
           <RecipeCard
             recipe={item}
