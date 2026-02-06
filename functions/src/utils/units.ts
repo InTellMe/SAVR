@@ -1,4 +1,7 @@
-import { AiIngredient, CanonicalUnit } from '../types';
+import { AiIngredient, CanonicalUnit, ExtractedIngredient } from '../types';
+
+// Default confidence value for AI-extracted ingredients when confidence is not provided
+const DEFAULT_AI_CONFIDENCE = 0.5;
 
 const UNIT_NORMALIZATION_MAP: Record<string, CanonicalUnit> = {
   piece: 'piece',
@@ -125,12 +128,12 @@ export function normalizeAiIngredients(ingredients: any[]): AiIngredient[] {
   );
 }
 
-export function aiIngredientsToExtracted(ingredients: AiIngredient[]): import('../types').ExtractedIngredient[] {
+export function aiIngredientsToExtracted(ingredients: AiIngredient[]): ExtractedIngredient[] {
   return ingredients.map((ing) => ({
     name: ing.name,
     quantity: ing.quantity,
     unit: ing.unit,
-    confidence: ing.confidence ?? 0.5, // Default confidence if not provided
+    confidence: ing.confidence ?? DEFAULT_AI_CONFIDENCE,
   }));
 }
 
