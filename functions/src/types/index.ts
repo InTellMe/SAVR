@@ -233,6 +233,8 @@ export interface ChatResponse {
   response: string;
 }
 
+export type SubscriptionTierName = 'basic' | 'plus' | 'premium';
+
 export interface SubscriptionTier {
   name: SubscriptionTierName;
   maxInventoryItems: number;
