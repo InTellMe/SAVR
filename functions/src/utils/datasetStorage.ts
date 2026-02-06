@@ -1,42 +1,42 @@
 import { storage, db } from './firebase';
 import { ImageDocument, AnnotationDocument, CategoryDocument } from '../types';
 import * as admin from 'firebase-admin';
-
+ 
 /**
  * Storage utilities for dataset labeling pipeline
  * Handles image/video storage, thumbnails, and mask storage
  */
-
+ 
 const BUCKET = storage.bucket();
-
+ 
 /**
  * Get storage path for original image
  */
 export function getImageStoragePath(uid: string, imageId: string, extension: string = 'jpg'): string {
   return `images/${uid}/${imageId}.${extension}`;
 }
-
+ 
 /**
  * Get storage path for thumbnail
  */
 export function getThumbnailStoragePath(imageId: string, extension: string = 'jpg'): string {
   return `thumbnails/${imageId}.${extension}`;
 }
-
+ 
 /**
  * Get storage path for video
  */
 export function getVideoStoragePath(uid: string, videoId: string, extension: string = 'mp4'): string {
   return `videos/${uid}/${videoId}.${extension}`;
 }
-
+ 
 /**
  * Get storage path for mask (optional)
  */
 export function getMaskStoragePath(imageId: string, annotationId: string, objectId: string): string {
   return `masks/${imageId}/${annotationId}/${objectId}.png`;
 }
-
+ 
 /**
  * Upload image file to Firebase Storage
  */
@@ -49,6 +49,7 @@ export async function uploadImageFile(
   const path = getImageStoragePath(uid, imageId);
   const file = BUCKET.file(path);
   
+ 
   await file.save(fileBuffer, {
     metadata: {
       contentType,
@@ -58,13 +59,14 @@ export async function uploadImageFile(
       },
     },
   });
-
+ 
   // Make file publicly readable (or use signed URL if needed)
   await file.makePublic();
   
+ 
   return `gs://${BUCKET.name}/${path}`;
 }
-
+ 
 /**
  * Generate and upload thumbnail
  */
@@ -79,16 +81,17 @@ export async function generateAndUploadThumbnail(
   const path = getThumbnailStoragePath(imageId);
   const file = BUCKET.file(path);
   
+ 
   await file.save(imageBuffer, {
     metadata: {
       contentType: 'image/jpeg',
     },
   });
-
+ 
   await file.makePublic();
   return `gs://${BUCKET.name}/${path}`;
 }
-
+ 
 /**
  * Create image document in Firestore
  */
@@ -116,9 +119,9 @@ export async function createImageDocument(
     updatedAt: admin.firestore.FieldValue.serverTimestamp() as any,
     labelStatus: 'unlabeled',
   };
-
+ 
   await db.collection('images').doc(imageId).set(imageDoc);
-
+ 
   return {
     id: imageId,
     ...imageDoc,
@@ -126,7 +129,7 @@ export async function createImageDocument(
     updatedAt: new Date(),
   } as ImageDocument;
 }
-
+ 
 /**
  * Get image document from Firestore
  */
@@ -137,7 +140,7 @@ export async function getImageDocument(imageId: string): Promise<ImageDocument |
   }
   return { id: doc.id, ...doc.data() } as ImageDocument;
 }
-
+ 
 /**
  * Update image document label status
  */
@@ -155,7 +158,7 @@ export async function updateImageLabelStatus(
   }
   await db.collection('images').doc(imageId).update(updateData);
 }
-
+ 
 /**
  * Create annotation document in Firestore
  */
@@ -174,9 +177,9 @@ export async function createAnnotationDocument(
     .orderBy('version', 'desc')
     .limit(1)
     .get();
-
+ 
   const nextVersion = existingAnnotations.empty ? 1 : existingAnnotations.docs[0].data().version + 1;
-
+ 
   const annotationId = db.collection('annotations').doc().id;
   const annotationDoc: Omit<AnnotationDocument, 'id'> = {
     imageId,
@@ -189,9 +192,9 @@ export async function createAnnotationDocument(
     updatedAt: admin.firestore.FieldValue.serverTimestamp() as any,
     objects,
   };
-
+ 
   await db.collection('annotations').doc(annotationId).set(annotationDoc);
-
+ 
   return {
     id: annotationId,
     ...annotationDoc,
@@ -199,7 +202,7 @@ export async function createAnnotationDocument(
     updatedAt: new Date(),
   } as AnnotationDocument;
 }
-
+ 
 /**
  * Get annotations for an image
  */
@@ -209,13 +212,13 @@ export async function getImageAnnotations(imageId: string): Promise<AnnotationDo
     .where('imageId', '==', imageId)
     .orderBy('version', 'desc')
     .get();
-
+ 
   return snapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data(),
   })) as AnnotationDocument[];
 }
-
+ 
 /**
  * Get latest annotation for an image
  */
@@ -226,17 +229,17 @@ export async function getLatestAnnotation(imageId: string): Promise<AnnotationDo
     .orderBy('version', 'desc')
     .limit(1)
     .get();
-
+ 
   if (snapshot.empty) {
     return null;
   }
-
+ 
   return {
     id: snapshot.docs[0].id,
     ...snapshot.docs[0].data(),
   } as AnnotationDocument;
 }
-
+ 
 /**
  * Get or create category
  */
@@ -248,21 +251,21 @@ export async function getOrCreateCategory(
 ): Promise<CategoryDocument> {
   const categoryRef = db.collection('categories').doc(categoryId);
   const categoryDoc = await categoryRef.get();
-
+ 
   if (categoryDoc.exists) {
     return { id: categoryDoc.id, ...categoryDoc.data() } as CategoryDocument;
   }
-
+ 
   const newCategory: Omit<CategoryDocument, 'id'> = {
     name,
     color,
     metadata,
   };
-
+ 
   await categoryRef.set(newCategory);
   return { id: categoryId, ...newCategory };
 }
-
+ 
 /**
  * Get all categories
  */
@@ -273,7 +276,7 @@ export async function getAllCategories(): Promise<CategoryDocument[]> {
     ...doc.data(),
   })) as CategoryDocument[];
 }
-
+ 
 /**
  * Get signed URL for image access
  */
@@ -285,3 +288,4 @@ export async function getImageSignedUrl(storagePath: string, expiresIn: number =
   });
   return url;
 }
+ 
