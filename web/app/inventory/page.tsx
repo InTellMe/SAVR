@@ -420,12 +420,15 @@ function EditModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <input
-              type="text"
+            <select
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value as 'pantry' | 'fridge' | 'freezer' })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
+            >
+              <option value="pantry">Pantry</option>
+              <option value="fridge">Fridge</option>
+              <option value="freezer">Freezer</option>
+            </select>
           </div>
 
           <div>

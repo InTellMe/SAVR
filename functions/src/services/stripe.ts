@@ -234,14 +234,16 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     subscriptionStatus: 'past_due',
   });
 
-  const subId =
-    typeof (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription }).subscription === 'string'
-      ? (invoice as Stripe.Invoice & { subscription?: string }).subscription
-      : (invoice as Stripe.Invoice & { subscription?: Stripe.Subscription }).subscription?.id ?? null;
+  // Extract subscription ID safely
+  // Note: invoice.subscription_details is the new field, but it may not be in the types yet
+  const subscriptionId =
+    typeof (invoice as any).subscription_details?.subscription === 'string'
+      ? (invoice as any).subscription_details.subscription
+      : null;
 
   await upsertUserSubscriptionRecord(userId, {
     provider: 'stripe',
-    subscriptionId: subId ?? undefined,
+    subscriptionId: subscriptionId ?? undefined,
     status: 'past_due',
   });
 }

@@ -70,6 +70,7 @@ Return only the JSON array, no other text.`;
     ],
     max_tokens: 4000,
     response_format: { type: 'json_object' },
+    stream: false,
   });
 
   const content = completion.choices[0]?.message?.content || '{}';
