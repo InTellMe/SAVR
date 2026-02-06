@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 
 export default function Home() {
@@ -9,6 +10,18 @@ export default function Home() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 md:py-32">
         <div className="text-center max-w-4xl mx-auto">
+          {/* SAVR Logo */}
+          <div className="mb-8 flex justify-center">
+            <Image 
+              src="https://res.cloudinary.com/dksj2niho/image/upload/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
+              alt="SAVR Logo"
+              width={320}
+              height={320}
+              className="w-64 md:w-80 h-auto"
+              priority
+              unoptimized
+            />
+          </div>
           <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6">
             Turn Your Pantry Into
             <span className="text-orange-600"> Delicious Meals</span>
