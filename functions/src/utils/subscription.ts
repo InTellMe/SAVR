@@ -1,42 +1,40 @@
 import { db } from '../utils/firebase';
-import { TIER_LIMITS } from '../types';
+import { TIER_LIMITS, type SubscriptionTierName } from '../types';
 
 export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due';
 
 /**
  * Returns the effective subscription tier for a user, taking both
  * the stored tier and subscriptionStatus into account.
- *
- * - If the stored tier is 'pro' and status is explicitly set to a non-active
- *   state ('cancelled' or 'past_due'), the effective tier is downgraded to 'free'.
- * - If the status is undefined (e.g., legacy users), the stored tier is used as-is
- *   for backward compatibility.
+ * Legacy 'free'/'pro' are mapped to 'basic'/'plus'.
  */
-export async function getUserSubscriptionTier(userId: string): Promise<'free' | 'pro'> {
+export async function getUserSubscriptionTier(userId: string): Promise<SubscriptionTierName> {
   const userDoc = await db.collection('users').doc(userId).get();
   const userData = userDoc.data() as
     | {
-        subscriptionTier?: 'free' | 'pro';
+        subscriptionTier?: SubscriptionTierName | 'free' | 'pro';
         subscriptionStatus?: SubscriptionStatus;
       }
     | undefined;
 
-  const storedTier = userData?.subscriptionTier || 'free';
+  let storedTier = userData?.subscriptionTier || 'basic';
   const status = userData?.subscriptionStatus;
 
-  // Only downgrade Pro users if their status is explicitly set to a non-active state
-  // (e.g., 'cancelled' or 'past_due'). If status is undefined and tier is 'pro',
-  // assume 'active' for backward compatibility with legacy users.
-  if (storedTier === 'pro' && status !== undefined && status !== 'active') {
-    return 'free';
+  // Map legacy tiers
+  if (storedTier === 'free') storedTier = 'basic';
+  if (storedTier === 'pro') storedTier = 'plus';
+
+  // Downgrade paid users if status is non-active
+  if ((storedTier === 'plus' || storedTier === 'premium') && status !== undefined && status !== 'active') {
+    return 'basic';
   }
 
-  return storedTier;
+  return storedTier as SubscriptionTierName;
 }
 
 export async function checkUsageLimit(
   userId: string,
-  resource: 'inventory' | 'recipes' | 'mealPlans' | 'aiChat'
+  resource: 'inventory' | 'recipes' | 'mealPlans' | 'petRecipes' | 'aiChat'
 ): Promise<{ allowed: boolean; reason?: string }> {
   const tier = await getUserSubscriptionTier(userId);
   const limits = TIER_LIMITS[tier];
@@ -44,8 +42,31 @@ export async function checkUsageLimit(
   if (resource === 'aiChat' && !limits.aiChatEnabled) {
     return {
       allowed: false,
-      reason: 'AI chat is only available for Pro subscribers',
+      reason: 'AI chat is available on Plus and Premium. Upgrade to unlock.',
     };
+  }
+
+  // Check monthly pet recipe limit (Basic/free tier)
+  if (resource === 'petRecipes' && limits.maxPetRecipesPerMonth !== -1) {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const petRecipesSnapshot = await db
+      .collection('recipes')
+      .doc(userId)
+      .collection('items')
+      .where('generatedBy', '==', 'ai')
+      .where('recipeType', '==', 'pet')
+      .where('createdAt', '>=', startOfMonth)
+      .get();
+
+    if (petRecipesSnapshot.size >= limits.maxPetRecipesPerMonth) {
+      return {
+        allowed: false,
+        reason: `Monthly pet recipe limit reached (${limits.maxPetRecipesPerMonth}). Upgrade to Plus or Premium for unlimited pet recipes.`,
+      };
+    }
   }
 
   // Check inventory limit
@@ -59,7 +80,7 @@ export async function checkUsageLimit(
     if (inventorySnapshot.size >= limits.maxInventoryItems) {
       return {
         allowed: false,
-        reason: `Inventory limit reached. Upgrade to Pro for unlimited items.`,
+        reason: `Inventory limit reached. Upgrade to Plus or Premium for unlimited items.`,
       };
     }
   }
@@ -81,7 +102,7 @@ export async function checkUsageLimit(
     if (recipesSnapshot.size >= limits.maxRecipesPerMonth) {
       return {
         allowed: false,
-        reason: `Monthly recipe generation limit reached. Upgrade to Pro for unlimited recipes.`,
+        reason: `Monthly recipe limit reached. Upgrade to Plus or Premium for unlimited recipes.`,
       };
     }
   }
@@ -102,7 +123,7 @@ export async function checkUsageLimit(
     if (mealPlansSnapshot.size >= limits.maxMealPlansPerMonth) {
       return {
         allowed: false,
-        reason: `Monthly meal plan limit reached. Upgrade to Pro for unlimited meal plans.`,
+        reason: `Monthly meal plan limit reached. Upgrade to Plus or Premium for unlimited meal plans.`,
       };
     }
   }
@@ -117,7 +138,7 @@ export async function checkUsageLimit(
 export async function updateUserSubscription(
   userId: string,
   updates: {
-    subscriptionTier?: 'free' | 'pro';
+    subscriptionTier?: SubscriptionTierName;
     subscriptionStatus?: SubscriptionStatus;
     stripeCustomerId?: string | null;
     paypalSubscriptionId?: string | null;

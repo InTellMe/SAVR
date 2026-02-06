@@ -13,12 +13,18 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
+export type SubscriptionTierName = 'basic' | 'plus' | 'premium';
+
 interface UserData {
   uid: string;
   email: string | null;
   displayName?: string | null;
-  subscriptionTier: 'free' | 'pro';
+  subscriptionTier: SubscriptionTierName | 'free' | 'pro'; // legacy: free/pro from Firestore
   subscriptionStatus?: string;
+}
+
+export function isPaidTier(tier: UserData['subscriptionTier'] | undefined): boolean {
+  return tier === 'plus' || tier === 'premium' || tier === 'pro';
 }
 
 interface AuthContextType {

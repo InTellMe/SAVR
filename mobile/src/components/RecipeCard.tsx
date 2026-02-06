@@ -15,7 +15,14 @@ export default function RecipeCard({ recipe, onPress }: RecipeCardProps) {
         <Image source={{ uri: recipe.imageUrl }} style={styles.image} />
       )}
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>{recipe.title}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={2}>{recipe.title}</Text>
+          {recipe.recipeType === 'pet' && (
+            <View style={styles.petBadge}>
+              <Text style={styles.petBadgeText}>{recipe.species === 'cat' ? 'Cat' : 'Dog'}</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.description} numberOfLines={2}>{recipe.description}</Text>
         <View style={styles.footer}>
           <View style={styles.iconText}>
@@ -52,11 +59,28 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
   title: {
+    flex: 1,
     fontSize: 18,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 8,
+  },
+  petBadge: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  petBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400e',
   },
   description: {
     fontSize: 14,

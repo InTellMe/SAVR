@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -14,6 +14,9 @@ interface RecipeIngredient {
   quantity: number;
   unit: string;
 }
+
+type RecipeType = 'human' | 'pet';
+type PetSpecies = 'cat' | 'dog';
 
 interface Recipe {
   id: string;
@@ -27,6 +30,8 @@ interface Recipe {
   difficulty: 'easy' | 'medium' | 'hard';
   cuisine?: string;
   dietaryTags?: string[];
+  recipeType?: RecipeType;
+  species?: PetSpecies;
 }
 
 export default function RecipesPage() {
@@ -47,6 +52,8 @@ function RecipesContent() {
   const [error, setError] = useState('');
   
   const [formData, setFormData] = useState({
+    recipeType: 'human' as RecipeType,
+    species: 'dog' as PetSpecies,
     dietaryRestrictions: [] as string[],
     cuisinePreference: '',
     skillLevel: 'intermediate',
@@ -88,15 +95,23 @@ function RecipesContent() {
       const inventoryCollection = collection(db, 'inventory', user.uid, 'items');
       const inventoryQuery = query(inventoryCollection, where('userId', '==', user.uid));
       const inventorySnap = await getDocs(inventoryQuery);
-      const ingredients = inventorySnap.docs.map(doc => doc.data().name as string);
+      const ingredients = inventorySnap.docs.map(d => d.data().name as string).filter(Boolean);
+
+      if (ingredients.length === 0) {
+        setError('Add items to your pantry first so we can suggest recipes.');
+        setGenerating(false);
+        return;
+      }
 
       // Call Cloud Function
       const createRecipe = httpsCallable(functions, 'createRecipe');
       const result = await createRecipe({
         ingredients,
+        recipeType: formData.recipeType,
+        species: formData.recipeType === 'pet' ? formData.species : undefined,
         preferences: {
-          cuisine: formData.cuisinePreference || undefined,
-          dietary: formData.dietaryRestrictions,
+          cuisine: formData.recipeType === 'human' ? formData.cuisinePreference || undefined : undefined,
+          dietary: formData.recipeType === 'human' ? formData.dietaryRestrictions : undefined,
           difficulty:
             formData.skillLevel === 'beginner'
               ? 'easy'
@@ -111,10 +126,21 @@ function RecipesContent() {
         success: boolean;
         recipeId: string;
         recipe: Omit<Recipe, 'id'>;
+        recipeType?: RecipeType;
+        species?: PetSpecies;
+        removedForSafety?: string[];
       };
 
       if (!data.success) {
         throw new Error('Recipe generation failed');
+      }
+
+      if (data.removedForSafety && data.removedForSafety.length > 0) {
+        setError(
+          `Some ingredients were removed for pet safety: ${data.removedForSafety.join(', ')}. Recipe uses only safe ingredients.`
+        );
+      } else {
+        setError('');
       }
 
       await loadRecipes();
@@ -123,7 +149,7 @@ function RecipesContent() {
       console.error('Error generating recipe:', error);
       const code = error?.code as string | undefined;
       if (code && code.includes('resource-exhausted')) {
-        setError('You have reached your free recipe limit. Upgrade to Pro for unlimited recipes.');
+        setError(error?.message || 'You have reached your limit. Upgrade to Pro for unlimited recipes.');
       } else if (code && code.includes('unauthenticated')) {
         setError('You must be signed in to generate recipes.');
       } else {
@@ -208,14 +234,73 @@ function RecipesContent() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-white rounded-lg p-6 max-w-md w-full my-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-6">Generate Recipe</h3>
-              
+
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cooking for Humans or Pets?
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="recipeType"
+                        checked={formData.recipeType === 'human'}
+                        onChange={() => setFormData({ ...formData, recipeType: 'human' })}
+                        className="mr-2"
+                      />
+                      <span>Humans</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="recipeType"
+                        checked={formData.recipeType === 'pet'}
+                        onChange={() => setFormData({ ...formData, recipeType: 'pet' })}
+                        className="mr-2"
+                      />
+                      <span>Pets</span>
+                    </label>
+                  </div>
+                </div>
+
+                {formData.recipeType === 'pet' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Species
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="species"
+                          checked={formData.species === 'dog'}
+                          onChange={() => setFormData({ ...formData, species: 'dog' })}
+                          className="mr-2"
+                        />
+                        <span>Dog</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="species"
+                          checked={formData.species === 'cat'}
+                          onChange={() => setFormData({ ...formData, species: 'cat' })}
+                          className="mr-2"
+                        />
+                        <span>Cat</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {formData.recipeType === 'human' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Dietary Restrictions
                   </label>
                   <div className="space-y-2">
-                    {['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'nut-free'].map(option => (
+                    {['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'nut-free', 'keto', 'paleo', 'low-sodium', 'diabetic-friendly'].map(option => (
                       <label key={option} className="flex items-center">
                         <input
                           type="checkbox"
@@ -240,19 +325,22 @@ function RecipesContent() {
                     ))}
                   </div>
                 </div>
+                )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cuisine Preference (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.cuisinePreference}
-                    onChange={(e) => setFormData({ ...formData, cuisinePreference: e.target.value })}
-                    placeholder="e.g., Italian, Mexican, Asian"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
+                {formData.recipeType === 'human' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cuisine Preference (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cuisinePreference}
+                      onChange={(e) => setFormData({ ...formData, cuisinePreference: e.target.value })}
+                      placeholder="e.g., Italian, Mexican, Asian"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -307,6 +395,28 @@ function RecipesContent() {
           <RecipeDetailsModal
             recipe={selectedRecipe}
             onClose={() => setSelectedRecipe(null)}
+            onShare={async () => {
+              const shareId = crypto.randomUUID();
+              await setDoc(doc(db, 'sharedRecipes', shareId), {
+                userId: user?.uid,
+                title: selectedRecipe.title,
+                description: selectedRecipe.description,
+                ingredients: selectedRecipe.ingredients,
+                instructions: selectedRecipe.instructions,
+                prepTime: selectedRecipe.prepTime,
+                cookTime: selectedRecipe.cookTime,
+                servings: selectedRecipe.servings,
+                difficulty: selectedRecipe.difficulty,
+                cuisine: selectedRecipe.cuisine,
+                dietaryTags: selectedRecipe.dietaryTags,
+                recipeType: selectedRecipe.recipeType,
+                species: selectedRecipe.species,
+              });
+              const url = `${window.location.origin}/r/${shareId}`;
+              await navigator.clipboard.writeText(url);
+              setError('');
+              alert('Link copied to clipboard!');
+            }}
           />
         )}
       </div>
@@ -325,11 +435,18 @@ function RecipeCard({
 }) {
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-lg transition p-6">
-      <div className="flex justify-between items-start mb-3">
+      <div className="flex justify-between items-start mb-3 flex-wrap gap-2">
         <h3 className="text-xl font-semibold text-gray-900">{recipe.title}</h3>
-        <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded">
-          {recipe.difficulty}
-        </span>
+        <div className="flex items-center gap-2">
+          {recipe.recipeType === 'pet' && (
+            <span className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded">
+              Safe for {recipe.species === 'cat' ? 'Cats' : 'Dogs'}
+            </span>
+          )}
+          <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded">
+            {recipe.difficulty}
+          </span>
+        </div>
       </div>
       
       <p className="text-gray-600 text-sm mb-4 line-clamp-2">{recipe.description}</p>
@@ -357,33 +474,59 @@ function RecipeCard({
   );
 }
 
-function RecipeDetailsModal({ 
-  recipe, 
-  onClose 
-}: { 
-  recipe: Recipe; 
+function RecipeDetailsModal({
+  recipe,
+  onClose,
+  onShare,
+}: {
+  recipe: Recipe;
   onClose: () => void;
+  onShare?: () => void | Promise<void>;
 }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-start mb-4">
           <h2 className="text-3xl font-bold text-gray-900">{recipe.title}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-2">
+            {onShare && (
+              <button
+                type="button"
+                onClick={onShare}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Share
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 text-2xl"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
-        <p className="text-gray-600 mb-6">{recipe.description}</p>
+        {recipe.recipeType === 'pet' && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4 text-sm">
+            <strong>Pet recipe:</strong> Safe for {recipe.species === 'cat' ? 'cats' : 'dogs'}. Always consult your veterinarian before making significant changes to your pet&apos;s diet. These treats or meals are intended as occasional supplements, not as a complete and balanced diet.
+          </div>
+        )}
 
-        <div className="flex items-center space-x-6 mb-6 text-sm text-gray-600">
+        <p className="text-gray-600 mb-6 whitespace-pre-line">{recipe.description}</p>
+
+        <div className="flex items-center flex-wrap gap-4 mb-6 text-sm text-gray-600">
           <span>⏱️ {recipe.prepTime + recipe.cookTime} minutes</span>
           <span>🍽️ {recipe.servings} servings</span>
           <span>📊 {recipe.difficulty}</span>
-          {recipe.cuisine && <span>🌍 {recipe.cuisine}</span>}
+          {recipe.cuisine && recipe.cuisine !== 'pet' && <span>🌍 {recipe.cuisine}</span>}
+          {recipe.dietaryTags && recipe.dietaryTags.length > 0 && (
+            <span className="flex gap-1 flex-wrap">
+              {recipe.dietaryTags.map(tag => (
+                <span key={tag} className="px-2 py-0.5 bg-gray-100 rounded text-gray-700">{tag}</span>
+              ))}
+            </span>
+          )}
         </div>
 
         <div className="mb-6">
@@ -412,12 +555,23 @@ function RecipeDetailsModal({
           </ol>
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full mt-6 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
-        >
-          Close
-        </button>
+        <div className="flex gap-2 mt-6">
+          {onShare && (
+            <button
+              type="button"
+              onClick={onShare}
+              className="flex-1 px-4 py-2 border border-orange-600 text-orange-600 rounded-md hover:bg-orange-50"
+            >
+              Share recipe
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

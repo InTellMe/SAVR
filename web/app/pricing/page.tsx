@@ -13,46 +13,50 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const tier = userData?.subscriptionTier;
+  const isBasic = tier === 'basic' || tier === 'free';
+  const isPlus = tier === 'plus' || tier === 'pro';
+  const isPremium = tier === 'premium';
+
   function handleFree() {
     if (!user) {
       router.push('/sign-up');
       return;
     }
-
     router.push('/dashboard');
   }
 
-  async function handleStripeSubscribe() {
+  async function handleStripeSubscribe(priceId: string) {
     if (!user) {
       router.push('/sign-in');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       const createStripeCheckout = httpsCallable(functions, 'createStripeCheckout');
-      const appBaseUrl =
-        process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
       const result = await createStripeCheckout({
-        priceId:
-          process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY ||
-          process.env.NEXT_PUBLIC_STRIPE_PRICE_ID ||
-          'price_pro',
+        priceId,
         successUrl: `${appBaseUrl}/dashboard?stripeSuccess=true`,
         cancelUrl: `${appBaseUrl}/pricing?stripeCancelled=true`,
       });
-
       const data = result.data as { url: string };
       window.location.href = data.url;
-    } catch (error) {
-      console.error('Error creating Stripe checkout:', error);
-      setError('Failed to start Stripe checkout. Please try again.');
+    } catch (err) {
+      console.error('Stripe checkout error:', err);
+      setError('Failed to start checkout. Please try again.');
       setLoading(false);
     }
   }
+
+  const priceIdPlus =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS ||
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY ||
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID ||
+    'price_plus';
+  const priceIdPremium =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM || 'price_premium';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
@@ -74,57 +78,69 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* Free Plan */}
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {/* Basic */}
           <PricingCard
-            name="Free"
+            name="Basic"
             price="$0"
             period="forever"
             description="Perfect for getting started"
             features={[
-              'Smart inventory tracking',
-              'Upload up to 10 photos per month',
-              'Basic recipe generation',
-              'Simple meal planning',
+              'Smart inventory (up to 50 items)',
+              '10 AI recipes per month',
+              '2 meal plans per month',
+              '5 pet recipes per month',
               'Basic grocery lists',
               'Community support',
             ]}
-            limitations={[
-              'Limited to 50 inventory items',
-              'Basic recipes only',
-              'No AI chat assistant',
-            ]}
-            buttonText={userData?.subscriptionTier === 'free' ? 'Current Plan' : 'Get Started'}
-            buttonDisabled={userData?.subscriptionTier === 'free'}
+            limitations={['No AI chat assistant']}
+            buttonText={isBasic ? 'Current Plan' : 'Get Started'}
+            buttonDisabled={isBasic}
             onSelect={handleFree}
             loading={loading}
             recommended={false}
           />
 
-          {/* Pro Plan */}
+          {/* Plus */}
           <PricingCard
-            name="Pro"
-            price="$9.99"
+            name="Plus"
+            price="$7.99"
             period="per month"
-            description="For serious home cooks"
+            description="For regular home cooks"
             features={[
-              'Everything in Free, plus:',
-              'Unlimited photo uploads',
-              'Unlimited inventory items',
-              'Advanced recipe generation',
-              'Detailed meal planning',
-              'Smart grocery lists',
+              'Everything in Basic',
+              'Unlimited inventory',
+              'Unlimited recipes & meal plans',
+              'Unlimited pet recipes',
               'AI cooking assistant chat',
-              'Recipe customization',
-              'Nutritional information',
-              'Priority support',
+              'Ad-free experience',
             ]}
             limitations={[]}
-            buttonText={userData?.subscriptionTier === 'pro' ? 'Current Plan' : 'Subscribe'}
-            buttonDisabled={userData?.subscriptionTier === 'pro'}
-            onSelect={handleStripeSubscribe}
+            buttonText={isPlus ? 'Current Plan' : 'Subscribe'}
+            buttonDisabled={isPlus}
+            onSelect={() => handleStripeSubscribe(priceIdPlus)}
             loading={loading}
             recommended={true}
+          />
+
+          {/* Premium */}
+          <PricingCard
+            name="Premium"
+            price="$14.99"
+            period="per month"
+            description="For power users"
+            features={[
+              'Everything in Plus',
+              'Real-time cooking coach',
+              'Priority support',
+              'Early access to new features',
+            ]}
+            limitations={[]}
+            buttonText={isPremium ? 'Current Plan' : 'Subscribe'}
+            buttonDisabled={isPremium}
+            onSelect={() => handleStripeSubscribe(priceIdPremium)}
+            loading={loading}
+            recommended={false}
           />
         </div>
 
@@ -136,7 +152,7 @@ export default function PricingPage() {
           <div className="space-y-6">
             <FAQItem
               question="Can I switch plans anytime?"
-              answer="Yes! You can upgrade from Free to Pro at any time. Pro subscriptions can be canceled anytime and you'll retain access until the end of your billing period."
+              answer="Yes! You can upgrade from Basic to Plus or Premium at any time. Subscriptions can be canceled anytime and you'll retain access until the end of your billing period."
             />
             <FAQItem
               question="What payment methods do you accept?"
@@ -148,7 +164,7 @@ export default function PricingPage() {
             />
             <FAQItem
               question="Can I get a refund?"
-              answer="We offer a 30-day money-back guarantee on Pro subscriptions. If you're not satisfied, contact our support team for a full refund."
+              answer="We offer a 30-day money-back guarantee on Plus and Premium. If you're not satisfied, contact our support team for a full refund."
             />
           </div>
         </div>

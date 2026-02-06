@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, isPaidTier } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -13,16 +13,17 @@ export default function ProtectedRoute({
 }) {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
+  const hasPaidTier = isPaidTier(userData?.subscriptionTier);
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/sign-in');
-      } else if (requirePro && userData?.subscriptionTier !== 'pro') {
+      } else if (requirePro && !hasPaidTier) {
         router.push('/pricing');
       }
     }
-  }, [user, userData, loading, router, requirePro]);
+  }, [user, userData, loading, router, requirePro, hasPaidTier]);
 
   if (loading) {
     return (
@@ -32,7 +33,7 @@ export default function ProtectedRoute({
     );
   }
 
-  if (!user || (requirePro && userData?.subscriptionTier !== 'pro')) {
+  if (!user || (requirePro && !hasPaidTier)) {
     return null;
   }
 

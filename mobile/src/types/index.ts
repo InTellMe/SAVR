@@ -4,13 +4,19 @@ export interface User {
   displayName?: string | null;
 }
 
+export type SubscriptionTierName = 'basic' | 'plus' | 'premium';
+
 export interface UserData {
   uid: string;
   email: string | null;
   displayName?: string | null;
-  subscriptionTier: 'free' | 'pro';
+  subscriptionTier: SubscriptionTierName | 'free' | 'pro';
   subscriptionStatus?: string;
   createdAt?: any;
+}
+
+export function isPaidTier(tier: UserData['subscriptionTier'] | undefined): boolean {
+  return tier === 'plus' || tier === 'premium' || tier === 'pro';
 }
 
 export interface InventoryItem {
@@ -24,14 +30,26 @@ export interface InventoryItem {
   addedAt: any;
 }
 
+export interface RecipeIngredient {
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface Recipe {
   id: string;
   title: string;
   description: string;
-  ingredients: string[];
+  ingredients: RecipeIngredient[] | string[];
   instructions: string[];
+  prepTime?: number;
   cookTime: number;
   servings: number;
+  difficulty?: string;
+  cuisine?: string;
+  dietaryTags?: string[];
+  recipeType?: 'human' | 'pet';
+  species?: 'cat' | 'dog';
   imageUrl?: string;
   createdAt: any;
 }

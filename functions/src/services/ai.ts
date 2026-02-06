@@ -7,6 +7,7 @@ import {
   ExtractedIngredient,
 } from '../types';
 import { normalizeAiIngredients } from '../utils/units';
+import { filterIngredientsForPet, PET_RECIPE_DISCLAIMER } from '../config/forbiddenFoods';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -179,6 +180,19 @@ Return as JSON array only, no other text.`,
   }
 }
 
+export type RecipeMode = 'human' | 'pet';
+export type PetSpecies = 'cat' | 'dog';
+
+export interface GenerateRecipeOptions {
+  mode?: RecipeMode;
+  species?: PetSpecies;
+}
+
+export interface GenerateRecipeResult {
+  recipe: AiRecipe;
+  removedForSafety: string[];
+}
+
 export async function generateRecipe(
   availableIngredients: string[],
   preferences?: {
@@ -186,12 +200,56 @@ export async function generateRecipe(
     dietary?: string[];
     difficulty?: string;
     cookTime?: number;
+  },
+  options?: GenerateRecipeOptions
+): Promise<GenerateRecipeResult> {
+  const mode = options?.mode ?? 'human';
+  const species = options?.species ?? 'dog';
+  let ingredientsToUse = availableIngredients;
+  let removedForSafety: string[] = [];
+
+  if (mode === 'pet') {
+    const { safe, removed } = filterIngredientsForPet(availableIngredients, species);
+    ingredientsToUse = safe;
+    removedForSafety = removed;
   }
-): Promise<AiRecipe> {
-  const prompt = `Create a detailed recipe using these available ingredients: ${availableIngredients.join(', ')}
+
+  const isPet = mode === 'pet';
+  const petSafetyBrief =
+    isPet &&
+    `CRITICAL: You are generating a recipe for a ${species}. 
+- Use ONLY these safe ingredients (already filtered): ${ingredientsToUse.join(', ')}. Do NOT add any ingredient not in this list.
+- Never include: chocolate, grapes, raisins, onions, garlic, xylitol, avocado, macadamia nuts, alcohol, or any toxic human foods.
+- Keep the recipe simple: minimal ingredients, NO added salt, sugar, or seasoning. Appropriate portion sizes for a ${species}.
+- For cats: focus on animal protein (obligate carnivores). For dogs: lean proteins, some vegetables, whole grains are ok.
+- Output a treat or small meal recipe only.`;
+
+  const basePrompt = isPet
+    ? `${petSafetyBrief}
+
+Create a simple, safe ${species} treat or meal recipe using ONLY these ingredients: ${ingredientsToUse.join(', ') || 'none - suggest they add safe ingredients'}.
+
+Return a JSON object with this exact structure:
+{
+  "title": "Recipe Name (e.g. Simple Dog Treats)",
+  "description": "Brief description noting it is for ${species}.",
+  "ingredients": [{"name": "ingredient", "quantity": 1, "unit": "cup"}],
+  "instructions": ["step 1", "step 2"],
+  "prepTime": 5,
+  "cookTime": 15,
+  "servings": 1,
+  "difficulty": "easy",
+  "cuisine": "pet",
+  "dietaryTags": ["pet-safe", "${species}"]
+}
+
+After the JSON, append on a new line this exact disclaimer text (include it in the recipe description or as a final instruction): ${PET_RECIPE_DISCLAIMER}
+
+Only return the JSON object, then a newline, then the disclaimer. No other text.`
+    : `Create a detailed recipe using these available ingredients: ${ingredientsToUse.join(', ')}
 
 ${preferences?.cuisine ? `Cuisine: ${preferences.cuisine}` : ''}
-${preferences?.dietary?.length ? `Dietary restrictions: ${preferences.dietary.join(', ')}` : ''}
+${preferences?.dietary?.length ? `Dietary requirements (strictly follow): ${preferences.dietary.join(', ')}. For diabetic-friendly use low added sugar and high fiber; for keto keep carbs very low; for paleo avoid grains/legumes/dairy; for low-sodium minimize salt.` : ''}
 ${preferences?.difficulty ? `Difficulty: ${preferences.difficulty}` : ''}
 ${preferences?.cookTime ? `Maximum cook time: ${preferences.cookTime} minutes` : ''}
 
@@ -214,7 +272,7 @@ Only return the JSON object, no other text.`;
   const completion = await callOpenAIWithFallback(
     {
       model: process.env.OPENAI_MODEL_RECIPE_PRIMARY || 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: basePrompt }],
       max_tokens: 2000,
     },
     {
@@ -223,8 +281,16 @@ Only return the JSON object, no other text.`;
     }
   );
 
-  const content = extractContentFromCompletion(completion) || '{}';
-  return parseJsonFromModel<AiRecipe>(content, {} as AiRecipe, 'generateRecipe');
+  let content = extractContentFromCompletion(completion) || '{}';
+  // Strip disclaimer from content so we parse only JSON
+  if (isPet && content.includes(PET_RECIPE_DISCLAIMER)) {
+    content = content.replace(PET_RECIPE_DISCLAIMER, '').trim();
+  }
+  const recipe = parseJsonFromModel<AiRecipe>(content, {} as AiRecipe, 'generateRecipe');
+  if (isPet && recipe.description && !recipe.description.includes(PET_RECIPE_DISCLAIMER)) {
+    recipe.description = `${recipe.description}\n\n${PET_RECIPE_DISCLAIMER}`;
+  }
+  return { recipe, removedForSafety };
 }
 
 export async function generateMealPlan(

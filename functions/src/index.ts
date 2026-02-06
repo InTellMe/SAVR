@@ -93,7 +93,7 @@ export const createRecipe = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { ingredients, preferences } = data as CreateRecipeRequest;
+    const { ingredients, preferences, recipeType, species } = data as CreateRecipeRequest;
     if (!Array.isArray(ingredients) || ingredients.length === 0) {
       throw new functions.https.HttpsError(
         'invalid-argument',
@@ -101,21 +101,33 @@ export const createRecipe = functions
       );
     }
     const userId = context.auth.uid;
+    const mode = recipeType === 'pet' ? 'pet' : 'human';
+    const petSpecies = species ?? 'dog';
 
     const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
     if (!rateCheck.allowed) {
       throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
     }
 
-    // Check usage limits
+    // Check general recipe usage limits
     const usageCheck = await checkUsageLimit(userId, 'recipes');
     if (!usageCheck.allowed) {
       throw new functions.https.HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
     }
 
+    if (mode === 'pet') {
+      const petCheck = await checkUsageLimit(userId, 'petRecipes');
+      if (!petCheck.allowed) {
+        throw new functions.https.HttpsError('resource-exhausted', petCheck.reason || 'Pet recipe limit reached');
+      }
+    }
+
     try {
-      const recipe = await generateRecipe(ingredients, preferences);
-      
+      const { recipe, removedForSafety } = await generateRecipe(ingredients, preferences, {
+        mode,
+        species: petSpecies,
+      });
+
       // Save recipe to Firestore
       const recipeRef = await db
         .collection('recipes')
@@ -125,6 +137,8 @@ export const createRecipe = functions
           ...recipe,
           userId,
           generatedBy: 'ai',
+          recipeType: mode,
+          species: mode === 'pet' ? petSpecies : undefined,
           createdAt: new Date(),
         });
 
@@ -132,6 +146,9 @@ export const createRecipe = functions
         success: true,
         recipeId: recipeRef.id,
         recipe,
+        recipeType: mode,
+        species: mode === 'pet' ? petSpecies : undefined,
+        removedForSafety: removedForSafety.length > 0 ? removedForSafety : undefined,
       };
       return response;
     } catch (error: any) {
@@ -400,7 +417,7 @@ export const onUserCreate = functions.auth.user().onCreate(async (user: any) => 
     email: user.email,
     displayName: user.displayName,
     photoURL: user.photoURL,
-    subscriptionTier: 'free',
+    subscriptionTier: 'basic',
     subscriptionStatus: 'active',
     createdAt: new Date(),
     updatedAt: new Date(),

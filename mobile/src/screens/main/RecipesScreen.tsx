@@ -32,11 +32,12 @@ export default function RecipesScreen({ navigation }: RecipesScreenProps) {
     if (!user) return;
 
     try {
-      const q = query(collection(db, 'recipes'), where('userId', '==', user.uid));
+      const itemsRef = collection(db, 'recipes', user.uid, 'items');
+      const q = query(itemsRef, where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       const recipeList: Recipe[] = [];
-      querySnapshot.forEach((doc) => {
-        recipeList.push({ id: doc.id, ...doc.data() } as Recipe);
+      querySnapshot.forEach((docSnap) => {
+        recipeList.push({ id: docSnap.id, ...docSnap.data() } as Recipe);
       });
       setRecipes(recipeList);
     } catch (error) {
@@ -51,12 +52,25 @@ export default function RecipesScreen({ navigation }: RecipesScreenProps) {
 
     try {
       setGenerating(true);
-      const generateRecipes = httpsCallable(functions, 'generateRecipes');
-      await generateRecipes();
-      Alert.alert('Success', 'Recipes generated successfully!');
+      const invRef = collection(db, 'inventory', user.uid, 'items');
+      const invSnap = await getDocs(query(invRef, where('userId', '==', user.uid)));
+      const ingredients = invSnap.docs.map((d) => d.data().name as string).filter(Boolean);
+      if (ingredients.length === 0) {
+        Alert.alert('No ingredients', 'Add items to your pantry first.');
+        setGenerating(false);
+        return;
+      }
+      const createRecipe = httpsCallable(functions, 'createRecipe');
+      await createRecipe({
+        ingredients,
+        recipeType: 'human',
+        preferences: { difficulty: 'medium' },
+      });
+      Alert.alert('Success', 'Recipe generated!');
       loadRecipes();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate recipes');
+    } catch (error: any) {
+      const msg = error?.message || 'Failed to generate recipe';
+      Alert.alert('Error', msg.includes('limit') ? 'Monthly limit reached. Upgrade for more.' : msg);
     } finally {
       setGenerating(false);
     }

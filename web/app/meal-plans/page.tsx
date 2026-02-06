@@ -111,7 +111,7 @@ function MealPlansContent() {
       console.error('Error generating meal plan:', error);
       const code = error?.code as string | undefined;
       if (code && code.includes('resource-exhausted')) {
-        setError('You have reached your free meal plan limit. Upgrade to Pro for unlimited meal plans.');
+        setError('You have reached your meal plan limit. Upgrade to Plus or Premium for unlimited meal plans.');
       } else if (code && code.includes('unauthenticated')) {
         setError('You must be signed in to create meal plans.');
       } else {
@@ -326,13 +326,22 @@ function MealPlanCard({
   );
 }
 
-function MealPlanDetailsModal({ 
-  plan, 
-  onClose 
-}: { 
-  plan: MealPlan; 
+function MealPlanDetailsModal({
+  plan,
+  onClose,
+}: {
+  plan: MealPlan;
   onClose: () => void;
 }) {
+  const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
+  const byDay = plan.meals.reduce<Record<string, Record<string, string>>>((acc, meal) => {
+    const d = meal.date;
+    if (!acc[d]) acc[d] = {};
+    acc[d][meal.mealType] = meal.recipeName;
+    return acc;
+  }, {});
+  const days = Object.keys(byDay).sort();
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-lg p-6 max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
@@ -351,21 +360,37 @@ function MealPlanDetailsModal({
           </button>
         </div>
 
-        <div className="space-y-4">
-          {plan.meals.map((meal, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-2">
-                {new Date(meal.date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </h3>
-              <p className="text-sm text-gray-700">
-                {meal.mealType.charAt(0).toUpperCase() + meal.mealType.slice(1)}: {meal.recipeName}
-              </p>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 pr-4 font-semibold text-gray-900">Day</th>
+                {mealTypes.map((mt) => (
+                  <th key={mt} className="text-left py-2 px-2 font-semibold text-gray-900 capitalize">
+                    {mt}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {days.map((date) => (
+                <tr key={date} className="border-b border-gray-100">
+                  <td className="py-3 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                    {new Date(date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </td>
+                  {mealTypes.map((mt) => (
+                    <td key={mt} className="py-3 px-2 text-gray-600">
+                      {byDay[date][mt] || '—'}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <button

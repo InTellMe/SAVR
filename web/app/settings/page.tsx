@@ -2,7 +2,8 @@
 
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, isPaidTier } from '@/contexts/AuthContext';
+import Link from 'next/link';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
 import { useState } from 'react';
@@ -17,36 +18,16 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const { user, userData, logout } = useAuth();
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
 
-  async function handleUpgradeToPro() {
-    if (!user) return;
-
-    setLoadingCheckout(true);
-    setError('');
-
-    try {
-      const createStripeCheckout = httpsCallable(functions, 'createStripeCheckout');
-      const result = await createStripeCheckout({
-        priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || 'price_pro',
-        successUrl: `${window.location.origin}/dashboard?upgraded=true`,
-        cancelUrl: `${window.location.origin}/settings`,
-      });
-
-      const data = result.data as { success: boolean; url: string };
-      if (!data.success) {
-        throw new Error('Checkout creation failed');
-      }
-
-      window.location.href = data.url;
-    } catch (err) {
-      console.error('Error starting checkout:', err);
-      setError('Failed to start checkout. Please try again.');
-      setLoadingCheckout(false);
-    }
-  }
+  const tierLabel =
+    userData?.subscriptionTier === 'premium'
+      ? 'Premium'
+      : userData?.subscriptionTier === 'plus' || userData?.subscriptionTier === 'pro'
+        ? 'Plus'
+        : 'Basic';
+  const hasPaidTier = isPaidTier(userData?.subscriptionTier);
 
   async function handleManageSubscription() {
     if (!user) return;
@@ -105,8 +86,7 @@ function SettingsContent() {
               <span className="font-medium">Email:</span> {user?.email}
             </p>
             <p>
-              <span className="font-medium">Subscription tier:</span>{' '}
-              <span className="capitalize">{userData?.subscriptionTier ?? 'free'}</span>
+              <span className="font-medium">Subscription tier:</span> {tierLabel}
             </p>
             {userData?.subscriptionStatus && (
               <p>
@@ -121,12 +101,11 @@ function SettingsContent() {
         <section className="mb-6 rounded-lg bg-white p-6 shadow">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Subscription</h2>
 
-          {userData?.subscriptionTier === 'pro' ? (
+          {hasPaidTier ? (
             <>
               <p className="mb-4 text-sm text-gray-700">
-                You&apos;re on the <span className="font-semibold text-orange-600">Pro</span> plan with
-                access to unlimited inventory, advanced recipes, detailed meal plans, smart grocery
-                lists, and AI chat.
+                You&apos;re on the <span className="font-semibold text-orange-600">{tierLabel}</span> plan
+                with access to unlimited recipes, meal plans, AI chat, and more.
               </p>
               <button
                 type="button"
@@ -140,17 +119,15 @@ function SettingsContent() {
           ) : (
             <>
               <p className="mb-4 text-sm text-gray-700">
-                You&apos;re on the <span className="font-semibold">Free</span> plan. Upgrade to Pro to
-                unlock unlimited inventory, advanced AI features, and more.
+                You&apos;re on the <span className="font-semibold">Basic</span> plan. Upgrade to Plus or
+                Premium to unlock unlimited recipes, AI chat, and more.
               </p>
-              <button
-                type="button"
-                onClick={handleUpgradeToPro}
-                disabled={loadingCheckout}
-                className="rounded-lg bg-orange-600 px-5 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+              <Link
+                href="/pricing"
+                className="inline-block rounded-lg bg-orange-600 px-5 py-2 text-sm font-medium text-white hover:bg-orange-700"
               >
-                {loadingCheckout ? 'Redirecting...' : 'Upgrade to Pro'}
-              </button>
+                View plans
+              </Link>
             </>
           )}
         </section>

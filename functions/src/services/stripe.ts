@@ -1,10 +1,14 @@
 import Stripe from 'stripe';
 import { db } from '../utils/firebase';
+import type { SubscriptionTierName } from '../types';
 import {
   SubscriptionStatus,
   updateUserSubscription,
   upsertUserSubscriptionRecord,
 } from '../utils/subscription';
+
+const STRIPE_PRICE_ID_PLUS = process.env.STRIPE_PRICE_ID_PLUS || '';
+const STRIPE_PRICE_ID_PREMIUM = process.env.STRIPE_PRICE_ID_PREMIUM || '';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2026-01-28.clover',
@@ -97,6 +101,13 @@ export async function handleStripeWebhook(
   }
 }
 
+function tierFromPriceId(priceId: string | undefined): SubscriptionTierName {
+  if (!priceId) return 'plus';
+  if (priceId === STRIPE_PRICE_ID_PREMIUM) return 'premium';
+  if (priceId === STRIPE_PRICE_ID_PLUS) return 'plus';
+  return 'plus';
+}
+
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
   const userId = session.metadata?.userId;
   
@@ -110,14 +121,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       ? session.customer
       : (session.customer as Stripe.Customer | null)?.id ?? null;
 
-  // Update user subscription status
+  let tier: SubscriptionTierName = 'plus';
+  if (session.subscription) {
+    const sub =
+      typeof session.subscription === 'string'
+        ? await stripe.subscriptions.retrieve(session.subscription)
+        : session.subscription;
+    const priceId = (sub as Stripe.Subscription).items?.data?.[0]?.price?.id;
+    tier = tierFromPriceId(priceId);
+  }
+
   await updateUserSubscription(userId, {
-    subscriptionTier: 'pro',
+    subscriptionTier: tier,
     subscriptionStatus: 'active',
     stripeCustomerId,
   });
 
-  // Create / update subscription record
   if (session.subscription) {
     const subscriptionId =
       typeof session.subscription === 'string'
@@ -184,7 +203,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
   const userId = userDoc.id;
 
   await updateUserSubscription(userId, {
-    subscriptionTier: 'free',
+    subscriptionTier: 'basic',
     subscriptionStatus: 'cancelled',
   });
 
@@ -215,9 +234,14 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     subscriptionStatus: 'past_due',
   });
 
+  const subId =
+    typeof (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription }).subscription === 'string'
+      ? (invoice as Stripe.Invoice & { subscription?: string }).subscription
+      : (invoice as Stripe.Invoice & { subscription?: Stripe.Subscription }).subscription?.id ?? null;
+
   await upsertUserSubscriptionRecord(userId, {
     provider: 'stripe',
-    subscriptionId: typeof invoice.subscription === 'string' ? invoice.subscription : null,
+    subscriptionId: subId ?? undefined,
     status: 'past_due',
   });
 }

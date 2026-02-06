@@ -39,6 +39,9 @@ function InventoryContent() {
     category: 'pantry',
   });
   const [error, setError] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [barcodeLoading, setBarcodeLoading] = useState(false);
+  const [barcodeError, setBarcodeError] = useState('');
 
   useEffect(() => {
     loadInventory();
@@ -109,6 +112,50 @@ function InventoryContent() {
     }
   }
 
+  async function handleBarcodeLookup() {
+    const code = barcodeInput.trim().replace(/\D/g, '');
+    if (!code || !user) return;
+    setBarcodeLoading(true);
+    setBarcodeError('');
+    try {
+      const res = await fetch(
+        `https://world.openfoodfacts.org/api/v2/product/${code}.json`
+      );
+      const data = await res.json();
+      if (data.status !== 1 || !data.product) {
+        setBarcodeError('Product not found. Try another barcode.');
+        setBarcodeLoading(false);
+        return;
+      }
+      const p = data.product;
+      const name =
+        p.product_name_en || p.product_name || p.product_name_imported || 'Unknown product';
+      const qtyStr = String(p.quantity || '1');
+      const qtyMatch = qtyStr.match(/^([\d.]+)\s*(\w+)?$/);
+      const quantity = qtyMatch ? parseFloat(qtyMatch[1]) || 1 : 1;
+      const unit = (qtyMatch?.[2] || 'unit').toLowerCase();
+      const itemsCollection = collection(db, 'inventory', user.uid, 'items');
+      const docRef = await addDoc(itemsCollection, {
+        userId: user.uid,
+        name,
+        quantity,
+        unit,
+        category: 'pantry',
+        addedDate: new Date().toISOString(),
+      });
+      setItems([
+        ...items,
+        { id: docRef.id, name, quantity, unit, category: 'pantry' },
+      ]);
+      setBarcodeInput('');
+    } catch (err) {
+      console.error('Barcode lookup error:', err);
+      setBarcodeError('Lookup failed. Check the barcode or try again.');
+    } finally {
+      setBarcodeLoading(false);
+    }
+  }
+
   async function handleUpdateItem(item: InventoryItem) {
     try {
       const { id, ...updateData } = item;
@@ -144,6 +191,36 @@ function InventoryContent() {
             {error}
           </div>
         )}
+
+        {/* Add by barcode */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Add by barcode
+          </h2>
+          <p className="text-sm text-gray-600 mb-3">
+            Enter a product barcode to add it from the Open Food Facts database.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="text"
+              value={barcodeInput}
+              onChange={(e) => setBarcodeInput(e.target.value)}
+              placeholder="e.g. 3017620422003"
+              className="rounded-md border border-gray-300 px-3 py-2 w-48"
+            />
+            <button
+              type="button"
+              onClick={handleBarcodeLookup}
+              disabled={barcodeLoading || !barcodeInput.trim()}
+              className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+            >
+              {barcodeLoading ? 'Looking up...' : 'Look up & add'}
+            </button>
+          </div>
+          {barcodeError && (
+            <p className="mt-2 text-sm text-red-600">{barcodeError}</p>
+          )}
+        </div>
 
         {/* Manual Add Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
