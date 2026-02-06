@@ -1,4 +1,4 @@
-# PantryHustler Web Application
+# SAVR Web Application
 
 A modern Next.js web application for smart pantry management, recipe generation, meal planning, and AI-powered cooking assistance.
 
@@ -23,11 +23,13 @@ A modern Next.js web application for smart pantry management, recipe generation,
 ### Installation
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Create `.env.local` file from template:
+
 ```bash
 cp .env.example .env.local
 ```
@@ -35,6 +37,7 @@ cp .env.example .env.local
 3. Add your Firebase and Stripe credentials to `.env.local`
 
 4. Run development server:
+
 ```bash
 npm run dev
 ```

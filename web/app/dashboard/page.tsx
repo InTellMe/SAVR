@@ -140,7 +140,7 @@ function DashboardContent() {
         {stats.inventoryCount === 0 && !loading && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-orange-900 mb-2">
-              🎉 Get Started with PantryHustler
+              🎉 Get Started with SAVR
             </h3>
             <p className="text-orange-800 mb-4">
               Start by adding items to your inventory. Take a photo of your pantry or fridge, and our AI will automatically identify your ingredients!

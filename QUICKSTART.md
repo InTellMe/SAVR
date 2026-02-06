@@ -1,23 +1,26 @@
-# PantryHustler - Quick Start Guide
+# SAVR - Quick Start Guide
 
 ## Setup Instructions (5 Minutes)
 
 ### 1. Prerequisites
+
 - Node.js 18+ installed
 - Git installed
 - Firebase account (free tier works)
 - Stripe account (optional, for payments)
 
 ### 2. Clone and Install
+
 ```bash
 git clone <repository-url>
-cd PantryHustler/web
+cd SAVR/web
 npm install
 ```
 
 ### 3. Firebase Setup
 
 #### Create Firebase Project
+
 1. Go to https://console.firebase.google.com
 2. Click "Add project"
 3. Follow the setup wizard
@@ -26,6 +29,7 @@ npm install
 6. Create Storage bucket
 
 #### Get Firebase Config
+
 1. Project Settings → General
 2. Scroll to "Your apps"
 3. Click web icon (</>) to add web app
@@ -34,11 +38,13 @@ npm install
 ### 4. Configure Environment
 
 Create `.env.local` file:
+
 ```bash
 cp .env.example .env.local
 ```
 
 Edit `.env.local` with your Firebase config:
+
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY=AIza...
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-app.firebaseapp.com
@@ -53,6 +59,7 @@ NEXT_PUBLIC_STRIPE_PRICE_ID=price_...
 ```
 
 ### 5. Run Development Server
+
 ```bash
 npm run dev
 ```
@@ -62,6 +69,7 @@ Open http://localhost:3000 - you should see the landing page! 🎉
 ## Testing the Application
 
 ### 1. Create an Account
+
 - Click "Sign Up"
 - Enter email and password
 - Or use "Sign in with Google"
@@ -69,6 +77,7 @@ Open http://localhost:3000 - you should see the landing page! 🎉
 ### 2. Test Features
 
 **Without Cloud Functions** (frontend only):
+
 - ✅ Authentication (Sign up/Sign in)
 - ✅ Dashboard view
 - ✅ Navigation between pages
@@ -83,6 +92,7 @@ Open http://localhost:3000 - you should see the landing page! 🎉
 Deploy the Cloud Functions from `/functions` directory to enable all features.
 
 ### 3. Manual Data Entry
+
 You can manually add inventory items by clicking "Add New Item" button (if implemented) or directly in Firestore console.
 
 ## Project Structure Quick Reference
@@ -92,7 +102,7 @@ web/
 ├── app/                    # Pages
 │   ├── page.tsx           # Landing page ✨
 │   ├── sign-in/           # Authentication
-│   ├── sign-up/           
+│   ├── sign-up/
 │   ├── dashboard/         # Main app
 │   ├── inventory/         # Pantry management
 │   ├── recipes/           # Recipe generation
@@ -122,20 +132,24 @@ npm run lint            # Run ESLint
 ## Common Issues & Solutions
 
 ### "Firebase: Error (auth/invalid-api-key)"
+
 - Check your `.env.local` file exists
 - Verify API key is correct
 - Make sure to restart dev server after changing .env
 
 ### "Cannot find module '@/...'"
+
 - The `@` alias points to the root directory
 - Check `tsconfig.json` for path configuration
 
 ### Pages show but no data loads
+
 - Check Firebase rules allow read/write
 - Verify user is authenticated
 - Check browser console for errors
 
 ### Build fails
+
 - Run `npm install` to ensure dependencies
 - Check TypeScript errors
 - Verify all imports are correct
@@ -143,6 +157,7 @@ npm run lint            # Run ESLint
 ## Firebase Security Rules
 
 ### Development Rules (Firestore)
+
 ```javascript
 rules_version = '2';
 service cloud.firestore {
@@ -170,6 +185,7 @@ service cloud.firestore {
 ```
 
 ### Development Rules (Storage)
+
 ```javascript
 rules_version = '2';
 service firebase.storage {

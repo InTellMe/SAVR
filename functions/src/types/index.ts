@@ -1,4 +1,4 @@
-// Type definitions for PantryHustler
+// Type definitions for SAVR
 export interface User {
   uid: string;
   email: string;

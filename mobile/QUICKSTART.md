@@ -1,6 +1,6 @@
-# PantryHustler Mobile - Quick Start
+# SAVR Mobile - Quick Start
 
-Get up and running with the PantryHustler mobile app in 5 minutes!
+Get up and running with the SAVR mobile app in 5 minutes!
 
 ## Prerequisites
 
@@ -76,14 +76,17 @@ npm run android
 ## Troubleshooting
 
 **Can't connect to server?**
+
 - Make sure your phone and computer are on the same WiFi network
 - Try scanning the QR code again
 
 **Firebase errors?**
+
 - Double-check your Firebase configuration in `app.json`
 - Ensure Firebase Authentication is enabled in Firebase Console
 
 **App won't load?**
+
 ```bash
 # Clear cache and try again
 rm -rf node_modules

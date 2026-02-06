@@ -1,6 +1,6 @@
-# PantryHustler Mobile - Setup Guide
+# SAVR Mobile - Setup Guide
 
-This guide walks you through setting up the PantryHustler mobile application.
+This guide walks you through setting up the SAVR mobile application.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ npm install
 ### 2.1 Get Firebase Credentials
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your PantryHustler project
+2. Select your SAVR project
 3. Go to Project Settings (gear icon)
 4. Under "Your apps", select or add a Web app
 5. Copy the configuration values
@@ -60,6 +60,7 @@ Edit `app.json` and replace the Firebase configuration:
 **Option B: Using .env file**
 
 1. Copy `.env.example` to `.env`:
+
    ```bash
    cp .env.example .env
    ```
@@ -92,9 +93,9 @@ Edit `src/contexts/AuthContext.tsx`:
 
 ```typescript
 const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-  clientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
-  iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
-  androidClientId: 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com',
+  clientId: "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",
+  iosClientId: "YOUR_IOS_CLIENT_ID.apps.googleusercontent.com",
+  androidClientId: "YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com",
 });
 ```
 
@@ -116,6 +117,7 @@ firebase deploy --only functions
 ```
 
 Required functions:
+
 - `generateRecipes`
 - `generateMealPlan`
 - `chatWithAI`
@@ -133,24 +135,24 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
-    
+
     match /inventory/{itemId} {
-      allow read, write: if request.auth != null && 
+      allow read, write: if request.auth != null &&
                            resource.data.userId == request.auth.uid;
     }
-    
+
     match /recipes/{recipeId} {
-      allow read, write: if request.auth != null && 
+      allow read, write: if request.auth != null &&
                            resource.data.userId == request.auth.uid;
     }
-    
+
     match /mealPlans/{planId} {
-      allow read, write: if request.auth != null && 
+      allow read, write: if request.auth != null &&
                            resource.data.userId == request.auth.uid;
     }
-    
+
     match /groceryLists/{listId} {
-      allow read, write: if request.auth != null && 
+      allow read, write: if request.auth != null &&
                            resource.data.userId == request.auth.uid;
     }
   }
@@ -173,6 +175,7 @@ service firebase.storage {
 ```
 
 Deploy rules:
+
 ```bash
 firebase deploy --only firestore:rules
 firebase deploy --only storage:rules
@@ -197,6 +200,7 @@ npm run ios
 ```
 
 Requirements:
+
 - macOS
 - Xcode installed
 - iOS Simulator running
@@ -208,6 +212,7 @@ npm run android
 ```
 
 Requirements:
+
 - Android Studio installed
 - Android emulator running
 
@@ -254,6 +259,7 @@ Ensure `app.json` has the `extra` field with Firebase config, or `.env` file exi
 ### Camera Permissions Denied
 
 On iOS, add to `app.json`:
+
 ```json
 {
   "ios": {
@@ -283,11 +289,13 @@ On Android, permissions are in `app.json` under `android.permissions`.
 ### Build Errors
 
 Clear cache and rebuild:
+
 ```bash
 expo start -c
 ```
 
 Or reset everything:
+
 ```bash
 rm -rf node_modules
 npm install
@@ -333,15 +341,16 @@ For different environments (dev, staging, production):
 3. Configure Firebase projects per environment
 
 Example `app.config.js`:
+
 ```javascript
 export default {
   expo: {
     extra: {
       firebaseApiKey: process.env.FIREBASE_API_KEY,
       // ... other config
-    }
-  }
-}
+    },
+  },
+};
 ```
 
 ## Additional Resources
@@ -354,6 +363,7 @@ export default {
 ## Support
 
 For issues or questions:
+
 - Check the main [README.md](./README.md)
 - Review [Firebase setup guide](../README.md)
 - Create an issue on GitHub
