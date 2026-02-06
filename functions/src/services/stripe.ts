@@ -235,7 +235,9 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
   });
 
   // Extract subscription ID safely
-  // Note: invoice.subscription_details is the new field, but it may not be in the types yet
+  // Note: Stripe API changed - subscription_details is the new structure
+  // as of Stripe API 2024-11+. Using type assertion until @stripe/stripe-js types are updated.
+  // See: https://stripe.com/docs/api/invoices/object#invoice_object-subscription_details
   const subscriptionId =
     typeof (invoice as any).subscription_details?.subscription === 'string'
       ? (invoice as any).subscription_details.subscription
