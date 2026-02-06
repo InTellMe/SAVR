@@ -1,4 +1,4 @@
-{
+{{
   "hosting": {
     "public": "web/out",
     "ignore": [
@@ -37,10 +37,10 @@
     "source": "functions",
     "runtime": "nodejs20",
     "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run lint",
       "npm --prefix \"$RESOURCE_DIR\" run build"
     ]
   },
-  "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
@@ -48,3 +48,4 @@
     "rules": "storage.rules"
   }
 }
+ 
