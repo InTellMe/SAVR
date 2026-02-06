@@ -36,11 +36,12 @@ async function callOpenAIWithFallback(
     options?.fallbackModel || process.env.OPENAI_MODEL_FALLBACK || 'gpt-4o-mini';
 
   try {
-    return await openai.chat.completions.create({
+    const response = await openai.chat.completions.create({
       ...params,
       model: primaryModel,
       stream: false,
-    }) as OpenAI.Chat.Completions.ChatCompletion;
+    });
+    return response as OpenAI.Chat.Completions.ChatCompletion;
   } catch (error: any) {
     if (!isRetryableOpenAIError(error)) {
       throw error;
@@ -51,11 +52,12 @@ async function callOpenAIWithFallback(
       error
     );
 
-    return await openai.chat.completions.create({
+    const response = await openai.chat.completions.create({
       ...params,
       model: fallbackModel,
       stream: false,
-    }) as OpenAI.Chat.Completions.ChatCompletion;
+    });
+    return response as OpenAI.Chat.Completions.ChatCompletion;
   }
 }
 
