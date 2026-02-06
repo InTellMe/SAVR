@@ -125,3 +125,12 @@ export function normalizeAiIngredients(ingredients: any[]): AiIngredient[] {
   );
 }
 
+export function aiIngredientsToExtracted(ingredients: AiIngredient[]): import('../types').ExtractedIngredient[] {
+  return ingredients.map((ing) => ({
+    name: ing.name,
+    quantity: ing.quantity,
+    unit: ing.unit,
+    confidence: ing.confidence ?? 0.5, // Default confidence if not provided
+  }));
+}
+

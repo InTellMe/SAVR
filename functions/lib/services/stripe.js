@@ -9,6 +9,8 @@ exports.createPortalSession = createPortalSession;
 const stripe_1 = __importDefault(require("stripe"));
 const firebase_1 = require("../utils/firebase");
 const subscription_1 = require("../utils/subscription");
+const STRIPE_PRICE_ID_PLUS = process.env.STRIPE_PRICE_ID_PLUS || '';
+const STRIPE_PRICE_ID_PREMIUM = process.env.STRIPE_PRICE_ID_PREMIUM || '';
 const stripe = new stripe_1.default(process.env.STRIPE_SECRET_KEY || '', {
     apiVersion: '2026-01-28.clover',
 });
@@ -77,6 +79,15 @@ async function handleStripeWebhook(rawBody, signature) {
         }
     }
 }
+function tierFromPriceId(priceId) {
+    if (!priceId)
+        return 'plus';
+    if (priceId === STRIPE_PRICE_ID_PREMIUM)
+        return 'premium';
+    if (priceId === STRIPE_PRICE_ID_PLUS)
+        return 'plus';
+    return 'plus';
+}
 async function handleCheckoutCompleted(session) {
     const userId = session.metadata?.userId;
     if (!userId) {
@@ -86,13 +97,19 @@ async function handleCheckoutCompleted(session) {
     const stripeCustomerId = typeof session.customer === 'string'
         ? session.customer
         : session.customer?.id ?? null;
-    // Update user subscription status
+    let tier = 'plus';
+    if (session.subscription) {
+        const sub = typeof session.subscription === 'string'
+            ? await stripe.subscriptions.retrieve(session.subscription)
+            : session.subscription;
+        const priceId = sub.items?.data?.[0]?.price?.id;
+        tier = tierFromPriceId(priceId);
+    }
     await (0, subscription_1.updateUserSubscription)(userId, {
-        subscriptionTier: 'pro',
+        subscriptionTier: tier,
         subscriptionStatus: 'active',
         stripeCustomerId,
     });
-    // Create / update subscription record
     if (session.subscription) {
         const subscriptionId = typeof session.subscription === 'string'
             ? session.subscription
@@ -145,7 +162,7 @@ async function handleSubscriptionDeleted(subscription) {
     const userDoc = usersSnapshot.docs[0];
     const userId = userDoc.id;
     await (0, subscription_1.updateUserSubscription)(userId, {
-        subscriptionTier: 'free',
+        subscriptionTier: 'basic',
         subscriptionStatus: 'cancelled',
     });
     await (0, subscription_1.upsertUserSubscriptionRecord)(userId, {
@@ -170,9 +187,12 @@ async function handlePaymentFailed(invoice) {
     await (0, subscription_1.updateUserSubscription)(userId, {
         subscriptionStatus: 'past_due',
     });
+    const subId = typeof invoice.subscription === 'string'
+        ? invoice.subscription
+        : invoice.subscription?.id ?? null;
     await (0, subscription_1.upsertUserSubscriptionRecord)(userId, {
         provider: 'stripe',
-        subscriptionId: typeof invoice.subscription === 'string' ? invoice.subscription : null,
+        subscriptionId: subId ?? undefined,
         status: 'past_due',
     });
 }

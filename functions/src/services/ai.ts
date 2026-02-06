@@ -6,7 +6,7 @@ import {
   AiRecipe,
   ExtractedIngredient,
 } from '../types';
-import { normalizeAiIngredients } from '../utils/units';
+import { normalizeAiIngredients, aiIngredientsToExtracted } from '../utils/units';
 import { filterIngredientsForPet, PET_RECIPE_DISCLAIMER } from '../config/forbiddenFoods';
 
 const openai = new OpenAI({
@@ -39,7 +39,8 @@ async function callOpenAIWithFallback(
     return await openai.chat.completions.create({
       ...params,
       model: primaryModel,
-    });
+      stream: false,
+    }) as OpenAI.Chat.Completions.ChatCompletion;
   } catch (error: any) {
     if (!isRetryableOpenAIError(error)) {
       throw error;
@@ -53,7 +54,8 @@ async function callOpenAIWithFallback(
     return await openai.chat.completions.create({
       ...params,
       model: fallbackModel,
-    });
+      stream: false,
+    }) as OpenAI.Chat.Completions.ChatCompletion;
   }
 }
 
@@ -133,7 +135,7 @@ Only return the JSON array, no other text.`,
   try {
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
     const ingredients = JSON.parse(cleanContent);
-    return normalizeAiIngredients(ingredients);
+    return aiIngredientsToExtracted(normalizeAiIngredients(ingredients));
   } catch (error) {
     console.error('Failed to parse OpenAI response:', content);
     throw error;
@@ -173,7 +175,7 @@ Return as JSON array only, no other text.`,
   try {
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
     const ingredients = JSON.parse(cleanContent);
-    return normalizeAiIngredients(ingredients);
+    return aiIngredientsToExtracted(normalizeAiIngredients(ingredients));
   } catch (error) {
     console.error('Failed to parse Google Vision response:', content);
     return [];

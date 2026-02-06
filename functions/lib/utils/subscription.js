@@ -9,22 +9,21 @@ const types_1 = require("../types");
 /**
  * Returns the effective subscription tier for a user, taking both
  * the stored tier and subscriptionStatus into account.
- *
- * - If the stored tier is 'pro' and status is explicitly set to a non-active
- *   state ('cancelled' or 'past_due'), the effective tier is downgraded to 'free'.
- * - If the status is undefined (e.g., legacy users), the stored tier is used as-is
- *   for backward compatibility.
+ * Legacy 'free'/'pro' are mapped to 'basic'/'plus'.
  */
 async function getUserSubscriptionTier(userId) {
     const userDoc = await firebase_1.db.collection('users').doc(userId).get();
     const userData = userDoc.data();
-    const storedTier = userData?.subscriptionTier || 'free';
+    let storedTier = userData?.subscriptionTier || 'basic';
     const status = userData?.subscriptionStatus;
-    // Only downgrade Pro users if their status is explicitly set to a non-active state
-    // (e.g., 'cancelled' or 'past_due'). If status is undefined and tier is 'pro',
-    // assume 'active' for backward compatibility with legacy users.
-    if (storedTier === 'pro' && status !== undefined && status !== 'active') {
-        return 'free';
+    // Map legacy tiers
+    if (storedTier === 'free')
+        storedTier = 'basic';
+    if (storedTier === 'pro')
+        storedTier = 'plus';
+    // Downgrade paid users if status is non-active
+    if ((storedTier === 'plus' || storedTier === 'premium') && status !== undefined && status !== 'active') {
+        return 'basic';
     }
     return storedTier;
 }
@@ -34,8 +33,28 @@ async function checkUsageLimit(userId, resource) {
     if (resource === 'aiChat' && !limits.aiChatEnabled) {
         return {
             allowed: false,
-            reason: 'AI chat is only available for Pro subscribers',
+            reason: 'AI chat is available on Plus and Premium. Upgrade to unlock.',
         };
+    }
+    // Check monthly pet recipe limit (Basic/free tier)
+    if (resource === 'petRecipes' && limits.maxPetRecipesPerMonth !== -1) {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const petRecipesSnapshot = await firebase_1.db
+            .collection('recipes')
+            .doc(userId)
+            .collection('items')
+            .where('generatedBy', '==', 'ai')
+            .where('recipeType', '==', 'pet')
+            .where('createdAt', '>=', startOfMonth)
+            .get();
+        if (petRecipesSnapshot.size >= limits.maxPetRecipesPerMonth) {
+            return {
+                allowed: false,
+                reason: `Monthly pet recipe limit reached (${limits.maxPetRecipesPerMonth}). Upgrade to Plus or Premium for unlimited pet recipes.`,
+            };
+        }
     }
     // Check inventory limit
     if (resource === 'inventory' && limits.maxInventoryItems !== -1) {
@@ -47,7 +66,7 @@ async function checkUsageLimit(userId, resource) {
         if (inventorySnapshot.size >= limits.maxInventoryItems) {
             return {
                 allowed: false,
-                reason: `Inventory limit reached. Upgrade to Pro for unlimited items.`,
+                reason: `Inventory limit reached. Upgrade to Plus or Premium for unlimited items.`,
             };
         }
     }
@@ -66,7 +85,7 @@ async function checkUsageLimit(userId, resource) {
         if (recipesSnapshot.size >= limits.maxRecipesPerMonth) {
             return {
                 allowed: false,
-                reason: `Monthly recipe generation limit reached. Upgrade to Pro for unlimited recipes.`,
+                reason: `Monthly recipe limit reached. Upgrade to Plus or Premium for unlimited recipes.`,
             };
         }
     }
@@ -84,7 +103,7 @@ async function checkUsageLimit(userId, resource) {
         if (mealPlansSnapshot.size >= limits.maxMealPlansPerMonth) {
             return {
                 allowed: false,
-                reason: `Monthly meal plan limit reached. Upgrade to Pro for unlimited meal plans.`,
+                reason: `Monthly meal plan limit reached. Upgrade to Plus or Premium for unlimited meal plans.`,
             };
         }
     }

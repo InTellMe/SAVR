@@ -2,19 +2,30 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TIER_LIMITS = void 0;
 exports.TIER_LIMITS = {
-    free: {
-        name: 'free',
+    basic: {
+        name: 'basic',
         maxInventoryItems: 50,
         maxRecipesPerMonth: 10,
         maxMealPlansPerMonth: 2,
+        maxPetRecipesPerMonth: 5,
         aiChatEnabled: false,
         advancedFeatures: false,
     },
-    pro: {
-        name: 'pro',
-        maxInventoryItems: -1, // unlimited
-        maxRecipesPerMonth: -1, // unlimited
-        maxMealPlansPerMonth: -1, // unlimited
+    plus: {
+        name: 'plus',
+        maxInventoryItems: -1,
+        maxRecipesPerMonth: -1,
+        maxMealPlansPerMonth: -1,
+        maxPetRecipesPerMonth: -1,
+        aiChatEnabled: true,
+        advancedFeatures: true,
+    },
+    premium: {
+        name: 'premium',
+        maxInventoryItems: -1,
+        maxRecipesPerMonth: -1,
+        maxMealPlansPerMonth: -1,
+        maxPetRecipesPerMonth: -1,
         aiChatEnabled: true,
         advancedFeatures: true,
     },

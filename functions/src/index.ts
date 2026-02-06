@@ -708,7 +708,7 @@ export const exportDataset = functions
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { labelStatus, ownerUid, startDate, endDate, format } = data as ExportDatasetRequest;
+    const { labelStatus, ownerUid, startDate, endDate } = data as ExportDatasetRequest;
     const userId = context.auth.uid;
 
     // Only allow users to export their own data (unless admin)
