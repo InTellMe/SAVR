@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 
 export default function Home() {
@@ -9,13 +10,25 @@ export default function Home() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 md:py-32">
         <div className="text-center max-w-4xl mx-auto">
+          {/* SAVR Logo */}
+          <div className="mb-8 flex justify-center">
+            <Image 
+              src="https://res.cloudinary.com/dksj2niho/image/upload/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
+              alt="SAVR Logo"
+              width={320}
+              height={320}
+              className="w-64 md:w-80 h-auto"
+              priority
+              unoptimized
+            />
+          </div>
           <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6">
-            Turn Your Pantry Into
-            <span className="text-orange-600"> Delicious Meals</span>
+            Smart Recipes for You
+            <span className="text-orange-600"> and Your Pets</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-8">
-            AI-powered cooking assistant that helps you create recipes from what you have,
-            plan meals, and never waste food again.
+            SAVR is your AI cooking assistant: turn pantry ingredients into meals, get pet-safe treat
+            recipes, and plan budget-friendly dinners—all in one place.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -48,7 +61,12 @@ export default function Home() {
           <FeatureCard
             icon="🍳"
             title="Recipe Generation"
-            description="Get personalized recipes based on what you have, your dietary preferences, and skill level."
+            description="Get personalized recipes for humans or pet-safe treats for cats and dogs from your ingredients."
+          />
+          <FeatureCard
+            icon="🐾"
+            title="Pet-Safe Recipes"
+            description="Cook for your cat or dog with AI recipes that exclude toxic ingredients and include a vet disclaimer."
           />
           <FeatureCard
             icon="📅"
@@ -81,7 +99,7 @@ export default function Home() {
         <div className="grid md:grid-cols-4 gap-8 max-w-5xl mx-auto">
           <Step number="1" title="Snap Photos" description="Take pictures of your pantry items" />
           <Step number="2" title="AI Analysis" description="Our AI identifies all ingredients" />
-          <Step number="3" title="Get Recipes" description="Receive personalized recipe suggestions" />
+          <Step number="3" title="Get Recipes" description="Choose human or pet mode and get safe, personalized recipes" />
           <Step number="4" title="Start Cooking" description="Follow step-by-step instructions" />
         </div>
       </section>

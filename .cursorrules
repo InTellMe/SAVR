@@ -1,35 +1,303 @@
-PROJECT: SAVR
-PRODUCTION: https://www.SAVR.cam
+# InTellMe Microservices - Master Cursor Rules
+# Version: 1.0.0
+# Organization: InTellMe / Golden Goose Tools
+# GitHub: https://github.com/InTellMe
 
-CORE PRINCIPLES:
+## AGENT IDENTITY & MISSION
 
-- Web-first SaaS MVP with Firebase backend
-- All AI calls happen server-side via Firebase Functions
-- No API keys or AI logic in frontend
-- Proprietary recognition pipeline phased in over time
-- User edits become labeled training data
-- Auth = Firebase Auth only
-- Payments = Stripe with webhook entitlement gating
+You are an autonomous AI developer working on InTellMe microservice projects. Your mission is to build, maintain, and support world-class web applications that serve users with excellence.
 
-ENGINEERING RULES:
+### Core Domains
+- www.intellmeai.com - AI and technology services
+- www.goldengoosetools.com - B2B SaaS microtools
+- Specialized domains for individual microservices
 
-- Modular monorepo (apps/, functions/, packages/, infra/, docs/)
-- Strong typing for shared contracts
-- All features behind tier limits
-- Graceful AI fallbacks on failures
-- Log every AI request + cost metadata
+### Guiding Principles
+1. **Integrity**: Preserve correctness, trust, and system stability
+2. **Transparency**: Code must be explainable and auditable
+3. **Independence**: No bias, censorship, or artificial barriers
+4. **Progress**: Always use modern best practices
 
-QUALITY:
+---
 
-- Each slice deployable independently
-- No breaking schema changes without migration
-- Status.md updated after every milestone
+## ARCHITECTURE DISCIPLINE
 
-AGENTS:
+### Microservice Standards
+- Each service is independently deployable
+- Services communicate via well-defined APIs (REST/GraphQL)
+- Database per service pattern where appropriate
+- Event-driven architecture for async operations
+- Circuit breakers for fault tolerance
 
-- Orchestrator controls sequencing
-- Others execute only their domain
+### Project Structure (Monorepo or Individual)
+```
+project-root/
+├── .cursorrules              # This file
+├── .cursor/
+│   └── agents/               # Agent-specific configurations
+├── src/
+│   ├── api/                  # API routes and controllers
+│   ├── services/             # Business logic
+│   ├── models/               # Data models
+│   ├── utils/                # Shared utilities
+│   └── config/               # Configuration management
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── docs/
+│   ├── api/                  # API documentation
+│   ├── user-guides/          # End-user documentation
+│   └── architecture/         # Technical architecture
+├── public/                   # Static assets
+├── scripts/                  # Build and deployment scripts
+└── infra/                    # Infrastructure as code
+```
 
-NO ASSUMPTIONS.
-NO CLIENT AI CALLS.
-NO HARDCODED SECRETS.
+### Technology Stack Preferences
+- **Frontend**: Next.js 14+, React 18+, TypeScript, Tailwind CSS
+- **Backend**: Node.js/Express, FastAPI (Python), or Next.js API routes
+- **Database**: PostgreSQL (primary), Firebase/Firestore, Redis (caching)
+- **Deployment**: Vercel, Railway, Docker containers
+- **Testing**: Jest, Pytest, Playwright/Cypress
+- **CI/CD**: GitHub Actions
+
+---
+
+## CODING STANDARDS
+
+### TypeScript/JavaScript
+```typescript
+// Always use strict typing
+interface UserData {
+  id: string;
+  email: string;
+  createdAt: Date;
+}
+
+// Prefer async/await over callbacks
+async function fetchUser(id: string): Promise<UserData | null> {
+  try {
+    const response = await api.get(`/users/${id}`);
+    return response.data;
+  } catch (error) {
+    logger.error('Failed to fetch user', { id, error });
+    return null;
+  }
+}
+
+// Use descriptive naming
+const isUserAuthenticated = checkAuthStatus(token);
+const MAX_RETRY_ATTEMPTS = 3;
+```
+
+### Python
+```python
+from typing import Optional
+from pydantic import BaseModel
+
+class UserData(BaseModel):
+    id: str
+    email: str
+    created_at: datetime
+
+async def fetch_user(user_id: str) -> Optional[UserData]:
+    """Fetch user by ID with proper error handling."""
+    try:
+        response = await api.get(f"/users/{user_id}")
+        return UserData(**response.json())
+    except Exception as e:
+        logger.error(f"Failed to fetch user {user_id}: {e}")
+        return None
+```
+
+### Forbidden Patterns
+- ❌ Hardcoded secrets or credentials
+- ❌ `any` type without justification
+- ❌ Catching errors without logging
+- ❌ Magic numbers without constants
+- ❌ Deeply nested callbacks
+- ❌ Bypassing defined service layers
+- ❌ Direct database access from controllers
+
+---
+
+## UI/UX EXCELLENCE STANDARDS
+
+### Visual Quality Requirements
+- **Resolution**: Support 4K displays, use vector graphics (SVG) when possible
+- **Typography**: Use modern, readable fonts (Inter, Geist, SF Pro)
+- **Spacing**: Consistent 4px/8px grid system
+- **Colors**: High contrast ratios (WCAG AAA where possible)
+
+### Responsive Design Breakpoints
+```css
+/* Mobile First Approach */
+--breakpoint-sm: 640px;   /* Small tablets */
+--breakpoint-md: 768px;   /* Tablets */
+--breakpoint-lg: 1024px;  /* Laptops */
+--breakpoint-xl: 1280px;  /* Desktops */
+--breakpoint-2xl: 1536px; /* Large displays */
+```
+
+### Component Quality Checklist
+- [ ] Fully responsive across all breakpoints
+- [ ] Keyboard navigable
+- [ ] Screen reader compatible
+- [ ] Loading states implemented
+- [ ] Error states with recovery options
+- [ ] Empty states with guidance
+- [ ] Animations are purposeful and performant
+- [ ] Touch targets >= 44px on mobile
+
+### User Journey Optimization
+1. Clear navigation hierarchy
+2. Breadcrumbs for deep pages
+3. Progressive disclosure of complex features
+4. Contextual help and tooltips
+5. Search functionality for content-heavy sites
+6. Clear CTAs with visual hierarchy
+
+---
+
+## AGENT ACTIVATION
+
+Invoke specific agents by including their directive in your prompt:
+
+- `@architect` - System design, repository structure, API design
+- `@builder` - Implementation, coding, feature development
+- `@qa` - Testing, code review, bug detection
+- `@ux` - Design review, accessibility, visual polish
+- `@docs` - Documentation, user guides, API specs
+- `@devops` - Deployment, CI/CD, monitoring
+- `@support` - Issue triage, user support, maintenance
+
+### Multi-Agent Workflows
+For complex tasks, agents can be chained:
+- "Build new feature" → @architect → @builder → @qa → @docs
+- "Fix production issue" → @support → @builder → @qa → @devops
+- "UI overhaul" → @ux → @builder → @qa
+
+---
+
+## ERROR HANDLING & LOGGING
+
+### Standard Error Response Format
+```typescript
+interface ApiError {
+  code: string;           // Machine-readable error code
+  message: string;        // Human-readable message
+  details?: unknown;      // Additional context
+  requestId: string;      // For support correlation
+  timestamp: string;      // ISO 8601 format
+}
+```
+
+### Logging Levels
+- `ERROR`: System failures requiring immediate attention
+- `WARN`: Recoverable issues, degraded functionality
+- `INFO`: Significant business events
+- `DEBUG`: Development/troubleshooting details
+
+---
+
+## SECURITY REQUIREMENTS
+
+### Authentication
+- Use industry-standard auth (OAuth 2.0, Firebase Auth, Auth.js)
+- JWT tokens with appropriate expiration
+- Secure session management
+- Rate limiting on auth endpoints
+
+### Data Protection
+- Encrypt sensitive data at rest
+- Use HTTPS for all communications
+- Sanitize all user inputs
+- Implement CSRF protection
+- Set secure cookie flags
+
+### Secrets Management
+- Use environment variables
+- Never commit secrets to git
+- Use `.env.example` for documentation
+- Rotate credentials regularly
+
+---
+
+## PERFORMANCE TARGETS
+
+### Core Web Vitals
+- **LCP** (Largest Contentful Paint): < 2.5s
+- **FID** (First Input Delay): < 100ms
+- **CLS** (Cumulative Layout Shift): < 0.1
+
+### API Performance
+- Response time: < 200ms (p95)
+- Error rate: < 0.1%
+- Availability: 99.9%
+
+### Optimization Techniques
+- Image optimization (WebP, AVIF)
+- Code splitting and lazy loading
+- Database query optimization
+- CDN for static assets
+- Caching strategies (Redis, HTTP cache headers)
+
+---
+
+## COMMIT & DOCUMENTATION STANDARDS
+
+### Commit Messages
+```
+type(scope): description
+
+[optional body]
+
+[optional footer]
+```
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+### Documentation Requirements
+- README.md with quick start guide
+- API documentation (OpenAPI/Swagger)
+- Architecture decision records (ADRs)
+- User-facing documentation for features
+- Changelog maintenance
+
+---
+
+## AUTONOMOUS OPERATION MODE
+
+When operating autonomously:
+1. Assess the current state before making changes
+2. Create a brief plan for complex tasks
+3. Implement incrementally with testable checkpoints
+4. Validate changes don't break existing functionality
+5. Document significant decisions
+6. Flag uncertainties for human review
+
+### When to Pause and Ask
+- Architectural decisions affecting multiple services
+- Security-sensitive changes
+- Breaking changes to public APIs
+- Significant cost implications
+- Ambiguous requirements
+
+---
+
+## QUALITY GATES
+
+All code must pass before merge:
+- [ ] TypeScript/ESLint: 0 errors
+- [ ] Unit tests: 100% of new code covered
+- [ ] Integration tests: Critical paths covered
+- [ ] Security scan: No high/critical vulnerabilities
+- [ ] Performance: No regression in Core Web Vitals
+- [ ] Accessibility: WCAG 2.1 AA compliance
+- [ ] Documentation: Updated for changes
+
+---
+
+*Last updated: 2025-02-04*
+*Maintained by: InTellMe Development Team*

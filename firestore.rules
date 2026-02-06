@@ -12,10 +12,10 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Helper function to check if user has pro subscription
-    function isPro() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier == 'pro';
+    // Helper: paid tier (plus or premium; legacy 'pro' treated as plus)
+    function isPaidTier() {
+      let tier = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier;
+      return isAuthenticated() && (tier == 'plus' || tier == 'premium' || tier == 'pro');
     }
     
     // Users collection - users can read their own profile and only update non-entitlement fields.
@@ -86,6 +86,13 @@ service cloud.firestore {
     // API usage (rate limiting) - written only by Cloud Functions
     match /apiUsage/{userId} {
       allow read, write: if false;
+    }
+
+    // Shared recipes - public read by shareId; only owner can create/update/delete
+    match /sharedRecipes/{shareId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // Labeled training data - only backend services (admin SDK) may access

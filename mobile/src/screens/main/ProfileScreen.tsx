@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { isPaidTier } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
@@ -35,9 +36,9 @@ export default function ProfileScreen() {
         <View style={styles.subscriptionBadge}>
           <Text style={[
             styles.subscriptionText,
-            userData?.subscriptionTier === 'pro' && styles.proText
+            isPaidTier(userData?.subscriptionTier) && styles.proText
           ]}>
-            {userData?.subscriptionTier === 'pro' ? '⭐ Pro Member' : '🆓 Free Plan'}
+            {userData?.subscriptionTier === 'premium' ? '⭐ Premium' : userData?.subscriptionTier === 'plus' || userData?.subscriptionTier === 'pro' ? '⭐ Plus' : '🆓 Basic'}
           </Text>
         </View>
       </View>
@@ -51,10 +52,10 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={24} color="#9ca3af" />
         </TouchableOpacity>
 
-        {userData?.subscriptionTier !== 'pro' && (
+        {!isPaidTier(userData?.subscriptionTier) && (
           <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="star-outline" size={24} color="#7c3aed" />
-            <Text style={[styles.menuItemText, styles.upgradeText]}>Upgrade to Pro</Text>
+            <Text style={[styles.menuItemText, styles.upgradeText]}>Upgrade to Plus or Premium</Text>
             <Ionicons name="chevron-forward" size={24} color="#9ca3af" />
           </TouchableOpacity>
         )}

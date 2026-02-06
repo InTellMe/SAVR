@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Recipe } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 import { MainStackParamList } from '../../navigation/MainNavigator';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,16 +17,19 @@ interface RecipeDetailScreenProps {
 
 export default function RecipeDetailScreen({ route }: RecipeDetailScreenProps) {
   const { recipeId } = route.params;
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
 
   useEffect(() => {
     loadRecipe();
-  }, [recipeId]);
+  }, [recipeId, user?.uid]);
 
   const loadRecipe = async () => {
+    if (!user) return;
     try {
-      const recipeDoc = await getDoc(doc(db, 'recipes', recipeId));
+      const recipeRef = doc(db, 'recipes', user.uid, 'items', recipeId);
+      const recipeDoc = await getDoc(recipeRef);
       if (recipeDoc.exists()) {
         setRecipe({ id: recipeDoc.id, ...recipeDoc.data() } as Recipe);
       }
@@ -48,6 +52,13 @@ export default function RecipeDetailScreen({ route }: RecipeDetailScreenProps) {
     );
   }
 
+  const totalTime = (recipe.prepTime ?? 0) + recipe.cookTime;
+  const ingredientsList = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients.map((ing) =>
+        typeof ing === 'string' ? ing : `${ing.quantity} ${ing.unit} ${ing.name}`
+      )
+    : [];
+
   return (
     <ScrollView style={styles.container}>
       {recipe.imageUrl && (
@@ -56,12 +67,19 @@ export default function RecipeDetailScreen({ route }: RecipeDetailScreenProps) {
 
       <View style={styles.content}>
         <Text style={styles.title}>{recipe.title}</Text>
+        {recipe.recipeType === 'pet' && (
+          <View style={styles.petBanner}>
+            <Text style={styles.petBannerText}>
+              Safe for {recipe.species === 'cat' ? 'cats' : 'dogs'}. Always consult your vet. These are occasional supplements, not a complete diet.
+            </Text>
+          </View>
+        )}
         <Text style={styles.description}>{recipe.description}</Text>
 
         <View style={styles.meta}>
           <View style={styles.metaItem}>
             <Ionicons name="time" size={20} color="#ea580c" />
-            <Text style={styles.metaText}>{recipe.cookTime} min</Text>
+            <Text style={styles.metaText}>{totalTime} min</Text>
           </View>
           <View style={styles.metaItem}>
             <Ionicons name="people" size={20} color="#ea580c" />
@@ -71,10 +89,10 @@ export default function RecipeDetailScreen({ route }: RecipeDetailScreenProps) {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ingredients</Text>
-          {recipe.ingredients.map((ingredient, index) => (
+          {ingredientsList.map((line, index) => (
             <View key={index} style={styles.listItem}>
               <Text style={styles.bullet}>•</Text>
-              <Text style={styles.listItemText}>{ingredient}</Text>
+              <Text style={styles.listItemText}>{line}</Text>
             </View>
           ))}
         </View>
@@ -191,5 +209,17 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 18,
     color: '#6b7280',
+  },
+  petBanner: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  petBannerText: {
+    fontSize: 14,
+    color: '#92400e',
   },
 });

@@ -4,7 +4,7 @@ export interface User {
   email: string;
   displayName?: string;
   photoURL?: string;
-  subscriptionTier: 'free' | 'pro';
+  subscriptionTier: SubscriptionTierName;
   subscriptionStatus?: 'active' | 'cancelled' | 'past_due';
   stripeCustomerId?: string;
   paypalSubscriptionId?: string;
@@ -24,6 +24,9 @@ export interface InventoryItem {
   imageUrl?: string;
 }
 
+export type RecipeType = 'human' | 'pet';
+export type PetSpecies = 'cat' | 'dog';
+
 export interface Recipe {
   id: string;
   userId: string;
@@ -42,6 +45,8 @@ export interface Recipe {
   cuisine?: string;
   dietaryTags?: string[];
   generatedBy: 'ai' | 'user';
+  recipeType?: RecipeType;
+  species?: PetSpecies;
   createdAt: Date;
 }
 
@@ -164,6 +169,8 @@ export interface AnalyzeImageResponse {
 
 export interface CreateRecipeRequest {
   ingredients: string[];
+  recipeType?: RecipeType;
+  species?: PetSpecies;
   preferences?: {
     cuisine?: string;
     dietary?: string[];
@@ -176,6 +183,9 @@ export interface CreateRecipeResponse {
   success: boolean;
   recipeId: string;
   recipe: AiRecipe;
+  recipeType?: RecipeType;
+  species?: PetSpecies;
+  removedForSafety?: string[];
 }
 
 export interface CreateMealPlanRequest {
@@ -224,28 +234,40 @@ export interface ChatResponse {
 }
 
 export interface SubscriptionTier {
-  name: 'free' | 'pro';
+  name: SubscriptionTierName;
   maxInventoryItems: number;
   maxRecipesPerMonth: number;
   maxMealPlansPerMonth: number;
+  maxPetRecipesPerMonth: number;
   aiChatEnabled: boolean;
   advancedFeatures: boolean;
 }
 
-export const TIER_LIMITS: Record<'free' | 'pro', SubscriptionTier> = {
-  free: {
-    name: 'free',
+export const TIER_LIMITS: Record<SubscriptionTierName, SubscriptionTier> = {
+  basic: {
+    name: 'basic',
     maxInventoryItems: 50,
     maxRecipesPerMonth: 10,
     maxMealPlansPerMonth: 2,
+    maxPetRecipesPerMonth: 5,
     aiChatEnabled: false,
     advancedFeatures: false,
   },
-  pro: {
-    name: 'pro',
-    maxInventoryItems: -1, // unlimited
-    maxRecipesPerMonth: -1, // unlimited
-    maxMealPlansPerMonth: -1, // unlimited
+  plus: {
+    name: 'plus',
+    maxInventoryItems: -1,
+    maxRecipesPerMonth: -1,
+    maxMealPlansPerMonth: -1,
+    maxPetRecipesPerMonth: -1,
+    aiChatEnabled: true,
+    advancedFeatures: true,
+  },
+  premium: {
+    name: 'premium',
+    maxInventoryItems: -1,
+    maxRecipesPerMonth: -1,
+    maxMealPlansPerMonth: -1,
+    maxPetRecipesPerMonth: -1,
     aiChatEnabled: true,
     advancedFeatures: true,
   },
