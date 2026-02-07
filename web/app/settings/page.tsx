@@ -60,25 +60,25 @@ function SettingsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
 
       <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Settings</h1>
-        <p className="text-gray-600 mb-8">
+        <h1 className="text-3xl font-bold text-white mb-4">Settings</h1>
+        <p className="text-[#9ca3c2] mb-8">
           Manage your account details, subscription, and preferences.
         </p>
 
         {error && (
-          <div className="mb-6 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          <div className="mb-6 rounded border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-400">
             {error}
           </div>
         )}
 
         {/* Account section */}
-        <section className="mb-6 rounded-lg bg-white p-6 shadow">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Account</h2>
-          <div className="space-y-2 text-sm text-gray-700">
+        <section className="mb-6 rounded-lg glass-card p-6 shadow">
+          <h2 className="text-xl font-semibold text-white mb-4">Account</h2>
+          <div className="space-y-2 text-sm text-[#9ca3c2]">
             <p>
               <span className="font-medium">Email:</span> {user?.email}
             </p>
@@ -95,33 +95,33 @@ function SettingsContent() {
         </section>
 
         {/* Subscription section */}
-        <section className="mb-6 rounded-lg bg-white p-6 shadow">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Subscription</h2>
+        <section className="mb-6 rounded-lg glass-card p-6 shadow">
+          <h2 className="text-xl font-semibold text-white mb-4">Subscription</h2>
 
           {hasPaidTier ? (
             <>
-              <p className="mb-4 text-sm text-gray-700">
-                You&apos;re on the <span className="font-semibold text-orange-600">{tierLabel}</span> plan
+              <p className="mb-4 text-sm text-[#9ca3c2]">
+                You&apos;re on the <span className="font-semibold text-[#00d4ff]">{tierLabel}</span> plan
                 with access to unlimited recipes, meal plans, AI chat, and more.
               </p>
               <button
                 type="button"
                 onClick={handleManageSubscription}
                 disabled={loadingPortal}
-                className="rounded-lg bg-orange-600 px-5 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+                className="rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold px-5 py-2 text-sm hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] disabled:opacity-50"
               >
                 {loadingPortal ? 'Opening portal...' : 'Manage billing'}
               </button>
             </>
           ) : (
             <>
-              <p className="mb-4 text-sm text-gray-700">
+              <p className="mb-4 text-sm text-[#9ca3c2]">
                 You&apos;re on the <span className="font-semibold">Basic</span> plan. Upgrade to Plus or
                 Premium to unlock unlimited recipes, AI chat, and more.
               </p>
               <Link
                 href="/pricing"
-                className="inline-block rounded-lg bg-orange-600 px-5 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                className="inline-block rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold px-5 py-2 text-sm hover:shadow-[0_0_30px_rgba(0,212,255,0.4)]"
               >
                 View plans
               </Link>
@@ -130,9 +130,9 @@ function SettingsContent() {
         </section>
 
         {/* Danger zone */}
-        <section className="rounded-lg border border-red-200 bg-red-50 p-6">
-          <h2 className="text-xl font-semibold text-red-900 mb-3">Danger zone</h2>
-          <p className="mb-4 text-sm text-red-800">
+        <section className="rounded-lg border border-red-500/20 bg-red-500/10 p-6">
+          <h2 className="text-xl font-semibold text-red-400 mb-3">Danger zone</h2>
+          <p className="mb-4 text-sm text-red-400">
             Log out of your account on this device. Account deletion is not yet available in the app.
           </p>
           <button

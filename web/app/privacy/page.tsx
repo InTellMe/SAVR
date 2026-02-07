@@ -2,21 +2,21 @@ import Navbar from '@/components/Navbar';
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       
       <div className="container mx-auto px-4 py-16 max-w-4xl">
-        <h1 className="text-5xl font-bold text-gray-900 mb-8">
+        <h1 className="text-5xl font-bold text-white mb-8">
           Privacy Policy
         </h1>
         
-        <div className="prose prose-lg max-w-none space-y-6 text-gray-700">
-          <p className="text-sm text-gray-500">
+        <div className="prose prose-lg max-w-none space-y-6 text-[#9ca3c2]">
+          <p className="text-sm text-[#9ca3c2]">
             Last Updated: February 7, 2025
           </p>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               1. Introduction
             </h2>
             <p>
@@ -27,11 +27,11 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               2. Information We Collect
             </h2>
             
-            <h3 className="text-2xl font-semibold text-gray-900 mt-6 mb-3">
+            <h3 className="text-2xl font-semibold text-white mt-6 mb-3">
               2.1 Information You Provide
             </h3>
             <ul className="list-disc pl-6 space-y-2">
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
               <li><strong>Communications:</strong> Messages you send to us for support or feedback</li>
             </ul>
 
-            <h3 className="text-2xl font-semibold text-gray-900 mt-6 mb-3">
+            <h3 className="text-2xl font-semibold text-white mt-6 mb-3">
               2.2 Automatically Collected Information
             </h3>
             <ul className="list-disc pl-6 space-y-2">
@@ -54,7 +54,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               3. How We Use Your Information
             </h2>
             <p>
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               4. Third-Party Services
             </h2>
             <p>
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               5. Data Sharing and Disclosure
             </h2>
             <p>
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               6. Data Storage and Security
             </h2>
             <p>
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               7. Data Retention
             </h2>
             <p>
@@ -145,7 +145,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               8. Your Rights and Choices
             </h2>
             <p>
@@ -165,7 +165,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               9. Children&apos;s Privacy
             </h2>
             <p>
@@ -176,7 +176,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               10. International Data Transfers
             </h2>
             <p>
@@ -187,7 +187,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               11. California Privacy Rights
             </h2>
             <p>
@@ -203,7 +203,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               12. European Privacy Rights (GDPR)
             </h2>
             <p>
@@ -220,7 +220,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               13. Changes to This Privacy Policy
             </h2>
             <p>
@@ -231,7 +231,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               14. Contact Us
             </h2>
             <p>

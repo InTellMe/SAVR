@@ -172,7 +172,7 @@ function RecipesContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
         <div className="container mx-auto px-4 py-8 flex justify-center">
           <LoadingSpinner size="lg" />
@@ -182,36 +182,36 @@ function RecipesContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Recipes</h1>
+          <h1 className="text-3xl font-bold text-white">My Recipes</h1>
           <button
             onClick={() => setShowForm(true)}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+            className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
           >
             ✨ Generate New Recipe
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded mb-6">
+          <div className="border border-red-500/20 bg-red-500/10 text-red-400 px-4 py-3 rounded mb-6">
             {error}
           </div>
         )}
 
         {recipes.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="glass-card rounded-lg shadow p-12 text-center">
             <div className="text-6xl mb-4">🍳</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">No recipes yet</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-2xl font-semibold text-white mb-2">No recipes yet</h2>
+            <p className="text-[#9ca3c2] mb-6">
               Generate your first recipe based on your inventory!
             </p>
             <button
               onClick={() => setShowForm(true)}
-              className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+              className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
             >
               Generate Recipe
             </button>
@@ -232,12 +232,12 @@ function RecipesContent() {
         {/* Generate Form Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full my-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Generate Recipe</h3>
+            <div className="glass-card rounded-lg p-6 max-w-md w-full my-8">
+              <h3 className="text-2xl font-bold text-white mb-6">Generate Recipe</h3>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-2">
                     Cooking for Humans or Pets?
                   </label>
                   <div className="flex gap-4">
@@ -266,7 +266,7 @@ function RecipesContent() {
 
                 {formData.recipeType === 'pet' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#9ca3c2] mb-2">
                       Species
                     </label>
                     <div className="flex gap-4">
@@ -296,7 +296,7 @@ function RecipesContent() {
 
                 {formData.recipeType === 'human' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-2">
                     Dietary Restrictions
                   </label>
                   <div className="space-y-2">
@@ -329,7 +329,7 @@ function RecipesContent() {
 
                 {formData.recipeType === 'human' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-[#9ca3c2] mb-1">
                       Cuisine Preference (optional)
                     </label>
                     <input
@@ -337,19 +337,19 @@ function RecipesContent() {
                       value={formData.cuisinePreference}
                       onChange={(e) => setFormData({ ...formData, cuisinePreference: e.target.value })}
                       placeholder="e.g., Italian, Mexican, Asian"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-1">
                     Skill Level
                   </label>
                   <select
                     value={formData.skillLevel}
                     onChange={(e) => setFormData({ ...formData, skillLevel: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                   >
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
@@ -358,14 +358,14 @@ function RecipesContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-1">
                     Max Cooking Time (minutes)
                   </label>
                   <input
                     type="number"
                     value={formData.maxCookingTime}
                     onChange={(e) => setFormData({ ...formData, maxCookingTime: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                   />
                 </div>
               </div>
@@ -374,14 +374,14 @@ function RecipesContent() {
                 <button
                   onClick={handleGenerateRecipe}
                   disabled={generating}
-                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] disabled:opacity-50"
                 >
                   {generating ? 'Generating...' : 'Generate'}
                 </button>
                 <button
                   onClick={() => setShowForm(false)}
                   disabled={generating}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
                 >
                   Cancel
                 </button>
@@ -434,24 +434,24 @@ function RecipeCard({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow hover:shadow-lg transition p-6">
+    <div className="glass-card rounded-lg shadow hover:shadow-lg transition p-6 border border-white/6 hover:border-[#00d4ff]/30">
       <div className="flex justify-between items-start mb-3 flex-wrap gap-2">
-        <h3 className="text-xl font-semibold text-gray-900">{recipe.title}</h3>
+        <h3 className="text-xl font-semibold text-white">{recipe.title}</h3>
         <div className="flex items-center gap-2">
           {recipe.recipeType === 'pet' && (
             <span className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded">
               Safe for {recipe.species === 'cat' ? 'Cats' : 'Dogs'}
             </span>
           )}
-          <span className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded">
+          <span className="text-xs px-2 py-1 bg-[#00d4ff]/20 text-[#00d4ff] rounded">
             {recipe.difficulty}
           </span>
         </div>
       </div>
       
-      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{recipe.description}</p>
+      <p className="text-[#9ca3c2] text-sm mb-4 line-clamp-2">{recipe.description}</p>
       
-      <div className="flex items-center text-sm text-gray-500 space-x-4 mb-4">
+      <div className="flex items-center text-sm text-[#9ca3c2] space-x-4 mb-4">
         <span>⏱️ {recipe.prepTime + recipe.cookTime} min</span>
         <span>🍽️ {recipe.servings} servings</span>
       </div>
@@ -459,7 +459,7 @@ function RecipeCard({
       <div className="flex space-x-2">
         <button
           onClick={() => onView(recipe)}
-          className="flex-1 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition"
+          className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
         >
           View Recipe
         </button>
@@ -485,22 +485,22 @@ function RecipeDetailsModal({
 }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
+      <div className="glass-card rounded-lg p-6 max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-start mb-4">
-          <h2 className="text-3xl font-bold text-gray-900">{recipe.title}</h2>
+          <h2 className="text-3xl font-bold text-white">{recipe.title}</h2>
           <div className="flex items-center gap-2">
             {onShare && (
               <button
                 type="button"
                 onClick={onShare}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-white/6 px-3 py-1.5 text-sm font-medium text-[#9ca3c2] hover:bg-white/5"
               >
                 Share
               </button>
             )}
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 text-2xl"
+              className="text-[#9ca3c2] hover:text-white text-2xl"
             >
               ×
             </button>
@@ -513,9 +513,9 @@ function RecipeDetailsModal({
           </div>
         )}
 
-        <p className="text-gray-600 mb-6 whitespace-pre-line">{recipe.description}</p>
+        <p className="text-[#9ca3c2] mb-6 whitespace-pre-line">{recipe.description}</p>
 
-        <div className="flex items-center flex-wrap gap-4 mb-6 text-sm text-gray-600">
+        <div className="flex items-center flex-wrap gap-4 mb-6 text-sm text-[#9ca3c2]">
           <span>⏱️ {recipe.prepTime + recipe.cookTime} minutes</span>
           <span>🍽️ {recipe.servings} servings</span>
           <span>📊 {recipe.difficulty}</span>
@@ -523,19 +523,19 @@ function RecipeDetailsModal({
           {recipe.dietaryTags && recipe.dietaryTags.length > 0 && (
             <span className="flex gap-1 flex-wrap">
               {recipe.dietaryTags.map(tag => (
-                <span key={tag} className="px-2 py-0.5 bg-gray-100 rounded text-gray-700">{tag}</span>
+                <span key={tag} className="px-2 py-0.5 bg-white/5 rounded text-[#9ca3c2]">{tag}</span>
               ))}
             </span>
           )}
         </div>
 
         <div className="mb-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-3">Ingredients</h3>
+          <h3 className="text-xl font-semibold text-white mb-3">Ingredients</h3>
           <ul className="space-y-2">
             {recipe.ingredients.map((ingredient, index) => (
               <li key={index} className="flex items-start">
-                <span className="text-orange-600 mr-2">•</span>
-                <span className="text-gray-700">
+                <span className="text-[#00d4ff] mr-2">•</span>
+                <span className="text-[#9ca3c2]">
                   {ingredient.quantity} {ingredient.unit} {ingredient.name}
                 </span>
               </li>
@@ -544,12 +544,12 @@ function RecipeDetailsModal({
         </div>
 
         <div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-3">Instructions</h3>
+          <h3 className="text-xl font-semibold text-white mb-3">Instructions</h3>
           <ol className="space-y-3">
             {recipe.instructions.map((instruction, index) => (
               <li key={index} className="flex items-start">
-                <span className="font-semibold text-orange-600 mr-3">{index + 1}.</span>
-                <span className="text-gray-700">{instruction}</span>
+                <span className="font-semibold text-[#00d4ff] mr-3">{index + 1}.</span>
+                <span className="text-[#9ca3c2]">{instruction}</span>
               </li>
             ))}
           </ol>
@@ -560,14 +560,14 @@ function RecipeDetailsModal({
             <button
               type="button"
               onClick={onShare}
-              className="flex-1 px-4 py-2 border border-orange-600 text-orange-600 rounded-md hover:bg-orange-50"
+              className="flex-1 px-4 py-2 border border-[#00d4ff] text-[#00d4ff] rounded-md hover:bg-[#00d4ff]/10"
             >
               Share recipe
             </button>
           )}
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+            className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,212,255,0.4)]"
           >
             Close
           </button>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/Navbar';
+import VideoHero from '@/components/VideoHero';
 
 export default function Home() {
   return (
@@ -18,18 +19,8 @@ export default function Home() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-4xl mx-auto">
-            {/* Logo */}
-            <div className="mb-8 flex justify-center animate-float">
-              <Image
-                src="https://res.cloudinary.com/dksj2niho/image/upload/w_640,h_640,c_fit,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
-                alt="SAVR Logo"
-                width={280}
-                height={280}
-                className="w-48 md:w-72 h-auto drop-shadow-[0_0_60px_rgba(0,212,255,0.25)]"
-                priority
-                unoptimized
-              />
-            </div>
+            {/* Video Hero with rotating media */}
+            <VideoHero />
 
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8" style={{ background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
