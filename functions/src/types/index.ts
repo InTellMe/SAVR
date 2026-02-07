@@ -233,7 +233,7 @@ export interface ChatResponse {
   response: string;
 }
 
-export type SubscriptionTierName = 'basic' | 'plus' | 'premium';
+export type SubscriptionTierName = 'free' | 'pro';
 
 export interface SubscriptionTier {
   name: SubscriptionTierName;
@@ -242,36 +242,24 @@ export interface SubscriptionTier {
   maxMealPlansPerMonth: number;
   maxPetRecipesPerMonth: number;
   aiChatEnabled: boolean;
-  advancedFeatures: boolean;
 }
 
 export const TIER_LIMITS: Record<SubscriptionTierName, SubscriptionTier> = {
-  basic: {
-    name: 'basic',
+  free: {
+    name: 'free',
     maxInventoryItems: 50,
     maxRecipesPerMonth: 10,
     maxMealPlansPerMonth: 2,
     maxPetRecipesPerMonth: 5,
     aiChatEnabled: false,
-    advancedFeatures: false,
   },
-  plus: {
-    name: 'plus',
+  pro: {
+    name: 'pro',
     maxInventoryItems: -1,
     maxRecipesPerMonth: -1,
     maxMealPlansPerMonth: -1,
     maxPetRecipesPerMonth: -1,
     aiChatEnabled: true,
-    advancedFeatures: true,
-  },
-  premium: {
-    name: 'premium',
-    maxInventoryItems: -1,
-    maxRecipesPerMonth: -1,
-    maxMealPlansPerMonth: -1,
-    maxPetRecipesPerMonth: -1,
-    aiChatEnabled: true,
-    advancedFeatures: true,
   },
 };
 

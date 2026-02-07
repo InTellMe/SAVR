@@ -14,9 +14,8 @@ export default function PricingPage() {
   const [error, setError] = useState('');
 
   const tier = userData?.subscriptionTier;
-  const isBasic = tier === 'basic' || tier === 'free';
-  const isPlus = tier === 'plus' || tier === 'pro';
-  const isPremium = tier === 'premium';
+  const isFree = !tier || tier === 'free' || tier === 'basic';
+  const isPro = tier === 'pro' || tier === 'plus' || tier === 'premium'; // legacy support
 
   function handleFree() {
     if (!user) {
@@ -50,10 +49,10 @@ export default function PricingPage() {
     }
   }
 
-  const priceIdPlus =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS || 'price_plus';
-  const priceIdPremium =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM || 'price_premium';
+  const priceIdProMonthly =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY || 'price_pro_monthly';
+  const priceIdProYearly =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY || 'price_pro_yearly';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
@@ -76,9 +75,9 @@ export default function PricingPage() {
         )}
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {/* Basic */}
+          {/* Free */}
           <PricingCard
-            name="Basic"
+            name="Free"
             price="$0"
             period="forever"
             description="Perfect for getting started"
@@ -91,21 +90,21 @@ export default function PricingPage() {
               'Community support',
             ]}
             limitations={['No AI chat assistant']}
-            buttonText={isBasic ? 'Current Plan' : 'Get Started'}
-            buttonDisabled={isBasic}
+            buttonText={isFree ? 'Current Plan' : 'Get Started'}
+            buttonDisabled={isFree}
             onSelect={handleFree}
             loading={loading}
             recommended={false}
           />
 
-          {/* Plus */}
+          {/* Pro Monthly */}
           <PricingCard
-            name="Plus"
-            price="$7.99"
+            name="Pro"
+            price="$9.99"
             period="per month"
-            description="For regular home cooks"
+            description="For passionate home cooks"
             features={[
-              'Everything in Basic',
+              'Everything in Free',
               'Unlimited inventory',
               'Unlimited recipes & meal plans',
               'Unlimited pet recipes',
@@ -113,29 +112,29 @@ export default function PricingPage() {
               'Ad-free experience',
             ]}
             limitations={[]}
-            buttonText={isPlus ? 'Current Plan' : 'Subscribe'}
-            buttonDisabled={isPlus}
-            onSelect={() => handleStripeSubscribe(priceIdPlus)}
+            buttonText={isPro ? 'Current Plan' : 'Subscribe Monthly'}
+            buttonDisabled={isPro}
+            onSelect={() => handleStripeSubscribe(priceIdProMonthly)}
             loading={loading}
             recommended={true}
           />
 
-          {/* Premium */}
+          {/* Pro Yearly */}
           <PricingCard
-            name="Premium"
-            price="$14.99"
-            period="per month"
-            description="For power users"
+            name="Pro Yearly"
+            price="$99"
+            period="per year"
+            description="Best value - save $20"
             features={[
-              'Everything in Plus',
-              'Real-time cooking coach',
-              'Priority support',
-              'Early access to new features',
+              'Everything in Pro Monthly',
+              'Save $20 per year',
+              'Lock in your rate',
+              'Cancel anytime',
             ]}
             limitations={[]}
-            buttonText={isPremium ? 'Current Plan' : 'Subscribe'}
-            buttonDisabled={isPremium}
-            onSelect={() => handleStripeSubscribe(priceIdPremium)}
+            buttonText={isPro ? 'Current Plan' : 'Subscribe Yearly'}
+            buttonDisabled={isPro}
+            onSelect={() => handleStripeSubscribe(priceIdProYearly)}
             loading={loading}
             recommended={false}
           />

@@ -7,8 +7,8 @@ import {
   upsertUserSubscriptionRecord,
 } from '../utils/subscription';
 
-const STRIPE_PRICE_ID_PLUS = process.env.STRIPE_PRICE_ID_PLUS || '';
-const STRIPE_PRICE_ID_PREMIUM = process.env.STRIPE_PRICE_ID_PREMIUM || '';
+const STRIPE_PRICE_ID_PRO_MONTHLY = process.env.STRIPE_PRICE_ID_PRO_MONTHLY || '';
+const STRIPE_PRICE_ID_PRO_YEARLY = process.env.STRIPE_PRICE_ID_PRO_YEARLY || '';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2026-01-28.clover',
@@ -102,10 +102,9 @@ export async function handleStripeWebhook(
 }
 
 function tierFromPriceId(priceId: string | undefined): SubscriptionTierName {
-  if (!priceId) return 'plus';
-  if (priceId === STRIPE_PRICE_ID_PREMIUM) return 'premium';
-  if (priceId === STRIPE_PRICE_ID_PLUS) return 'plus';
-  return 'plus';
+  if (!priceId) return 'pro';
+  if (priceId === STRIPE_PRICE_ID_PRO_MONTHLY || priceId === STRIPE_PRICE_ID_PRO_YEARLY) return 'pro';
+  return 'pro';
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
@@ -121,7 +120,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       ? session.customer
       : (session.customer as Stripe.Customer | null)?.id ?? null;
 
-  let tier: SubscriptionTierName = 'plus';
+  let tier: SubscriptionTierName = 'pro';
   if (session.subscription) {
     const sub =
       typeof session.subscription === 'string'

@@ -4,19 +4,19 @@ export interface User {
   displayName?: string | null;
 }
 
-export type SubscriptionTierName = 'basic' | 'plus' | 'premium';
+export type SubscriptionTierName = 'free' | 'pro';
 
 export interface UserData {
   uid: string;
   email: string | null;
   displayName?: string | null;
-  subscriptionTier: SubscriptionTierName | 'free' | 'pro';
+  subscriptionTier: SubscriptionTierName | 'basic' | 'plus' | 'premium'; // legacy support
   subscriptionStatus?: string;
   createdAt?: any;
 }
 
 export function isPaidTier(tier: UserData['subscriptionTier'] | undefined): boolean {
-  return tier === 'plus' || tier === 'premium' || tier === 'pro';
+  return tier === 'pro' || tier === 'plus' || tier === 'premium'; // legacy plus/premium treated as pro
 }
 
 export interface InventoryItem {
