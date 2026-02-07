@@ -440,6 +440,30 @@ firebase deploy --only functions:analyzeImage
 2. Verify in Firebase Console
 3. Wait up to 24 hours for SSL certificate
 
+### Firebase Configuration Error in Browser Console
+
+**Error:** `Uncaught Error: Missing Firebase configuration for NEXT_PUBLIC_FIREBASE_API_KEY`
+
+**Cause:** Firebase environment variables were not set during the build process. The Next.js static export requires these variables at build time to be baked into the static files.
+
+**Solution:**
+
+1. **For GitHub Actions deployment:** Ensure all required secrets are set in repository Settings → Secrets and variables → Actions:
+   - `NEXT_PUBLIC_FIREBASE_API_KEY`
+   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `NEXT_PUBLIC_FIREBASE_APP_ID`
+   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+   - `NEXT_PUBLIC_APP_URL`
+
+2. **For local deployment:** Create `web/.env.local` with all required variables (see Step 2.1)
+
+3. **Verify the build:** After setting secrets, trigger a new deployment by pushing to `main` branch
+
+**Note:** The application will now gracefully handle missing Firebase configuration by showing a warning in the console instead of crashing, but Firebase features will not work until proper configuration is deployed.
+
 ## Support
 
 For deployment issues, contact:

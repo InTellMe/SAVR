@@ -6,16 +6,23 @@ import { getFunctions, Functions } from 'firebase/functions';
 
 // Build-safe Firebase configuration
 // During Next.js static export/prerendering, environment variables may not be available
-// Use dummy config to prevent build crashes during prerendering, but validate at runtime.
+// Use dummy config to prevent build crashes during prerendering.
+// If Firebase config is missing in production, use dummy config and log warning instead of crashing.
 const BUILD_DUMMY_KEY = 'dummy_key_for_build';
 
-// Allow dummy config during build/prerendering phase OR development
+// Allow dummy config during build/prerendering phase OR development OR when no real config exists
 // We detect build time by checking if we're server-side (no window) and no real Firebase env vars are set
 const isServerSide = typeof window === 'undefined';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const hasRealFirebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
                                process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== BUILD_DUMMY_KEY;
-const ALLOW_DUMMY_CONFIG = isDevelopment || (isServerSide && !hasRealFirebaseConfig);
+
+// In production, if no real config exists, allow dummy config but warn
+// This prevents the app from crashing if environment variables weren't injected during build
+const ALLOW_DUMMY_CONFIG = isDevelopment || (isServerSide && !hasRealFirebaseConfig) || !hasRealFirebaseConfig;
+
+// Track if we're using dummy config in production (for warning message)
+let usingDummyConfigInProduction = false;
 
 const getFirebaseConfigValue = (
   value: string | undefined,
@@ -27,6 +34,10 @@ const getFirebaseConfigValue = (
   }
 
   if (ALLOW_DUMMY_CONFIG) {
+    // If we're in production client-side without real config, mark for warning
+    if (!isDevelopment && !isServerSide && !hasRealFirebaseConfig) {
+      usingDummyConfigInProduction = true;
+    }
     return fallback;
   }
 
@@ -89,16 +100,26 @@ try {
   db = getFirestore(app);
   storage = getStorage(app);
   functions = getFunctions(app);
+
+  // Warn if running in production with dummy config
+  if (usingDummyConfigInProduction) {
+    console.error(
+      '⚠️ FIREBASE CONFIGURATION ERROR: Running with dummy Firebase configuration in production!\n' +
+      'This means NEXT_PUBLIC_FIREBASE_* environment variables were not set during the build process.\n' +
+      'Firebase features will NOT work. Please rebuild with proper environment variables.\n' +
+      'See DEPLOYMENT.md for instructions on setting up environment variables.'
+    );
+  }
 } catch (error) {
   // During build time with dummy config, services may fail to initialize properly
   // This is expected and will work correctly at runtime with real config
   console.warn('Firebase initialization warning (expected during build):', error);
   
-  // Re-throw in production or when real credentials are present.
+  // Re-throw in production if we have real credentials but still failed
   if (
-    !ALLOW_DUMMY_CONFIG ||
-    (process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-      process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== BUILD_DUMMY_KEY)
+    hasRealFirebaseConfig &&
+    !isDevelopment &&
+    !isServerSide
   ) {
     throw error;
   }
