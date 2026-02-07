@@ -17,6 +17,8 @@ SAVR is an AI-powered food management platform that helps you manage your pantry
 
 - **Free Tier**: 50 inventory items, 10 recipes/month, 2 meal plans/month
 - **Pro Tier**: Unlimited items, recipes, meal plans, AI chat, advanced features
+  - Monthly: $9.99/month
+  - Yearly: $99/year (save $20)
 
 ### Payment Options
 

@@ -81,13 +81,13 @@ STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
 # Stripe Price IDs (create these in Stripe Dashboard → Products)
-# Plus tier: $7.99/month
-STRIPE_PRICE_ID_PLUS=price_...
-NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS=price_...
+# Pro Monthly: $9.99/month
+STRIPE_PRICE_ID_PRO_MONTHLY=price_...
+NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY=price_...
 
-# Premium tier: $14.99/month
-STRIPE_PRICE_ID_PREMIUM=price_...
-NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM=price_...
+# Pro Yearly: $99/year  
+STRIPE_PRICE_ID_PRO_YEARLY=price_...
+NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY=price_...
 
 # PayPal
 NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
@@ -225,16 +225,16 @@ Firebase provisions SSL automatically. Propagation can take from a few minutes u
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Go to Products → Add Product
-3. Create "SAVR Plus":
-   - Name: SAVR Plus
-   - Price: $7.99/month
+3. Create "SAVR Pro Monthly":
+   - Name: SAVR Pro Monthly
+   - Price: $9.99/month
    - Recurring: Monthly
-   - Copy Price ID → Use as STRIPE_PRICE_ID_PLUS and NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS
-4. Create "SAVR Premium":
-   - Name: SAVR Premium
-   - Price: $14.99/month
-   - Recurring: Monthly
-   - Copy Price ID → Use as STRIPE_PRICE_ID_PREMIUM and NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM
+   - Copy Price ID → Use as STRIPE_PRICE_ID_PRO_MONTHLY and NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY
+4. Create "SAVR Pro Yearly":
+   - Name: SAVR Pro Yearly
+   - Price: $99/year
+   - Recurring: Yearly
+   - Copy Price ID → Use as STRIPE_PRICE_ID_PRO_YEARLY and NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY
 
 ### 8.2 Configure Stripe Webhook
 

@@ -396,7 +396,7 @@ Creates a Stripe checkout session for subscription.
 ```typescript
 const createStripeCheckout = httpsCallable(functions, "createStripeCheckout");
 const result = await createStripeCheckout({
-  priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS, // or NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM
+  priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY, // or NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY
   successUrl: `${window.location.origin}/dashboard?success=true`,
   cancelUrl: `${window.location.origin}/pricing`,
 });
