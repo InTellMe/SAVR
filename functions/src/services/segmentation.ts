@@ -1,9 +1,50 @@
 import OpenAI from 'openai';
 import { AnnotationObject, PolygonPoint } from '../types';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Type for raw segmentation response from OpenAI
+interface RawSegmentationObject {
+  id?: string;
+  categoryId?: string;
+  polygon?: Array<{ x: number; y: number }>;
+  confidence?: number;
+  attributes?: Record<string, unknown>;
+  isOccluded?: boolean;
+  isTruncated?: boolean;
+}
+
+// Type for raw polygon point
+interface RawPolygonPoint {
+  x: number;
+  y: number;
+}
+
+// Lazy initialization to avoid instantiation during Firebase deployment analysis
+let openaiInstance: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    // Firebase deployment analysis doesn't set FUNCTION_NAME or FUNCTION_TARGET
+    // Use dummy key only during build/analysis, fail fast at runtime if missing
+    const isDeploymentAnalysis = !process.env.FUNCTION_NAME && !process.env.FUNCTION_TARGET;
+    const apiKey = process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      if (isDeploymentAnalysis) {
+        // Allow dummy key during Firebase deployment analysis
+        openaiInstance = new OpenAI({ apiKey: 'dummy_key_for_build' });
+      } else {
+        // Fail fast at runtime with clear error
+        throw new Error(
+          'OPENAI_API_KEY environment variable is required. ' +
+          'Please configure it in your Firebase Functions environment.'
+        );
+      }
+    } else {
+      openaiInstance = new OpenAI({ apiKey });
+    }
+  }
+  return openaiInstance;
+}
 
 /**
  * Run segmentation inference on an image
@@ -57,7 +98,7 @@ Return a JSON array with this structure:
 Image dimensions: ${imageWidth}x${imageHeight}
 Return only the JSON array, no other text.`;
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: 'gpt-4o',
     messages: [
       {
@@ -76,11 +117,11 @@ Return only the JSON array, no other text.`;
   const content = completion.choices[0]?.message?.content || '{}';
   
   try {
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(content) as { objects?: RawSegmentationObject[] } | RawSegmentationObject[];
     // Handle both {objects: [...]} and [...] formats
     const objects = Array.isArray(parsed) ? parsed : parsed.objects || [];
     
-    return objects.map((obj: any, index: number) => ({
+    return objects.map((obj: RawSegmentationObject, index: number) => ({
       id: obj.id || `obj_${Date.now()}_${index}`,
       categoryId: obj.categoryId || 'unknown',
       polygon: normalizePolygon(obj.polygon || [], imageWidth, imageHeight),
@@ -100,7 +141,7 @@ Return only the JSON array, no other text.`;
  * Converts pixel coordinates to normalized [0, 1] if needed
  */
 function normalizePolygon(
-  polygon: any[],
+  polygon: RawPolygonPoint[],
   imageWidth: number,
   imageHeight: number
 ): PolygonPoint[] {
@@ -108,7 +149,7 @@ function normalizePolygon(
     return [];
   }
 
-  return polygon.map((point: any) => {
+  return polygon.map((point: RawPolygonPoint) => {
     let x = point.x;
     let y = point.y;
 

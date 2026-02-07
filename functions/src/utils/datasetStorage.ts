@@ -115,8 +115,8 @@ export async function createImageDocument(
     thumbnailPath,
     width,
     height,
-    createdAt: admin.firestore.FieldValue.serverTimestamp() as any,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp() as any,
+    createdAt: admin.firestore.FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
     labelStatus: 'unlabeled',
   };
  
@@ -149,7 +149,7 @@ export async function updateImageLabelStatus(
   labelStatus: ImageDocument['labelStatus'],
   currentAnnotationId?: string
 ): Promise<void> {
-  const updateData: any = {
+  const updateData: Record<string, unknown> = {
     labelStatus,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
@@ -188,8 +188,8 @@ export async function createAnnotationDocument(
     parentAnnotationId,
     status,
     createdByUid,
-    createdAt: admin.firestore.FieldValue.serverTimestamp() as any,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp() as any,
+    createdAt: admin.firestore.FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
     objects,
   };
  
@@ -247,7 +247,7 @@ export async function getOrCreateCategory(
   categoryId: string,
   name: string,
   color?: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): Promise<CategoryDocument> {
   const categoryRef = db.collection('categories').doc(categoryId);
   const categoryDoc = await categoryRef.get();

@@ -116,13 +116,13 @@ export function normalizeAiIngredient(ingredient: {
   };
 }
 
-export function normalizeAiIngredients(ingredients: any[]): AiIngredient[] {
+export function normalizeAiIngredients(ingredients: Array<Partial<AiIngredient>>): AiIngredient[] {
   if (!Array.isArray(ingredients)) return [];
-  return ingredients.map((ing: any) =>
+  return ingredients.map((ing) =>
     normalizeAiIngredient({
-      name: ing.name,
+      name: ing.name ?? 'unknown',
       quantity: ing.quantity ?? 1,
-      unit: ing.unit,
+      unit: ing.unit ?? 'unit',
       confidence: ing.confidence,
     })
   );

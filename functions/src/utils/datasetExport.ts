@@ -67,7 +67,7 @@ export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDa
   const cocoCategories: CocoCategory[] = categories.map((cat, index) => ({
     id: index + 1,
     name: cat.name,
-    supercategory: cat.metadata?.group || 'object',
+    supercategory: (cat.metadata?.group as string) || 'object',
   }));
 
   let annotationIdCounter = 1;

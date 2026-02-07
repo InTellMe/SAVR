@@ -5,6 +5,7 @@ import {
   AiMealPlan,
   AiRecipe,
   ExtractedIngredient,
+  Recipe,
 } from '../types';
 import { normalizeAiIngredients, aiIngredientsToExtracted } from '../utils/units';
 import { filterIngredientsForPet, PET_RECIPE_DISCLAIMER } from '../config/forbiddenFoods';
@@ -39,8 +40,9 @@ function getOpenAI(): OpenAI {
 
 const visionClient = new vision.ImageAnnotatorClient();
 
-function isRetryableOpenAIError(error: any): boolean {
-  const status = error?.status ?? error?.response?.status;
+function isRetryableOpenAIError(error: unknown): boolean {
+  const errorWithStatus = error as { status?: number; response?: { status?: number } };
+  const status = errorWithStatus?.status ?? errorWithStatus?.response?.status;
   if (!status) return false;
   if (status === 429) return true;
   if (status >= 500 && status < 600) return true;
@@ -66,7 +68,7 @@ async function callOpenAIWithFallback(
       stream: false,
     });
     return response as OpenAI.Chat.Completions.ChatCompletion;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isRetryableOpenAIError(error)) {
       throw error;
     }
@@ -369,11 +371,11 @@ Only return the JSON object, no other text.`;
 }
 
 export async function generateGroceryList(
-  recipes: any[],
+  recipes: Array<Pick<Recipe, 'title' | 'ingredients'>>,
   currentInventory: string[]
 ): Promise<AiGroceryItem[]> {
   const prompt = `Generate a grocery list for these recipes:
-${recipes.map(r => `- ${r.title}: ${r.ingredients.map((i: any) => `${i.quantity} ${i.unit} ${i.name}`).join(', ')}`).join('\n')}
+${recipes.map(r => `- ${r.title}: ${r.ingredients.map((i: Recipe['ingredients'][number]) => `${i.quantity} ${i.unit} ${i.name}`).join(', ')}`).join('\n')}
 
 Current inventory: ${currentInventory.join(', ')}
 
@@ -409,7 +411,7 @@ export async function chatAssistant(
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
   context?: {
     inventory?: string[];
-    currentRecipe?: any;
+    currentRecipe?: Pick<Recipe, 'title'>;
   }
 ): Promise<string> {
   const systemPrompt = `You are a helpful cooking assistant for SAVR app. 
@@ -425,7 +427,7 @@ Help users with:
 
 Be concise, friendly, and practical.`;
 
-  const messages: any[] = [
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt },
     ...conversationHistory,
     { role: 'user', content: message },

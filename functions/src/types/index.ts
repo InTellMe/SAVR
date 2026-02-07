@@ -224,7 +224,7 @@ export interface ChatRequest {
   conversationHistory?: ChatHistoryMessage[];
   contextData?: {
     inventory?: string[];
-    currentRecipe?: any;
+    currentRecipe?: Recipe;
   };
 }
 
@@ -290,7 +290,7 @@ export interface PolygonPoint {
 export interface AnnotationObject {
   id: string; // object instance ID (for tracking/analytics or cross-frame tracking)
   categoryId: string; // ID of semantic class (e.g., "jar", "can", "box_cereal")
-  attributes?: Record<string, any>; // key-value map for extra info (e.g., {"brand": "Heinz", "isTransparent": true})
+  attributes?: Record<string, unknown>; // key-value map for extra info (e.g., {"brand": "Heinz", "isTransparent": true})
   polygon: PolygonPoint[]; // array of {x, y} points normalized to [0, 1] or in pixel coordinates
   confidence?: number; // float 0-1 (for AI predictions)
   isOccluded?: boolean;
@@ -307,8 +307,8 @@ export interface ImageDocument {
   thumbnailPath?: string; // path to thumbnail version
   width: number;
   height: number;
-  createdAt: Date | any; // Firestore Timestamp
-  updatedAt: Date | any; // Firestore Timestamp
+  createdAt: Date | FirebaseFirestore.Timestamp; // Firestore Timestamp
+  updatedAt: Date | FirebaseFirestore.Timestamp; // Firestore Timestamp
   labelStatus: LabelStatus;
   currentAnnotationId?: string; // reference to the latest accepted annotation set
 }
@@ -321,8 +321,8 @@ export interface AnnotationDocument {
   parentAnnotationId?: string; // previous annotation this was derived from
   status: AnnotationStatus;
   createdByUid: string; // annotator user ID (or system for AI)
-  createdAt: Date | any; // Firestore Timestamp
-  updatedAt: Date | any; // Firestore Timestamp
+  createdAt: Date | FirebaseFirestore.Timestamp; // Firestore Timestamp
+  updatedAt: Date | FirebaseFirestore.Timestamp; // Firestore Timestamp
   objects: AnnotationObject[];
 }
 
@@ -330,13 +330,13 @@ export interface CategoryDocument {
   id: string; // stable categoryId used in annotations
   name: string; // human-readable label
   color?: string; // optional hex color for UI
-  metadata?: Record<string, any>; // optional map (e.g., {"group": "container"})
+  metadata?: Record<string, unknown>; // optional map (e.g., {"group": "container"})
 }
 
 // Request/Response types for labeling pipeline endpoints
 
 export interface UploadImageRequest {
-  file?: any; // File object (for direct upload)
+  file?: File | Buffer; // File object (for direct upload)
   imageUrl?: string; // URL of already uploaded image
   source?: ImageSource;
   videoId?: string;
@@ -384,7 +384,7 @@ export interface ExportDatasetRequest {
 export interface ExportDatasetResponse {
   success: boolean;
   exportUrl?: string;
-  exportData?: any; // COCO/YOLO format data
+  exportData?: CocoDataset | Record<string, unknown>; // COCO/YOLO format data
   imageCount: number;
   annotationCount: number;
 }
