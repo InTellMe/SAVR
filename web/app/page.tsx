@@ -29,24 +29,24 @@ export default function Home() {
             </div>
 
             {/* Headline */}
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] mb-6">
               <span className="text-white">Cook Smarter.</span>
               <br />
               <span className="gradient-text">Save Everything.</span>
             </h1>
 
             {/* Sub-headline */}
-            <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed" style={{ color: '#9ca3c2' }}>
+            <p className="text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed" style={{ color: '#9ca3c2' }}>
               Transform your pantry into restaurant-quality meals with AI. Smart inventory tracking,
               personalized recipes, pet-safe treats, and intelligent meal planning — all in one place.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link href="/sign-up" className="btn-primary text-lg w-full sm:w-auto text-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
+              <Link href="/sign-up" className="btn-primary text-base sm:text-lg w-full sm:w-auto text-center">
                 Start Free Trial
               </Link>
-              <Link href="/pricing" className="btn-secondary text-lg w-full sm:w-auto text-center">
+              <Link href="/pricing" className="btn-secondary text-base sm:text-lg w-full sm:w-auto text-center">
                 View Pricing
               </Link>
             </div>
@@ -80,8 +80,8 @@ export default function Home() {
         <div className="absolute inset-0 radial-glow-center" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 md:mb-20">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#00d4ff] mb-4">Features</h2>
-            <p className="text-3xl md:text-5xl font-bold text-white leading-tight">
+            <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-[#00d4ff] mb-4">Features</h2>
+            <p className="text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight">
               Everything you need to<br />
               <span className="gradient-text-cyan">cook like a pro</span>
             </p>
@@ -132,8 +132,8 @@ export default function Home() {
       <section className="relative py-24 md:py-32">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 md:mb-20">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#00d4ff] mb-4">How It Works</h2>
-            <p className="text-3xl md:text-5xl font-bold text-white leading-tight">
+            <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-[#00d4ff] mb-4">How It Works</h2>
+            <p className="text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight">
               From pantry to plate<br />
               <span className="gradient-text-cyan">in four steps</span>
             </p>
@@ -156,19 +156,19 @@ export default function Home() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(168, 85, 247, 0.06))' }} />
         <div className="absolute inset-0 bg-grid" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
             Ready to transform<br />
             <span className="gradient-text">your kitchen?</span>
           </h2>
-          <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10" style={{ color: '#9ca3c2' }}>
+          <p className="text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-10" style={{ color: '#9ca3c2' }}>
             Join thousands of home cooks who are saving time, reducing waste,
             and discovering incredible new recipes every day.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/sign-up" className="btn-primary text-lg w-full sm:w-auto text-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
+            <Link href="/sign-up" className="btn-primary text-base sm:text-lg w-full sm:w-auto text-center">
               Get Started Free
             </Link>
-            <Link href="/pricing" className="btn-secondary text-lg w-full sm:w-auto text-center">
+            <Link href="/pricing" className="btn-secondary text-base sm:text-lg w-full sm:w-auto text-center">
               Compare Plans
             </Link>
           </div>
@@ -225,19 +225,19 @@ export default function Home() {
 /* ─── Feature Card ──────────────────────────────────────────── */
 function FeatureCard({ icon, title, description, accentColor }: { icon: React.ReactNode; title: string; description: string; accentColor: string }) {
   return (
-    <div className="glass-card rounded-2xl p-8 group">
+    <div className="glass-card rounded-2xl p-6 md:p-8 group">
       <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-shadow duration-300"
+        className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center mb-4 md:mb-5 transition-shadow duration-300"
         style={{
           background: `${accentColor}15`,
           boxShadow: `0 0 0 1px ${accentColor}25`,
         }}
       >
-        <div style={{ color: accentColor }} className="w-6 h-6">
+        <div style={{ color: accentColor }} className="w-5 h-5 md:w-6 md:h-6">
           {icon}
         </div>
       </div>
-      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+      <h3 className="text-base md:text-lg font-semibold text-white mb-2">{title}</h3>
       <p className="text-sm leading-relaxed" style={{ color: '#9ca3c2' }}>{description}</p>
     </div>
   );
@@ -247,11 +247,11 @@ function FeatureCard({ icon, title, description, accentColor }: { icon: React.Re
 function Step({ number, title, description, icon }: { number: string; title: string; description: string; icon: React.ReactNode }) {
   return (
     <div className="relative text-center group">
-      <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center glow-cyan" style={{ background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.15)' }}>
-        <div className="w-7 h-7 text-[#00d4ff]">{icon}</div>
+      <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-4 md:mb-5 rounded-2xl flex items-center justify-center glow-cyan" style={{ background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.15)' }}>
+        <div className="w-6 h-6 md:w-7 md:h-7 text-[#00d4ff]">{icon}</div>
       </div>
       <span className="text-xs font-bold tracking-widest text-[#00d4ff] uppercase mb-2 block">Step {number}</span>
-      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+      <h3 className="text-base md:text-lg font-semibold text-white mb-2">{title}</h3>
       <p className="text-sm leading-relaxed" style={{ color: '#9ca3c2' }}>{description}</p>
     </div>
   );

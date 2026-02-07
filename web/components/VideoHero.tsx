@@ -74,8 +74,8 @@ export default function VideoHero() {
 
   return (
     <div className="relative mb-8 flex justify-center">
-      {/* Video container */}
-      <div className="relative w-96 md:w-[36rem] h-auto animate-float">
+      {/* Video container - doubled in size and fully responsive */}
+      <div className="relative w-full max-w-[48rem] md:max-w-[72rem] h-auto animate-float px-4 sm:px-6">
         {showFallback ? (
           // Fallback logo image
           <Image
