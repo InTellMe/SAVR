@@ -9,9 +9,17 @@ import {
 import { normalizeAiIngredients, aiIngredientsToExtracted } from '../utils/units';
 import { filterIngredientsForPet, PET_RECIPE_DISCLAIMER } from '../config/forbiddenFoods';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization to avoid instantiation during Firebase deployment analysis
+let openaiInstance: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    openaiInstance = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || 'dummy_key_for_build',
+    });
+  }
+  return openaiInstance;
+}
 
 const visionClient = new vision.ImageAnnotatorClient();
 
@@ -36,7 +44,7 @@ async function callOpenAIWithFallback(
     options?.fallbackModel || process.env.OPENAI_MODEL_FALLBACK || 'gpt-4o-mini';
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       ...params,
       model: primaryModel,
       stream: false,
@@ -52,7 +60,7 @@ async function callOpenAIWithFallback(
       error
     );
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       ...params,
       model: fallbackModel,
       stream: false,
