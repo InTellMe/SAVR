@@ -82,7 +82,25 @@ git clone https://github.com/InTellMe/SAVR.git
 cd SAVR
 ```
 
-2. **Configure environment variables**
+2. **Quick Setup (Recommended)**
+
+Use the automated setup script to install all dependencies:
+
+**Linux/Mac:**
+```bash
+./setup.sh
+```
+
+**Windows:**
+```cmd
+setup.bat
+```
+
+This will automatically install dependencies for both web and functions, and build the functions.
+
+**Manual Setup (Alternative):**
+
+2a. **Configure environment variables**
 
 ```bash
 # Copy the example file
@@ -94,7 +112,7 @@ cp .env.example .env.local
 # - Stripe keys from Stripe Dashboard
 ```
 
-3. **Install dependencies**
+2b. **Install dependencies**
 
 ```bash
 # Web app
@@ -110,7 +128,7 @@ cd ../mobile
 npm install
 ```
 
-4. **Deploy Firebase infrastructure**
+3. **Deploy Firebase infrastructure**
 
 ```bash
 # Login to Firebase
@@ -132,7 +150,7 @@ cd ..
 firebase deploy --only functions
 ```
 
-5. **Run the web app locally** (Primary Platform)
+4. **Run the web app locally** (Primary Platform)
 
 ```bash
 cd web
@@ -141,7 +159,7 @@ npm run dev
 
 Visit `http://localhost:3000` to access the web application where you can upload photos of your pantry and fridge!
 
-6. **Run the mobile app locally**
+5. **Run the mobile app locally**
 
 ```bash
 cd mobile
