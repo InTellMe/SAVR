@@ -19,7 +19,7 @@ const hasRealFirebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
 
 // In production, if no real config exists, allow dummy config but warn
 // This prevents the app from crashing if environment variables weren't injected during build
-const ALLOW_DUMMY_CONFIG = isDevelopment || (isServerSide && !hasRealFirebaseConfig) || !hasRealFirebaseConfig;
+const ALLOW_DUMMY_CONFIG = isDevelopment || !hasRealFirebaseConfig;
 
 // Track if we're using dummy config in production (for warning message)
 let usingDummyConfigInProduction = false;
@@ -103,11 +103,11 @@ try {
 
   // Warn if running in production with dummy config
   if (usingDummyConfigInProduction) {
-    console.error(
-      '⚠️ FIREBASE CONFIGURATION ERROR: Running with dummy Firebase configuration in production!\n' +
-      'This means NEXT_PUBLIC_FIREBASE_* environment variables were not set during the build process.\n' +
-      'Firebase features will NOT work. Please rebuild with proper environment variables.\n' +
-      'See DEPLOYMENT.md for instructions on setting up environment variables.'
+    console.warn(
+      '⚠️ FIREBASE CONFIGURATION WARNING: Running with dummy Firebase configuration in production.\n' +
+      'Firebase environment variables (NEXT_PUBLIC_FIREBASE_*) were not set during the build process.\n' +
+      'Firebase features will not work until the app is rebuilt with proper configuration.\n' +
+      'For deployment instructions, see DEPLOYMENT.md or contact support.'
     );
   }
 } catch (error) {
