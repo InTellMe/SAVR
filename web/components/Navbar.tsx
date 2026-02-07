@@ -33,7 +33,11 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center group">
-            <span className="text-xl font-bold text-white tracking-tight">SAVR</span>
+            <img
+              src="https://res.cloudinary.com/dksj2niho/image/upload/w_64,h_64,c_fit,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
+              alt="SAVR"
+              className="w-8 h-8"
+            />
           </Link>
 
           {/* Desktop Navigation */}
