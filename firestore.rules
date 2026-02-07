@@ -14,7 +14,7 @@ service cloud.firestore {
     
     // Helper: paid tier (all tiers are now paid: basic and pro; legacy 'free'/'plus'/'premium' also treated as paid)
     function userIsPaidTier() {
-      let tier = getDoc(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier;
+      let tier = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier;
       return isAuthenticated() && (tier == 'basic' || tier == 'pro' || tier == 'free' || tier == 'plus' || tier == 'premium');
     }
     
