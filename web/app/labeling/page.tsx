@@ -203,7 +203,7 @@ function LabelingContent() {
 
   if (loading && !image) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <LoadingSpinner />
@@ -213,20 +213,20 @@ function LabelingContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Image Labeling</h1>
+        <h1 className="text-3xl font-bold text-white mb-6">Image Labeling</h1>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-4 border-red-500/20 bg-red-500/10 border text-red-400 rounded">
             {error}
           </div>
         )}
 
         {!image ? (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Upload Image</h2>
+          <div className="glass-card rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Upload Image</h2>
             <input
               type="file"
               accept="image/*"
@@ -239,9 +239,9 @@ function LabelingContent() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="glass-card rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Annotate Image</h2>
+                <h2 className="text-xl font-semibold text-white">Annotate Image</h2>
                 <div className="flex gap-2">
                   <button
                     onClick={handleTriggerInference}
@@ -261,11 +261,11 @@ function LabelingContent() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Select Category for New Polygons</label>
+                <label className="block text-sm font-medium text-[#9ca3c2] mb-2">Select Category for New Polygons</label>
                 <select
                   value={selectedCategoryId}
                   onChange={e => setSelectedCategoryId(e.target.value)}
-                  className="px-4 py-2 border rounded w-full max-w-xs"
+                  className="px-4 py-2 border border-white/6 rounded w-full max-w-xs"
                 >
                   <option value="">Select a category</option>
                   {categories.map(cat => (
@@ -290,10 +290,10 @@ function LabelingContent() {
               )}
 
               <div className="mt-4">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-[#9ca3c2]">
                   Status: <span className="font-semibold">{image.labelStatus}</span>
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-[#9ca3c2]">
                   Objects labeled: {currentObjects.length}
                 </p>
               </div>

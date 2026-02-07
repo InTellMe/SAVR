@@ -101,43 +101,43 @@ function UploadContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
 
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Upload Pantry Photo</h1>
-        <p className="text-gray-600 mb-8">
+        <h1 className="text-3xl font-bold text-white mb-4">Upload Pantry Photo</h1>
+        <p className="text-[#9ca3c2] mb-8">
           Upload a photo of your pantry or fridge. We&apos;ll analyze it and extract ingredients that you
           can add to your inventory with one click.
         </p>
 
         {error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          <div className="mb-4 rounded border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-400">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-4 rounded border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+          <div className="mb-4 rounded border border-[#00bfa6]/20 bg-[#00bfa6]/10 px-4 py-3 text-[#00bfa6]">
             {successMessage}
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Step 1: Upload an Image</h2>
+        <div className="glass-card rounded-lg p-6 mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4">Step 1: Upload an Image</h2>
           <ImageUpload onUpload={handleImageUpload} loading={uploading} />
         </div>
 
         {ingredients.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-white">
                 Step 2: Review Detected Ingredients ({ingredients.length})
               </h2>
               <button
                 onClick={handleSaveToInventory}
                 disabled={saving}
-                className="px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black text-sm font-semibold hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition disabled:opacity-50"
               >
                 {saving ? 'Saving...' : 'Add All to Inventory'}
               </button>
@@ -147,15 +147,15 @@ function UploadContent() {
               {ingredients.map((ingredient, index) => (
                 <div
                   key={`${ingredient.name}-${index}`}
-                  className="rounded-lg border border-gray-200 p-4"
+                  className="rounded-lg border border-white/6 p-4 hover:border-[#00d4ff]/30 transition"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">{ingredient.name}</h3>
-                    <span className="rounded bg-orange-50 px-2 py-0.5 text-xs text-orange-700">
+                    <h3 className="font-semibold text-white">{ingredient.name}</h3>
+                    <span className="rounded bg-[#00d4ff]/10 px-2 py-0.5 text-xs text-[#00d4ff]">
                       {(ingredient.confidence * 100).toFixed(0)}% confident
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-[#9ca3c2]">
                     {ingredient.quantity} {ingredient.unit}
                   </p>
                 </div>

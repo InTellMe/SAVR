@@ -75,27 +75,27 @@ function ExportContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Export Dataset</h1>
+        <h1 className="text-3xl font-bold text-white mb-6">Export Dataset</h1>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-4 border-red-500/20 bg-red-500/10 border text-red-400 rounded">
             {error}
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Export Settings</h2>
+        <div className="glass-card rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Export Settings</h2>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Export Format</label>
+              <label className="block text-sm font-medium text-[#9ca3c2] mb-2">Export Format</label>
               <select
                 value={exportFormat}
                 onChange={e => setExportFormat(e.target.value as 'coco' | 'yolo' | 'custom')}
-                className="px-4 py-2 border rounded w-full max-w-xs"
+                className="px-4 py-2 border border-white/6 rounded w-full max-w-xs"
               >
                 <option value="coco">COCO Segmentation Format</option>
                 <option value="yolo">YOLO Segmentation Format</option>
@@ -104,7 +104,7 @@ function ExportContent() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Label Status</label>
+              <label className="block text-sm font-medium text-[#9ca3c2] mb-2">Label Status</label>
               <div className="space-y-2">
                 {['unlabeled', 'ai_labeled', 'in_review', 'approved'].map(status => (
                   <label key={status} className="flex items-center">
@@ -120,7 +120,7 @@ function ExportContent() {
                       }}
                       className="mr-2"
                     />
-                    <span className="capitalize">{status.replace('_', ' ')}</span>
+                    <span className="capitalize text-[#9ca3c2]">{status.replace('_', ' ')}</span>
                   </label>
                 ))}
               </div>
@@ -139,9 +139,9 @@ function ExportContent() {
         {loading && <LoadingSpinner />}
 
         {exportData && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass-card rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Export Results</h2>
+              <h2 className="text-xl font-semibold text-white">Export Results</h2>
               <button
                 onClick={handleDownload}
                 className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
@@ -151,22 +151,22 @@ function ExportContent() {
             </div>
 
             <div className="space-y-2">
-              <p>
+              <p className="text-[#9ca3c2]">
                 <span className="font-semibold">Images:</span> {exportData.images.length}
               </p>
-              <p>
+              <p className="text-[#9ca3c2]">
                 <span className="font-semibold">Annotations:</span> {exportData.annotations.length}
               </p>
-              <p>
+              <p className="text-[#9ca3c2]">
                 <span className="font-semibold">Categories:</span> {exportData.categories.length}
               </p>
             </div>
 
             <div className="mt-4">
-              <h3 className="font-semibold mb-2">Categories:</h3>
+              <h3 className="font-semibold text-white mb-2">Categories:</h3>
               <ul className="list-disc list-inside space-y-1">
                 {exportData.categories.map(cat => (
-                  <li key={cat.id}>
+                  <li key={cat.id} className="text-[#9ca3c2]">
                     {cat.name} (ID: {cat.id})
                   </li>
                 ))}

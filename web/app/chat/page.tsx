@@ -120,7 +120,7 @@ function ChatContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: '#000000' }}>
       <Navbar />
       
       <div className="flex-1 container mx-auto px-4 py-8 flex flex-col max-w-4xl">
@@ -131,19 +131,19 @@ function ChatContent() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded mb-6">
+          <div className="border-red-500/20 bg-red-500/10 border text-red-400 px-4 py-3 rounded mb-6">
             {error}
           </div>
         )}
 
         {/* Messages */}
-        <div className="flex-1 bg-white rounded-lg shadow p-6 mb-4 overflow-y-auto" style={{ minHeight: '500px' }}>
+        <div className="flex-1 glass-card rounded-lg shadow p-6 mb-4 overflow-y-auto" style={{ minHeight: '500px' }}>
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-center">
               <div>
                 <div className="text-6xl mb-4">👨‍🍳</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Start a conversation</h3>
-                <p className="text-gray-600">
+                <h3 className="text-xl font-semibold text-white mb-2">Start a conversation</h3>
+                <p className="text-[#9ca3c2]">
                   Ask me about cooking techniques, recipe ideas, ingredient substitutions, and more!
                 </p>
               </div>
@@ -158,13 +158,13 @@ function ChatContent() {
                   <div
                     className={`max-w-[80%] rounded-lg p-4 ${
                       message.role === 'user'
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 text-gray-900'
+                        ? 'bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold'
+                        : 'bg-white/5 text-white'
                     }`}
                   >
                     <p className="whitespace-pre-wrap">{message.content}</p>
                     <p className={`text-xs mt-2 ${
-                      message.role === 'user' ? 'text-orange-200' : 'text-gray-500'
+                      message.role === 'user' ? 'text-black/60' : 'text-[#9ca3c2]'
                     }`}>
                       {new Date(message.timestamp).toLocaleTimeString()}
                     </p>
@@ -173,11 +173,11 @@ function ChatContent() {
               ))}
               {loading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 rounded-lg p-4">
+                  <div className="bg-white/5 rounded-lg p-4">
                     <div className="flex space-x-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      <div className="w-2 h-2 bg-[#9ca3c2] rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-[#9ca3c2] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-[#9ca3c2] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                   </div>
                 </div>
@@ -188,7 +188,7 @@ function ChatContent() {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSendMessage} className="bg-white rounded-lg shadow p-4">
+        <form onSubmit={handleSendMessage} className="glass-card rounded-lg shadow p-4">
           <div className="flex space-x-4">
             <input
               type="text"
@@ -196,12 +196,12 @@ function ChatContent() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask me anything about cooking..."
               disabled={loading}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
+              className="flex-1 px-4 py-2 border border-white/6 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00d4ff] disabled:bg-white/5"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
+              className="px-6 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition disabled:opacity-50"
             >
               Send
             </button>

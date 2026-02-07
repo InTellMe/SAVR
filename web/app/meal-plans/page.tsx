@@ -134,7 +134,7 @@ function MealPlansContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
         <div className="container mx-auto px-4 py-8 flex justify-center">
           <LoadingSpinner size="lg" />
@@ -144,36 +144,36 @@ function MealPlansContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Meal Plans</h1>
+          <h1 className="text-3xl font-bold text-white">Meal Plans</h1>
           <button
             onClick={() => setShowForm(true)}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+            className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
           >
             📅 Create Meal Plan
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded mb-6">
+          <div className="border-red-500/20 bg-red-500/10 border text-red-400 px-4 py-3 rounded mb-6">
             {error}
           </div>
         )}
 
         {mealPlans.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="glass-card rounded-lg shadow p-12 text-center">
             <div className="text-6xl mb-4">📅</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">No meal plans yet</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-2xl font-semibold text-white mb-2">No meal plans yet</h2>
+            <p className="text-[#9ca3c2] mb-6">
               Create your first meal plan and never wonder what&apos;s for dinner!
             </p>
             <button
               onClick={() => setShowForm(true)}
-              className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+              className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
             >
               Create Meal Plan
             </button>
@@ -194,12 +194,12 @@ function MealPlansContent() {
         {/* Generate Form Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Create Meal Plan</h3>
+            <div className="glass-card rounded-lg p-6 max-w-md w-full">
+              <h3 className="text-2xl font-bold text-white mb-6">Create Meal Plan</h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-1">
                     Number of Days
                   </label>
                   <input
@@ -208,18 +208,18 @@ function MealPlansContent() {
                     onChange={(e) => setFormData({ ...formData, days: parseInt(e.target.value) })}
                     min="1"
                     max="14"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-white/6 rounded-md"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-1">
                     Meals Per Day
                   </label>
                   <select
                     value={formData.mealsPerDay}
                     onChange={(e) => setFormData({ ...formData, mealsPerDay: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-white/6 rounded-md"
                   >
                     <option value="1">1 meal</option>
                     <option value="2">2 meals</option>
@@ -228,7 +228,7 @@ function MealPlansContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-2">
                     Dietary Restrictions
                   </label>
                   <div className="space-y-2">
@@ -263,14 +263,14 @@ function MealPlansContent() {
                 <button
                   onClick={handleGenerateMealPlan}
                   disabled={generating}
-                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] disabled:opacity-50"
                 >
                   {generating ? 'Creating...' : 'Create Plan'}
                 </button>
                 <button
                   onClick={() => setShowForm(false)}
                   disabled={generating}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
                 >
                   Cancel
                 </button>
@@ -301,17 +301,17 @@ function MealPlanCard({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow hover:shadow-lg transition p-6">
-      <h3 className="text-xl font-semibold text-gray-900 mb-2">{plan.name}</h3>
-      <p className="text-sm text-gray-600 mb-4">
+    <div className="glass-card rounded-lg shadow hover:shadow-lg transition p-6">
+      <h3 className="text-xl font-semibold text-white mb-2">{plan.name}</h3>
+      <p className="text-sm text-[#9ca3c2] mb-4">
         {new Date(plan.startDate).toLocaleDateString()} - {new Date(plan.endDate).toLocaleDateString()}
       </p>
-      <p className="text-gray-600 mb-4">{plan.meals.length} days planned</p>
+      <p className="text-[#9ca3c2] mb-4">{plan.meals.length} days planned</p>
       
       <div className="flex space-x-2">
         <button
           onClick={() => onView(plan)}
-          className="flex-1 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition"
+          className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
         >
           View Plan
         </button>
@@ -344,17 +344,17 @@ function MealPlanDetailsModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
+      <div className="glass-card rounded-lg p-6 max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">{plan.name}</h2>
-            <p className="text-gray-600">
+            <h2 className="text-3xl font-bold text-white">{plan.name}</h2>
+            <p className="text-[#9ca3c2]">
               {new Date(plan.startDate).toLocaleDateString()} - {new Date(plan.endDate).toLocaleDateString()}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
+            className="text-[#9ca3c2] hover:text-white text-2xl"
           >
             ×
           </button>
@@ -363,10 +363,10 @@ function MealPlanDetailsModal({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 pr-4 font-semibold text-gray-900">Day</th>
+              <tr className="border-b border-white/6">
+                <th className="text-left py-2 pr-4 font-semibold text-white">Day</th>
                 {mealTypes.map((mt) => (
-                  <th key={mt} className="text-left py-2 px-2 font-semibold text-gray-900 capitalize">
+                  <th key={mt} className="text-left py-2 px-2 font-semibold text-white capitalize">
                     {mt}
                   </th>
                 ))}
@@ -374,8 +374,8 @@ function MealPlanDetailsModal({
             </thead>
             <tbody>
               {days.map((date) => (
-                <tr key={date} className="border-b border-gray-100">
-                  <td className="py-3 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                <tr key={date} className="border-b border-white/6">
+                  <td className="py-3 pr-4 font-medium text-[#9ca3c2] whitespace-nowrap">
                     {new Date(date).toLocaleDateString('en-US', {
                       weekday: 'short',
                       month: 'short',
@@ -383,7 +383,7 @@ function MealPlanDetailsModal({
                     })}
                   </td>
                   {mealTypes.map((mt) => (
-                    <td key={mt} className="py-3 px-2 text-gray-600">
+                    <td key={mt} className="py-3 px-2 text-[#9ca3c2]">
                       {byDay[date][mt] || '—'}
                     </td>
                   ))}
@@ -395,7 +395,7 @@ function MealPlanDetailsModal({
 
         <button
           onClick={onClose}
-          className="w-full mt-6 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+          className="w-full mt-6 px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,212,255,0.4)]"
         >
           Close
         </button>

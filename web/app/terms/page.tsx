@@ -2,21 +2,21 @@ import Navbar from '@/components/Navbar';
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       
       <div className="container mx-auto px-4 py-16 max-w-4xl">
-        <h1 className="text-5xl font-bold text-gray-900 mb-8">
+        <h1 className="text-5xl font-bold text-white mb-8">
           Terms and Conditions
         </h1>
         
-        <div className="prose prose-lg max-w-none space-y-6 text-gray-700">
-          <p className="text-sm text-gray-500">
+        <div className="prose prose-lg max-w-none space-y-6 text-[#9ca3c2]">
+          <p className="text-sm text-[#9ca3c2]">
             Last Updated: February 7, 2025
           </p>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               1. Agreement to Terms
             </h2>
             <p>
@@ -26,7 +26,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               2. Description of Service
             </h2>
             <p>
@@ -36,7 +36,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               3. User Accounts
             </h2>
             <p>
@@ -51,7 +51,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               4. Subscription and Payment
             </h2>
             <p>
@@ -69,7 +69,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               5. Pet Recipe Disclaimer
             </h2>
             <p className="font-semibold text-orange-600">
@@ -85,7 +85,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               6. AI-Generated Content
             </h2>
             <p>
@@ -100,7 +100,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               7. User Content
             </h2>
             <p>
@@ -115,7 +115,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               8. Prohibited Uses
             </h2>
             <p>
@@ -132,7 +132,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               9. Intellectual Property
             </h2>
             <p>
@@ -143,7 +143,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               10. Limitation of Liability
             </h2>
             <p>
@@ -159,7 +159,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               11. Disclaimers
             </h2>
             <p>
@@ -170,7 +170,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               12. Changes to Terms
             </h2>
             <p>
@@ -180,7 +180,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               13. Termination
             </h2>
             <p>
@@ -190,7 +190,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               14. Governing Law
             </h2>
             <p>
@@ -200,7 +200,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-3xl font-bold text-gray-900 mt-8 mb-4">
+            <h2 className="text-3xl font-bold text-white mt-8 mb-4">
               15. Contact Information
             </h2>
             <p>
