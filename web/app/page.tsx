@@ -125,6 +125,14 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-4 text-center">
+          <div className="flex justify-center gap-6 mb-4">
+            <Link href="/terms" className="text-gray-400 hover:text-white transition">
+              Terms
+            </Link>
+            <Link href="/privacy" className="text-gray-400 hover:text-white transition">
+              Privacy
+            </Link>
+          </div>
           <p className="text-gray-400">
             © 2024 SAVR. All rights reserved.
           </p>
