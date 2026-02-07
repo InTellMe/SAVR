@@ -231,7 +231,7 @@ function GroceryListsContent() {
                           selected ? prev.filter((id) => id !== recipe.id) : [...prev, recipe.id]
                         )
                       }
-                      className="mt-1 mr-3 h-4 w-4"
+                      className="mt-1 mr-3 h-4 w-4 accent-[#00d4ff]"
                     />
                     <span className="text-sm font-medium text-white">{recipe.title}</span>
                   </button>
@@ -379,7 +379,7 @@ function GroceryListDetailsModal({
                       type="checkbox"
                       checked={item.checked}
                       onChange={() => onToggleItem(list.id, item.originalIndex)}
-                      className="w-5 h-5 rounded mr-3"
+                      className="w-5 h-5 rounded mr-3 accent-[#00d4ff]"
                     />
                     <span className={`flex-1 ${item.checked ? 'line-through text-[#9ca3c2]' : 'text-white'}`}>
                       {item.name}

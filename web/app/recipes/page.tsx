@@ -337,7 +337,7 @@ function RecipesContent() {
                       value={formData.cuisinePreference}
                       onChange={(e) => setFormData({ ...formData, cuisinePreference: e.target.value })}
                       placeholder="e.g., Italian, Mexican, Asian"
-                      className="w-full px-3 py-2 border border-white/6 rounded-md"
+                      className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                     />
                   </div>
                 )}
@@ -349,7 +349,7 @@ function RecipesContent() {
                   <select
                     value={formData.skillLevel}
                     onChange={(e) => setFormData({ ...formData, skillLevel: e.target.value })}
-                    className="w-full px-3 py-2 border border-white/6 rounded-md"
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                   >
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
@@ -365,7 +365,7 @@ function RecipesContent() {
                     type="number"
                     value={formData.maxCookingTime}
                     onChange={(e) => setFormData({ ...formData, maxCookingTime: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-white/6 rounded-md"
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                   />
                 </div>
               </div>

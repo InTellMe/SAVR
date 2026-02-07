@@ -250,7 +250,7 @@ function MealPlansContent() {
                               });
                             }
                           }}
-                          className="mr-2"
+                          className="mr-2 accent-[#00d4ff]"
                         />
                         <span className="text-sm capitalize">{option}</span>
                       </label>

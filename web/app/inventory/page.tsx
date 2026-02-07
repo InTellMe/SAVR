@@ -206,7 +206,7 @@ function InventoryContent() {
               value={barcodeInput}
               onChange={(e) => setBarcodeInput(e.target.value)}
               placeholder="e.g. 3017620422003"
-              className="rounded-md border border-white/6 px-3 py-2 w-48"
+              className="rounded-md border border-white/6 px-3 py-2 w-48 bg-white/5 text-white"
             />
             <button
               type="button"
@@ -234,7 +234,7 @@ function InventoryContent() {
                 type="text"
                 value={newItem.name}
                 onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                className="w-full rounded-md border border-white/6 px-3 py-2"
+                className="w-full rounded-md border border-white/6 px-3 py-2 bg-white/5 text-white"
                 placeholder="e.g., Chicken breast"
               />
             </div>
@@ -247,7 +247,7 @@ function InventoryContent() {
                 onChange={(e) =>
                   setNewItem({ ...newItem, quantity: parseFloat(e.target.value) || 0 })
                 }
-                className="w-full rounded-md border border-white/6 px-3 py-2"
+                className="w-full rounded-md border border-white/6 px-3 py-2 bg-white/5 text-white"
               />
             </div>
             <div>
@@ -256,7 +256,7 @@ function InventoryContent() {
                 type="text"
                 value={newItem.unit}
                 onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                className="w-full rounded-md border border-white/6 px-3 py-2"
+                className="w-full rounded-md border border-white/6 px-3 py-2 bg-white/5 text-white"
                 placeholder="e.g., pcs, kg"
               />
             </div>
@@ -272,7 +272,7 @@ function InventoryContent() {
                     category: e.target.value as InventoryItem['category'],
                   })
                 }
-                className="w-full rounded-md border border-white/6 px-3 py-2"
+                className="w-full rounded-md border border-white/6 px-3 py-2 bg-white/5 text-white"
               >
                 <option value="pantry">Pantry</option>
                 <option value="fridge">Fridge</option>
@@ -393,7 +393,7 @@ function EditModal({
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-white/6 rounded-md"
+              className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
             />
           </div>
           
@@ -404,7 +404,7 @@ function EditModal({
                 type="number"
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
-                className="w-full px-3 py-2 border border-white/6 rounded-md"
+                className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
               />
             </div>
             <div>
@@ -413,7 +413,7 @@ function EditModal({
                 type="text"
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                className="w-full px-3 py-2 border border-white/6 rounded-md"
+                className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
               />
             </div>
           </div>
@@ -423,7 +423,7 @@ function EditModal({
             <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value as 'pantry' | 'fridge' | 'freezer' })}
-              className="w-full px-3 py-2 border border-white/6 rounded-md"
+              className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
             >
               <option value="pantry">Pantry</option>
               <option value="fridge">Fridge</option>
@@ -437,7 +437,7 @@ function EditModal({
               type="date"
               value={formData.expiryDate || ''}
               onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-              className="w-full px-3 py-2 border border-white/6 rounded-md"
+              className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
             />
           </div>
         </div>

@@ -118,7 +118,7 @@ function ExportContent() {
                           setLabelStatus(labelStatus.filter(s => s !== status));
                         }
                       }}
-                      className="mr-2"
+                      className="mr-2 accent-[#00d4ff]"
                     />
                     <span className="capitalize text-[#9ca3c2]">{status.replace('_', ' ')}</span>
                   </label>
