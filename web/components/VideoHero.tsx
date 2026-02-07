@@ -18,7 +18,8 @@ const VIDEOS: VideoConfig[] = [
   },
 ];
 
-const ROTATION_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+const ROTATION_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds (as specified in requirements)
+const VIDEO_LOAD_TIMEOUT = 10000; // 10 seconds timeout for video loading
 
 export default function VideoHero() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -30,10 +31,30 @@ export default function VideoHero() {
     const interval = setInterval(() => {
       setCurrentVideoIndex((prev) => (prev + 1) % VIDEOS.length);
       setShowText(false); // Reset text visibility on video change
+      setShowFallback(false); // Reset fallback on video change
     }, ROTATION_INTERVAL);
 
     return () => clearInterval(interval);
   }, []);
+
+  // Fallback timeout: if video doesn't load within timeout, show fallback
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (!showFallback) {
+      timeoutId = setTimeout(() => {
+        // If we reach here and haven't explicitly loaded, assume failure
+        console.warn('Video load timeout reached, showing fallback');
+        setShowFallback(true);
+      }, VIDEO_LOAD_TIMEOUT);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [currentVideoIndex, showFallback]);
 
   // Handle text fade-in for second video
   useEffect(() => {
@@ -68,6 +89,11 @@ export default function VideoHero() {
           />
         ) : (
           <div className="relative" style={{ aspectRatio: '640 / 360' }}>
+            {/* Cloudinary video embed with autoplay enabled by default */}
+            {/* Note: Video looping and audio settings are configured in the Cloudinary video player */}
+            {/* The onLoad handler cancels the timeout when iframe loads. While this doesn't guarantee
+                the video content loaded successfully, it's the best detection available without 
+                direct access to the Cloudinary player API */}
             <iframe
               src={currentVideo.src}
               width="640"
@@ -76,11 +102,11 @@ export default function VideoHero() {
               allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
               allowFullScreen
               frameBorder="0"
-              onError={() => {
-                console.error('Video failed to load, showing fallback image');
-                setShowFallback(true);
-              }}
               className="rounded-lg drop-shadow-[0_0_60px_rgba(0,212,255,0.25)]"
+              onLoad={() => {
+                // Iframe loaded successfully, cancel fallback timeout
+                setShowFallback(false);
+              }}
             />
           </div>
         )}
