@@ -1,7 +1,7 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
@@ -22,10 +22,9 @@ interface SharedRecipe {
   species?: 'cat' | 'dog';
 }
 
-export default function SharedRecipePage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params?.id as string;
+function SharedRecipeContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const [recipe, setRecipe] = useState<SharedRecipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -152,5 +151,20 @@ export default function SharedRecipePage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function SharedRecipePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SharedRecipeContent />
+    </Suspense>
   );
 }
