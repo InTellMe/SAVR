@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -16,85 +19,118 @@ export default function Navbar() {
     }
   };
 
+  const isActive = (path: string) => pathname === path;
+
+  const navLinkClass = (path: string) =>
+    `text-sm font-medium transition-colors duration-200 ${
+      isActive(path)
+        ? 'text-[#00d4ff]'
+        : 'text-[#9ca3c2] hover:text-white'
+    }`;
+
   return (
-    <nav className="bg-white border-b border-gray-200">
-      <div className="container mx-auto px-4">
+    <nav className="fixed top-0 left-0 right-0 z-50" style={{ background: 'rgba(6, 9, 24, 0.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center space-x-2">
-            <span className="text-2xl">🍳</span>
-            <span className="text-xl font-bold text-gray-900">SAVR</span>
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-3 group">
+            <Image
+              src="https://res.cloudinary.com/dksj2niho/image/upload/w_80,h_80,c_fill,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
+              alt="SAVR"
+              width={36}
+              height={36}
+              className="w-9 h-9"
+              unoptimized
+            />
+            <span className="text-xl font-bold text-white tracking-tight">SAVR</span>
           </Link>
 
-          <div className="flex items-center space-x-6">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
             {user ? (
               <>
-                <Link
-                  href="/dashboard"
-                  className={`text-gray-700 hover:text-orange-600 transition ${
-                    pathname === '/dashboard' ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/upload"
-                  className={`text-gray-700 hover:text-orange-600 transition ${
-                    pathname === '/upload' ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                >
-                  Upload
-                </Link>
-                <Link
-                  href="/inventory"
-                  className={`text-gray-700 hover:text-orange-600 transition ${
-                    pathname === '/inventory' ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                >
-                  Inventory
-                </Link>
-                <Link
-                  href="/recipes"
-                  className={`text-gray-700 hover:text-orange-600 transition ${
-                    pathname === '/recipes' ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                >
-                  Recipes
-                </Link>
-                <Link
-                  href="/meal-plans"
-                  className={`text-gray-700 hover:text-orange-600 transition ${
-                    pathname === '/meal-plans' ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                >
-                  Meal Plans
-                </Link>
-                <Link
-                  href="/grocery-lists"
-                  className={`text-gray-700 hover:text-orange-600 transition ${
-                    pathname === '/grocery-lists' ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                >
-                  Grocery Lists
-                </Link>
-                <Link
-                  href="/chat"
-                  className={`text-gray-700 hover:text-orange-600 transition ${
-                    pathname === '/chat' ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                >
-                  Chat
-                </Link>
-                <Link
-                  href="/settings"
-                  className={`text-gray-700 hover:text-orange-600 transition ${
-                    pathname === '/settings' ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                >
-                  Settings
-                </Link>
+                <Link href="/dashboard" className={navLinkClass('/dashboard')}>Dashboard</Link>
+                <Link href="/upload" className={navLinkClass('/upload')}>Upload</Link>
+                <Link href="/inventory" className={navLinkClass('/inventory')}>Inventory</Link>
+                <Link href="/recipes" className={navLinkClass('/recipes')}>Recipes</Link>
+                <Link href="/meal-plans" className={navLinkClass('/meal-plans')}>Meal Plans</Link>
+                <Link href="/grocery-lists" className={navLinkClass('/grocery-lists')}>Lists</Link>
+                <Link href="/chat" className={navLinkClass('/chat')}>Chat</Link>
+                <Link href="/settings" className={navLinkClass('/settings')}>Settings</Link>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 text-sm text-gray-700 hover:text-orange-600 transition"
+                  className="text-sm font-medium text-[#9ca3c2] hover:text-[#00d4ff] transition-colors duration-200"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/pricing" className={navLinkClass('/pricing')}>Pricing</Link>
+                <Link href="/sign-in" className="text-sm font-medium text-[#9ca3c2] hover:text-white transition-colors duration-200">
+                  Sign In
+                </Link>
+                <Link
+                  href="/sign-up"
+                  className="btn-primary text-sm !py-2.5 !px-5"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="md:hidden p-2 text-[#9ca3c2] hover:text-white transition-colors"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Navigation */}
+      {mobileOpen && (
+        <div className="md:hidden" style={{ background: 'rgba(6, 9, 24, 0.97)', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <div className="px-4 py-4 space-y-1">
+            {user ? (
+              <>
+                {[
+                  { href: '/dashboard', label: 'Dashboard' },
+                  { href: '/upload', label: 'Upload' },
+                  { href: '/inventory', label: 'Inventory' },
+                  { href: '/recipes', label: 'Recipes' },
+                  { href: '/meal-plans', label: 'Meal Plans' },
+                  { href: '/grocery-lists', label: 'Grocery Lists' },
+                  { href: '/chat', label: 'Chat' },
+                  { href: '/settings', label: 'Settings' },
+                ].map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`block py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
+                      isActive(href)
+                        ? 'text-[#00d4ff] bg-[rgba(0,212,255,0.08)]'
+                        : 'text-[#9ca3c2] hover:text-white hover:bg-[rgba(255,255,255,0.04)]'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+                <button
+                  onClick={() => { handleLogout(); setMobileOpen(false); }}
+                  className="block w-full text-left py-3 px-4 rounded-lg text-sm font-medium text-[#9ca3c2] hover:text-[#00d4ff] hover:bg-[rgba(0,212,255,0.08)] transition-colors"
                 >
                   Logout
                 </button>
@@ -103,27 +139,30 @@ export default function Navbar() {
               <>
                 <Link
                   href="/pricing"
-                  className="text-gray-700 hover:text-orange-600 transition"
+                  onClick={() => setMobileOpen(false)}
+                  className="block py-3 px-4 rounded-lg text-sm font-medium text-[#9ca3c2] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-colors"
                 >
                   Pricing
                 </Link>
                 <Link
                   href="/sign-in"
-                  className="text-gray-700 hover:text-orange-600 transition"
+                  onClick={() => setMobileOpen(false)}
+                  className="block py-3 px-4 rounded-lg text-sm font-medium text-[#9ca3c2] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/sign-up"
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                  onClick={() => setMobileOpen(false)}
+                  className="block py-3 px-4 rounded-lg text-sm font-semibold btn-primary text-center mt-2"
                 >
-                  Sign Up
+                  Get Started
                 </Link>
               </>
             )}
           </div>
         </div>
-      </div>
+      )}
     </nav>
   );
 }
