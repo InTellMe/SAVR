@@ -5,17 +5,61 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
 
 // Build-safe Firebase configuration
-// During static export/prerendering, environment variables may not be available
-// Use dummy config to prevent build crashes
+// During local/dev builds, environment variables may not be available
+// Use dummy config to prevent build crashes, but never in production.
 const BUILD_DUMMY_KEY = 'dummy_key_for_build';
+const ALLOW_DUMMY_CONFIG = process.env.NODE_ENV !== 'production';
+
+const getFirebaseConfigValue = (
+  value: string | undefined,
+  fallback: string,
+  label: string
+): string => {
+  if (value && value !== BUILD_DUMMY_KEY) {
+    return value;
+  }
+
+  if (ALLOW_DUMMY_CONFIG) {
+    return fallback;
+  }
+
+  throw new Error(
+    `Missing Firebase configuration for ${label}. ` +
+      'Set NEXT_PUBLIC_FIREBASE_* environment variables for production builds.'
+  );
+};
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || BUILD_DUMMY_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'dummy.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'dummy-project',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'dummy.appspot.com',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abc123',
+  apiKey: getFirebaseConfigValue(
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    BUILD_DUMMY_KEY,
+    'NEXT_PUBLIC_FIREBASE_API_KEY'
+  ),
+  authDomain: getFirebaseConfigValue(
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    'dummy.firebaseapp.com',
+    'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'
+  ),
+  projectId: getFirebaseConfigValue(
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    'dummy-project',
+    'NEXT_PUBLIC_FIREBASE_PROJECT_ID'
+  ),
+  storageBucket: getFirebaseConfigValue(
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    'dummy.appspot.com',
+    'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
+  ),
+  messagingSenderId: getFirebaseConfigValue(
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    '123456789',
+    'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'
+  ),
+  appId: getFirebaseConfigValue(
+    process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    '1:123456789:web:abc123',
+    'NEXT_PUBLIC_FIREBASE_APP_ID'
+  ),
 };
 
 // Initialize Firebase with build-safe guard
@@ -43,8 +87,12 @@ try {
   // This is expected and will work correctly at runtime with real config
   console.warn('Firebase initialization warning (expected during build):', error);
   
-  // Re-throw only if we're not in a build environment with real credentials
-  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== BUILD_DUMMY_KEY) {
+  // Re-throw in production or when real credentials are present.
+  if (
+    !ALLOW_DUMMY_CONFIG ||
+    (process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
+      process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== BUILD_DUMMY_KEY)
+  ) {
     throw error;
   }
 }
