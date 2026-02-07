@@ -23,16 +23,27 @@ let db: Firestore;
 let storage: FirebaseStorage;
 let functions: Functions;
 
-// Only initialize if not already initialized
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0];
-}
+try {
+  // Only initialize if not already initialized
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
+  }
 
-auth = getAuth(app);
-db = getFirestore(app);
-storage = getStorage(app);
-functions = getFunctions(app);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+  functions = getFunctions(app);
+} catch (error) {
+  // During build time with dummy config, services may fail to initialize properly
+  // This is expected and will work correctly at runtime with real config
+  console.warn('Firebase initialization warning (expected during build):', error);
+  
+  // Re-throw only if we're not in a build environment
+  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'dummy_key_for_build') {
+    throw error;
+  }
+}
 
 export { app, auth, db, storage, functions };
