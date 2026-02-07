@@ -140,15 +140,6 @@ body {
   overflow: hidden;
 }
 
-/* Mobile-optimized button sizing */
-@media (max-width: 768px) {
-  .btn-primary {
-    padding: 0.625rem 1.25rem;
-    font-size: 0.875rem;
-    border-radius: 0.625rem;
-  }
-}
-
 .btn-primary:hover {
   box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
   transform: translateY(-1px);
@@ -164,8 +155,9 @@ body {
   transition: all 0.3s ease;
 }
 
-/* Mobile-optimized secondary button sizing */
+/* Mobile-optimized button sizing for both primary and secondary */
 @media (max-width: 768px) {
+  .btn-primary,
   .btn-secondary {
     padding: 0.625rem 1.25rem;
     font-size: 0.875rem;
