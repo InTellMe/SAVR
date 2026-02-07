@@ -14,9 +14,25 @@ let openaiInstance: OpenAI | null = null;
 
 function getOpenAI(): OpenAI {
   if (!openaiInstance) {
-    openaiInstance = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY || 'dummy_key_for_build',
-    });
+    // Firebase deployment analysis doesn't set FUNCTION_NAME or FUNCTION_TARGET
+    // Use dummy key only during build/analysis, fail fast at runtime if missing
+    const isDeploymentAnalysis = !process.env.FUNCTION_NAME && !process.env.FUNCTION_TARGET;
+    const apiKey = process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      if (isDeploymentAnalysis) {
+        // Allow dummy key during Firebase deployment analysis
+        openaiInstance = new OpenAI({ apiKey: 'dummy_key_for_build' });
+      } else {
+        // Fail fast at runtime with clear error
+        throw new Error(
+          'OPENAI_API_KEY environment variable is required. ' +
+          'Please configure it in your Firebase Functions environment.'
+        );
+      }
+    } else {
+      openaiInstance = new OpenAI({ apiKey });
+    }
   }
   return openaiInstance;
 }
