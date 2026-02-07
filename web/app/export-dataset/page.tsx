@@ -95,7 +95,7 @@ function ExportContent() {
               <select
                 value={exportFormat}
                 onChange={e => setExportFormat(e.target.value as 'coco' | 'yolo' | 'custom')}
-                className="px-4 py-2 border border-white/6 rounded w-full max-w-xs"
+                className="px-4 py-2 border border-white/6 rounded w-full max-w-xs bg-white/5 text-white"
               >
                 <option value="coco">COCO Segmentation Format</option>
                 <option value="yolo">YOLO Segmentation Format</option>

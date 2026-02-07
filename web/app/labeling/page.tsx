@@ -265,7 +265,7 @@ function LabelingContent() {
                 <select
                   value={selectedCategoryId}
                   onChange={e => setSelectedCategoryId(e.target.value)}
-                  className="px-4 py-2 border border-white/6 rounded w-full max-w-xs"
+                  className="px-4 py-2 border border-white/6 rounded w-full max-w-xs bg-white/5 text-white"
                 >
                   <option value="">Select a category</option>
                   {categories.map(cat => (

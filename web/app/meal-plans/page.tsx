@@ -208,7 +208,7 @@ function MealPlansContent() {
                     onChange={(e) => setFormData({ ...formData, days: parseInt(e.target.value) })}
                     min="1"
                     max="14"
-                    className="w-full px-3 py-2 border border-white/6 rounded-md"
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                   />
                 </div>
 
@@ -219,7 +219,7 @@ function MealPlansContent() {
                   <select
                     value={formData.mealsPerDay}
                     onChange={(e) => setFormData({ ...formData, mealsPerDay: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-white/6 rounded-md"
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                   >
                     <option value="1">1 meal</option>
                     <option value="2">2 meals</option>

@@ -196,7 +196,7 @@ function ChatContent() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask me anything about cooking..."
               disabled={loading}
-              className="flex-1 px-4 py-2 border border-white/6 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00d4ff] disabled:bg-white/5"
+              className="flex-1 px-4 py-2 border border-white/6 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00d4ff] disabled:bg-white/5 text-white"
             />
             <button
               type="submit"
