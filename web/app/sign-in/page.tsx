@@ -44,10 +44,10 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#060918' }}>
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       <div className="flex items-center justify-center pt-28 pb-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 p-8 rounded-2xl" style={{ background: 'rgba(13, 17, 41, 0.7)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+        <div className="max-w-md w-full space-y-8 p-8 rounded-2xl" style={{ background: 'rgba(10, 10, 10, 0.7)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
           <div>
             <h2 className="text-center text-3xl font-bold text-white">
               Sign in to your account

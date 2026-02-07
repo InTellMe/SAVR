@@ -101,7 +101,7 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: '#060918' }}>
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20">
@@ -117,12 +117,12 @@ export default function PricingPage() {
           </p>
 
           {/* Billing toggle */}
-          <div className="mt-10 inline-flex items-center rounded-full p-1" style={{ background: 'rgba(13, 17, 41, 0.8)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <div className="mt-10 inline-flex items-center rounded-full p-1" style={{ background: 'rgba(10, 10, 10, 0.8)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
             <button
               onClick={() => setBillingCycle('monthly')}
               className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
                 billingCycle === 'monthly'
-                  ? 'text-[#060918]'
+                  ? 'text-[#000000]'
                   : 'text-[#9ca3c2] hover:text-white'
               }`}
               style={billingCycle === 'monthly' ? { background: 'linear-gradient(135deg, #00d4ff, #0099cc)' } : {}}
@@ -133,13 +133,13 @@ export default function PricingPage() {
               onClick={() => setBillingCycle('yearly')}
               className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
                 billingCycle === 'yearly'
-                  ? 'text-[#060918]'
+                  ? 'text-[#000000]'
                   : 'text-[#9ca3c2] hover:text-white'
               }`}
               style={billingCycle === 'yearly' ? { background: 'linear-gradient(135deg, #00d4ff, #0099cc)' } : {}}
             >
               Yearly
-              <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={billingCycle === 'yearly' ? { background: 'rgba(6, 9, 24, 0.3)', color: '#060918' } : { background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
+              <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={billingCycle === 'yearly' ? { background: 'rgba(0, 0, 0, 0.3)', color: '#000000' } : { background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
                 Save
               </span>
             </button>
@@ -170,7 +170,7 @@ export default function PricingPage() {
               {plan.recommended && (
                 <div
                   className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
-                  style={{ background: 'linear-gradient(135deg, #00d4ff, #0099cc)', color: '#060918' }}
+                  style={{ background: 'linear-gradient(135deg, #00d4ff, #0099cc)', color: '#000000' }}
                 >
                   Recommended
                 </div>
@@ -207,7 +207,7 @@ export default function PricingPage() {
                 }`}
                 style={
                   plan.recommended
-                    ? { background: 'linear-gradient(135deg, #00d4ff, #0099cc)', color: '#060918' }
+                    ? { background: 'linear-gradient(135deg, #00d4ff, #0099cc)', color: '#000000' }
                     : { background: 'rgba(255, 255, 255, 0.06)', color: '#e8eaf6', border: '1px solid rgba(255, 255, 255, 0.1)' }
                 }
               >

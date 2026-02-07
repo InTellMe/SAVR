@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 
 export default function Home() {
   return (
-    <div className="min-h-screen" style={{ background: '#060918' }}>
+    <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
 
       {/* Hero Section */}
