@@ -2,10 +2,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #060918;
+  --background: #000000;
   --foreground: #e8eaf6;
-  --surface: #0d1129;
-  --surface-light: #131836;
+  --surface: #0a0a0a;
+  --surface-light: #121212;
   --accent-cyan: #00d4ff;
   --accent-teal: #00bfa6;
   --accent-purple: #a855f7;
@@ -25,7 +25,22 @@
 }
 
 body {
-  background: var(--background);
+  background: #000000;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 50, 100, 0.015) 2px,
+      rgba(0, 50, 100, 0.015) 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 50, 100, 0.015) 2px,
+      rgba(0, 50, 100, 0.015) 4px
+    );
   color: var(--foreground);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -38,7 +53,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--surface);
+  background: #0a0a0a;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -61,7 +76,7 @@ body {
 
 /* Glass morphism card */
 .glass-card {
-  background: rgba(13, 17, 41, 0.7);
+  background: rgba(10, 10, 10, 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -116,7 +131,7 @@ body {
 /* Premium button */
 .btn-primary {
   background: linear-gradient(135deg, #00d4ff, #0099cc);
-  color: #060918;
+  color: #000000;
   font-weight: 700;
   padding: 0.875rem 2rem;
   border-radius: 0.75rem;

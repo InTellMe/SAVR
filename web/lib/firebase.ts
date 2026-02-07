@@ -5,10 +5,15 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
 
 // Build-safe Firebase configuration
-// During local/dev builds, environment variables may not be available
-// Use dummy config to prevent build crashes, but never in production.
+// During Next.js static export/prerendering, environment variables may not be available
+// Use dummy config to prevent build crashes during prerendering, but validate at runtime.
 const BUILD_DUMMY_KEY = 'dummy_key_for_build';
-const ALLOW_DUMMY_CONFIG = process.env.NODE_ENV !== 'production';
+
+// Allow dummy config during build/prerendering phase OR development
+// During Next.js build, we're prerendering static pages - this is NOT production runtime
+const isBuildTime = typeof window === 'undefined' && process.env.NEXT_PHASE === 'phase-production-build';
+const isDevelopment = process.env.NODE_ENV === 'development';
+const ALLOW_DUMMY_CONFIG = isBuildTime || isDevelopment;
 
 const getFirebaseConfigValue = (
   value: string | undefined,
