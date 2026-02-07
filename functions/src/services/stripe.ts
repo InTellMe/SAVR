@@ -10,7 +10,7 @@ import {
 const STRIPE_PRICE_ID_PLUS = process.env.STRIPE_PRICE_ID_PLUS || '';
 const STRIPE_PRICE_ID_PREMIUM = process.env.STRIPE_PRICE_ID_PREMIUM || '';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build', {
   apiVersion: '2026-01-28.clover',
 });
 
