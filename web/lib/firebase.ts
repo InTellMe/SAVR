@@ -7,8 +7,10 @@ import { getFunctions, Functions } from 'firebase/functions';
 // Build-safe Firebase configuration
 // During static export/prerendering, environment variables may not be available
 // Use dummy config to prevent build crashes
+const BUILD_DUMMY_KEY = 'dummy_key_for_build';
+
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'dummy_key_for_build',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || BUILD_DUMMY_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'dummy.firebaseapp.com',
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'dummy-project',
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'dummy.appspot.com',
@@ -17,11 +19,12 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase with build-safe guard
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-let storage: FirebaseStorage;
-let functions: Functions;
+// Using definite assignment assertion (!) because initialization always happens in try block
+let app!: FirebaseApp;
+let auth!: Auth;
+let db!: Firestore;
+let storage!: FirebaseStorage;
+let functions!: Functions;
 
 try {
   // Only initialize if not already initialized
@@ -40,8 +43,8 @@ try {
   // This is expected and will work correctly at runtime with real config
   console.warn('Firebase initialization warning (expected during build):', error);
   
-  // Re-throw only if we're not in a build environment
-  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'dummy_key_for_build') {
+  // Re-throw only if we're not in a build environment with real credentials
+  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== BUILD_DUMMY_KEY) {
     throw error;
   }
 }
