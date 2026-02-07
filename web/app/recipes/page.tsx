@@ -412,7 +412,7 @@ function RecipesContent() {
                 recipeType: selectedRecipe.recipeType,
                 species: selectedRecipe.species,
               });
-              const url = `${window.location.origin}/r/${shareId}`;
+              const url = `${window.location.origin}/recipe?id=${shareId}`;
               await navigator.clipboard.writeText(url);
               setError('');
               alert('Link copied to clipboard!');
