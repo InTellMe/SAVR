@@ -2,15 +2,19 @@
 
 ## Overview
 
-SAVR has a simple two-tier pricing model:
-- **Free**: Perfect for getting started
-- **Pro**: Unlimited access with monthly or yearly billing
+SAVR has a two-tier paid subscription model with coupon code support:
+- **Basic**: Affordable entry point with essential features
+- **Pro**: Unlimited access with advanced features
+
+**All plans support coupon codes** - you can use a 100% discount coupon to get free access!
 
 ## Tiers
 
-### Free Tier (Always Free)
+### Basic Tier (Paid)
 
-**Cost**: $0 forever
+**Cost**: 
+- **Monthly**: $5.99/month
+- **Yearly**: $69.99/year (save ~$2/year)
 
 **Features**:
 - Smart inventory (up to 50 items)
@@ -24,14 +28,14 @@ SAVR has a simple two-tier pricing model:
 - No AI chat assistant
 - Limited monthly generations
 
-### Pro Tier
+### Pro Tier (Paid)
 
 **Cost**: 
 - **Monthly**: $9.99/month
-- **Yearly**: $99/year (save $20 = ~$8.25/month)
+- **Yearly**: $99.99/year (save ~$20/year)
 
 **Features**:
-- Everything in Free tier
+- Everything in Basic tier
 - **Unlimited inventory items**
 - **Unlimited AI recipes**
 - **Unlimited meal plans**
@@ -40,16 +44,51 @@ SAVR has a simple two-tier pricing model:
 - Ad-free experience
 - Cancel anytime
 
+## Coupon Code Support
+
+### How It Works
+
+1. **Enter Coupon at Checkout**: Stripe checkout includes a promotion code field
+2. **Automatic Discount**: Coupon is validated and applied by Stripe
+3. **$0 Checkout**: If the coupon results in a $0.00 total:
+   - Payment information is **not collected**
+   - User gets immediate access
+   - Subscription is still tracked in Stripe
+
+### Implementation Details
+
+**Stripe Configuration**:
+```typescript
+stripe.checkout.sessions.create({
+  // ... other params
+  allow_promotion_codes: true,  // Enable coupon field
+  payment_method_collection: 'if_required',  // Skip payment for $0 totals
+});
+```
+
+**Creating Coupons in Stripe**:
+1. Go to [Stripe Dashboard](https://dashboard.stripe.com/coupons)
+2. Click "Create Coupon"
+3. Configure:
+   - **Percent off**: e.g., 100% for free access
+   - **Duration**: once, forever, or repeating
+   - **Code**: Optional custom code (or auto-generate)
+
+**Common Coupon Use Cases**:
+- `WELCOME100`: 100% off first month (trial)
+- `ANNUAL20`: 20% off annual plans
+- `FRIEND50`: 50% off for referrals
+
 ## Stripe Configuration
 
 ### Environment Variables
-
-You need to set these environment variables:
 
 #### For Server-Side (Cloud Functions):
 ```bash
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID_BASIC_MONTHLY=price_...
+STRIPE_PRICE_ID_BASIC_YEARLY=price_...
 STRIPE_PRICE_ID_PRO_MONTHLY=price_...
 STRIPE_PRICE_ID_PRO_YEARLY=price_...
 ```
@@ -57,115 +96,29 @@ STRIPE_PRICE_ID_PRO_YEARLY=price_...
 #### For Client-Side (Next.js Web App):
 ```bash
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_MONTHLY=price_...
+NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_YEARLY=price_...
 NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY=price_...
 NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY=price_...
 ```
 
-### Creating Stripe Products
+## Testing Coupons
 
-1. Go to [Stripe Dashboard](https://dashboard.stripe.com/products)
-2. Click "Add Product"
-
-**Pro Monthly Product**:
-- Name: SAVR Pro Monthly
-- Description: Unlimited inventory, recipes, meal plans, and AI cooking assistant
-- Price: $9.99 USD
-- Billing: Monthly recurring
-- Copy the Price ID → Use as `STRIPE_PRICE_ID_PRO_MONTHLY`
-
-**Pro Yearly Product**:
-- Name: SAVR Pro Yearly
-- Description: Unlimited inventory, recipes, meal plans, and AI cooking assistant
-- Price: $99 USD
-- Billing: Yearly recurring
-- Copy the Price ID → Use as `STRIPE_PRICE_ID_PRO_YEARLY`
-
-## Feature Gates
-
-Feature gating is implemented in the codebase:
-
-### Usage Limits (functions/src/types/index.ts)
-
-```typescript
-export const TIER_LIMITS = {
-  free: {
-    maxInventoryItems: 50,
-    maxRecipesPerMonth: 10,
-    maxMealPlansPerMonth: 2,
-    maxPetRecipesPerMonth: 5,
-    aiChatEnabled: false,
-  },
-  pro: {
-    maxInventoryItems: -1,  // unlimited
-    maxRecipesPerMonth: -1,  // unlimited
-    maxMealPlansPerMonth: -1,  // unlimited
-    maxPetRecipesPerMonth: -1,  // unlimited
-    aiChatEnabled: true,
-  },
-};
-```
-
-### Where Limits Are Enforced
-
-1. **Cloud Functions** (`functions/src/utils/subscription.ts`):
-   - `checkUsageLimit()` validates limits before operations
-   - Returns error messages prompting users to upgrade
-
-2. **Firestore Rules** (`firestore.rules`):
-   - `isPaidTier()` helper checks for pro subscription
-   - Used to gate access to certain features
-
-3. **Client-Side UI**:
-   - Web: `web/contexts/AuthContext.tsx` - `isPaidTier()` helper
-   - Mobile: `mobile/src/types/index.ts` - `isPaidTier()` helper
-   - UI components check tier and show upgrade prompts
-
-## Legacy Tier Migration
-
-The codebase handles legacy tier names automatically:
-
-| Legacy Tier | Maps To |
-|-------------|---------|
-| `basic`     | `free`  |
-| `plus`      | `pro`   |
-| `premium`   | `pro`   |
-
-**Why this matters**: Existing users with `plus` or `premium` tiers will automatically be treated as `pro` users. No database migration needed.
-
-## Testing Subscriptions
-
-### Test Mode
-
-Use Stripe test mode for development:
-- Test publishable key: `pk_test_...`
-- Test secret key: `sk_test_...`
-- Test card: `4242 4242 4242 4242` (any future date, any CVC)
-
-### Webhook Testing
-
-For local development:
-```bash
-stripe listen --forward-to http://localhost:5001/YOUR_PROJECT/us-central1/stripeWebhook
-```
-
-Use the webhook signing secret from the CLI output.
+1. Create a test coupon in Stripe Dashboard (Test mode)
+2. At checkout, enter the coupon code
+3. Verify discount is applied
+4. For 100% off coupons:
+   - Verify payment form is not shown
+   - Verify subscription is still created
+   - Verify user gets correct tier access
 
 ## FAQ
 
 **Q: Can users switch between monthly and yearly?**
-A: Yes, through the Stripe customer portal. They can manage their subscription, change plans, or cancel.
+A: Yes, through the Stripe customer portal.
 
-**Q: What happens when a Pro subscription is cancelled?**
-A: User retains Pro access until the end of their billing period, then automatically downgrades to Free tier.
+**Q: How do 100% off coupons work?**
+A: Stripe creates a $0 subscription without collecting payment info. User gets immediate access.
 
-**Q: Do Pro users keep their data when downgrading?**
-A: Yes, all data is retained. They just can't add more items/recipes until within Free tier limits or they upgrade again.
-
-**Q: Is there a grace period for failed payments?**
-A: Stripe handles retries automatically. Users marked as `past_due` are treated as Free tier until payment succeeds.
-
-## Support
-
-For pricing questions:
-- Users: Contact support through the app
-- Developers: See `DEPLOYMENT.md` and `API.md` for technical details
+**Q: Can coupons be limited to specific plans?**
+A: Yes, configure which products/prices a coupon applies to in Stripe Dashboard.

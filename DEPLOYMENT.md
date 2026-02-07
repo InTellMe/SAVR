@@ -81,11 +81,19 @@ STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
 # Stripe Price IDs (create these in Stripe Dashboard → Products)
+# Basic Monthly: $5.99/month
+STRIPE_PRICE_ID_BASIC_MONTHLY=price_...
+NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_MONTHLY=price_...
+
+# Basic Yearly: $69.99/year
+STRIPE_PRICE_ID_BASIC_YEARLY=price_...
+NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_YEARLY=price_...
+
 # Pro Monthly: $9.99/month
 STRIPE_PRICE_ID_PRO_MONTHLY=price_...
 NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY=price_...
 
-# Pro Yearly: $99/year  
+# Pro Yearly: $99.99/year
 STRIPE_PRICE_ID_PRO_YEARLY=price_...
 NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY=price_...
 
@@ -225,16 +233,26 @@ Firebase provisions SSL automatically. Propagation can take from a few minutes u
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Go to Products → Add Product
-3. Create "SAVR Pro Monthly":
+3. Create "SAVR Basic Monthly":
+   - Name: SAVR Basic Monthly
+   - Price: $5.99/month
+   - Recurring: Monthly
+   - Copy Price ID → Use as STRIPE_PRICE_ID_BASIC_MONTHLY
+4. Create "SAVR Basic Yearly":
+   - Name: SAVR Basic Yearly
+   - Price: $69.99/year
+   - Recurring: Yearly
+   - Copy Price ID → Use as STRIPE_PRICE_ID_BASIC_YEARLY
+5. Create "SAVR Pro Monthly":
    - Name: SAVR Pro Monthly
    - Price: $9.99/month
    - Recurring: Monthly
-   - Copy Price ID → Use as STRIPE_PRICE_ID_PRO_MONTHLY and NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY
-4. Create "SAVR Pro Yearly":
+   - Copy Price ID → Use as STRIPE_PRICE_ID_PRO_MONTHLY
+6. Create "SAVR Pro Yearly":
    - Name: SAVR Pro Yearly
-   - Price: $99/year
+   - Price: $99.99/year
    - Recurring: Yearly
-   - Copy Price ID → Use as STRIPE_PRICE_ID_PRO_YEARLY and NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY
+   - Copy Price ID → Use as STRIPE_PRICE_ID_PRO_YEARLY
 
 ### 8.2 Configure Stripe Webhook
 
