@@ -7,8 +7,10 @@ import {
   upsertUserSubscriptionRecord,
 } from '../utils/subscription';
 
-const STRIPE_PRICE_ID_PLUS = process.env.STRIPE_PRICE_ID_PLUS || '';
-const STRIPE_PRICE_ID_PREMIUM = process.env.STRIPE_PRICE_ID_PREMIUM || '';
+const STRIPE_PRICE_ID_BASIC_MONTHLY = process.env.STRIPE_PRICE_ID_BASIC_MONTHLY || '';
+const STRIPE_PRICE_ID_BASIC_YEARLY = process.env.STRIPE_PRICE_ID_BASIC_YEARLY || '';
+const STRIPE_PRICE_ID_PRO_MONTHLY = process.env.STRIPE_PRICE_ID_PRO_MONTHLY || '';
+const STRIPE_PRICE_ID_PRO_YEARLY = process.env.STRIPE_PRICE_ID_PRO_YEARLY || '';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build', {
   apiVersion: '2026-01-28.clover',
@@ -57,6 +59,8 @@ export async function createCheckoutSession(
         quantity: 1,
       },
     ],
+    allow_promotion_codes: true, // Enable coupon codes
+    payment_method_collection: 'if_required', // Skip payment if total is $0.00
     success_url: resolvedSuccessUrl,
     cancel_url: resolvedCancelUrl,
     metadata: { userId },
@@ -102,10 +106,10 @@ export async function handleStripeWebhook(
 }
 
 function tierFromPriceId(priceId: string | undefined): SubscriptionTierName {
-  if (!priceId) return 'plus';
-  if (priceId === STRIPE_PRICE_ID_PREMIUM) return 'premium';
-  if (priceId === STRIPE_PRICE_ID_PLUS) return 'plus';
-  return 'plus';
+  if (!priceId) return 'basic';
+  if (priceId === STRIPE_PRICE_ID_PRO_MONTHLY || priceId === STRIPE_PRICE_ID_PRO_YEARLY) return 'pro';
+  if (priceId === STRIPE_PRICE_ID_BASIC_MONTHLY || priceId === STRIPE_PRICE_ID_BASIC_YEARLY) return 'basic';
+  return 'basic'; // default to basic for unknown price IDs
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
@@ -121,7 +125,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       ? session.customer
       : (session.customer as Stripe.Customer | null)?.id ?? null;
 
-  let tier: SubscriptionTierName = 'plus';
+  let tier: SubscriptionTierName = 'pro';
   if (session.subscription) {
     const sub =
       typeof session.subscription === 'string'

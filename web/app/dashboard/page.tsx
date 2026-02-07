@@ -74,8 +74,8 @@ function DashboardContent() {
             Welcome back, {user?.email}!
           </h1>
           <p className="text-gray-600">
-            You&apos;re on the <span className="font-semibold text-orange-600">{userData?.subscriptionTier || 'free'}</span> plan
-            {userData?.subscriptionTier === 'free' && (
+            You&apos;re on the <span className="font-semibold text-orange-600">{userData?.subscriptionTier || 'basic'}</span> plan
+            {(userData?.subscriptionTier === 'basic' || !userData?.subscriptionTier) && (
               <Link href="/pricing" className="ml-2 text-orange-600 hover:underline">
                 Upgrade to Pro
               </Link>

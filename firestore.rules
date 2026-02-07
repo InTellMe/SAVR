@@ -12,6 +12,12 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
+    // Helper: paid tier (all tiers are now paid: basic and pro; legacy 'free'/'plus'/'premium' also treated as paid)
+    function isPaidTier() {
+      let tier = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionTier;
+      return isAuthenticated() && (tier == 'basic' || tier == 'pro' || tier == 'free' || tier == 'plus' || tier == 'premium');
+    }
+    
     // Users collection - users can read their own profile and only update non-entitlement fields.
     // subscriptionTier, subscriptionStatus, stripeCustomerId, paypalSubscriptionId are
     // updated only by Cloud Functions (Stripe and PayPal webhooks); clients cannot write them.

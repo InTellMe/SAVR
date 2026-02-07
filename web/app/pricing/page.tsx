@@ -14,17 +14,8 @@ export default function PricingPage() {
   const [error, setError] = useState('');
 
   const tier = userData?.subscriptionTier;
-  const isBasic = tier === 'basic' || tier === 'free';
-  const isPlus = tier === 'plus' || tier === 'pro';
-  const isPremium = tier === 'premium';
-
-  function handleFree() {
-    if (!user) {
-      router.push('/sign-up');
-      return;
-    }
-    router.push('/dashboard');
-  }
+  const isBasic = tier === 'basic' || tier === 'free'; // legacy support
+  const isPro = tier === 'pro' || tier === 'plus' || tier === 'premium'; // legacy support
 
   async function handleStripeSubscribe(priceId: string) {
     if (!user) {
@@ -50,13 +41,14 @@ export default function PricingPage() {
     }
   }
 
-  const priceIdPlus =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS ||
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY ||
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID ||
-    'price_plus';
-  const priceIdPremium =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM || 'price_premium';
+  const priceIdBasicMonthly =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_MONTHLY || 'price_basic_monthly';
+  const priceIdBasicYearly =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_YEARLY || 'price_basic_yearly';
+  const priceIdProMonthly =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY || 'price_pro_monthly';
+  const priceIdProYearly =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY || 'price_pro_yearly';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
@@ -68,7 +60,7 @@ export default function PricingPage() {
             Choose Your Plan
           </h1>
           <p className="text-xl text-gray-600">
-            Start free, upgrade when you&apos;re ready for more features
+            All plans support coupon codes. Use a 100% off coupon for free access!
           </p>
         </div>
 
@@ -78,13 +70,13 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {/* Basic */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          {/* Basic Monthly */}
           <PricingCard
             name="Basic"
-            price="$0"
-            period="forever"
-            description="Perfect for getting started"
+            price="$5.99"
+            period="per month"
+            description="Great for beginners"
             features={[
               'Smart inventory (up to 50 items)',
               '10 AI recipes per month',
@@ -94,19 +86,39 @@ export default function PricingPage() {
               'Community support',
             ]}
             limitations={['No AI chat assistant']}
-            buttonText={isBasic ? 'Current Plan' : 'Get Started'}
+            buttonText={isBasic ? 'Current Plan' : 'Subscribe'}
             buttonDisabled={isBasic}
-            onSelect={handleFree}
+            onSelect={() => handleStripeSubscribe(priceIdBasicMonthly)}
             loading={loading}
             recommended={false}
           />
 
-          {/* Plus */}
+          {/* Basic Yearly */}
           <PricingCard
-            name="Plus"
-            price="$7.99"
+            name="Basic Yearly"
+            price="$69.99"
+            period="per year"
+            description="Save with annual billing"
+            features={[
+              'Everything in Basic Monthly',
+              'Save ~$2 per year',
+              'Lock in your rate',
+              'Cancel anytime',
+            ]}
+            limitations={['No AI chat assistant']}
+            buttonText={isBasic ? 'Current Plan' : 'Subscribe'}
+            buttonDisabled={isBasic}
+            onSelect={() => handleStripeSubscribe(priceIdBasicYearly)}
+            loading={loading}
+            recommended={false}
+          />
+
+          {/* Pro Monthly */}
+          <PricingCard
+            name="Pro"
+            price="$9.99"
             period="per month"
-            description="For regular home cooks"
+            description="For passionate cooks"
             features={[
               'Everything in Basic',
               'Unlimited inventory',
@@ -116,29 +128,29 @@ export default function PricingPage() {
               'Ad-free experience',
             ]}
             limitations={[]}
-            buttonText={isPlus ? 'Current Plan' : 'Subscribe'}
-            buttonDisabled={isPlus}
-            onSelect={() => handleStripeSubscribe(priceIdPlus)}
+            buttonText={isPro ? 'Current Plan' : 'Subscribe'}
+            buttonDisabled={isPro}
+            onSelect={() => handleStripeSubscribe(priceIdProMonthly)}
             loading={loading}
             recommended={true}
           />
 
-          {/* Premium */}
+          {/* Pro Yearly */}
           <PricingCard
-            name="Premium"
-            price="$14.99"
-            period="per month"
-            description="For power users"
+            name="Pro Yearly"
+            price="$99.99"
+            period="per year"
+            description="Best value!"
             features={[
-              'Everything in Plus',
-              'Real-time cooking coach',
-              'Priority support',
-              'Early access to new features',
+              'Everything in Pro Monthly',
+              'Save ~$20 per year',
+              'Lock in your rate',
+              'Cancel anytime',
             ]}
             limitations={[]}
-            buttonText={isPremium ? 'Current Plan' : 'Subscribe'}
-            buttonDisabled={isPremium}
-            onSelect={() => handleStripeSubscribe(priceIdPremium)}
+            buttonText={isPro ? 'Current Plan' : 'Subscribe'}
+            buttonDisabled={isPro}
+            onSelect={() => handleStripeSubscribe(priceIdProYearly)}
             loading={loading}
             recommended={false}
           />

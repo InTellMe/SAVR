@@ -6,13 +6,13 @@ export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due';
 /**
  * Returns the effective subscription tier for a user, taking both
  * the stored tier and subscriptionStatus into account.
- * Legacy 'free'/'pro' are mapped to 'basic'/'plus'.
+ * Legacy 'free'/'plus'/'premium' are mapped to 'basic'/'pro'.
  */
 export async function getUserSubscriptionTier(userId: string): Promise<SubscriptionTierName> {
   const userDoc = await db.collection('users').doc(userId).get();
   const userData = userDoc.data() as
     | {
-        subscriptionTier?: SubscriptionTierName | 'free' | 'pro';
+        subscriptionTier?: SubscriptionTierName | 'free' | 'plus' | 'premium';
         subscriptionStatus?: SubscriptionStatus;
       }
     | undefined;
@@ -22,11 +22,11 @@ export async function getUserSubscriptionTier(userId: string): Promise<Subscript
 
   // Map legacy tiers
   if (storedTier === 'free') storedTier = 'basic';
-  if (storedTier === 'pro') storedTier = 'plus';
+  if (storedTier === 'plus' || storedTier === 'premium') storedTier = 'pro';
 
   // Downgrade paid users if status is non-active
-  if ((storedTier === 'plus' || storedTier === 'premium') && status !== undefined && status !== 'active') {
-    return 'basic';
+  if ((storedTier === 'basic' || storedTier === 'pro') && status !== undefined && status !== 'active') {
+    return 'basic'; // downgrade to basic if subscription inactive
   }
 
   return storedTier as SubscriptionTierName;
@@ -42,7 +42,7 @@ export async function checkUsageLimit(
   if (resource === 'aiChat' && !limits.aiChatEnabled) {
     return {
       allowed: false,
-      reason: 'AI chat is available on Plus and Premium. Upgrade to unlock.',
+      reason: 'AI chat is available on Pro tier. Upgrade to unlock.',
     };
   }
 
@@ -64,7 +64,7 @@ export async function checkUsageLimit(
     if (petRecipesSnapshot.size >= limits.maxPetRecipesPerMonth) {
       return {
         allowed: false,
-        reason: `Monthly pet recipe limit reached (${limits.maxPetRecipesPerMonth}). Upgrade to Plus or Premium for unlimited pet recipes.`,
+        reason: `Monthly pet recipe limit reached (${limits.maxPetRecipesPerMonth}). Upgrade to Pro for unlimited pet recipes.`,
       };
     }
   }
@@ -80,7 +80,7 @@ export async function checkUsageLimit(
     if (inventorySnapshot.size >= limits.maxInventoryItems) {
       return {
         allowed: false,
-        reason: `Inventory limit reached. Upgrade to Plus or Premium for unlimited items.`,
+        reason: `Inventory limit reached. Upgrade to Pro for unlimited items.`,
       };
     }
   }
@@ -102,7 +102,7 @@ export async function checkUsageLimit(
     if (recipesSnapshot.size >= limits.maxRecipesPerMonth) {
       return {
         allowed: false,
-        reason: `Monthly recipe limit reached. Upgrade to Plus or Premium for unlimited recipes.`,
+        reason: `Monthly recipe limit reached. Upgrade to Pro for unlimited recipes.`,
       };
     }
   }
@@ -123,7 +123,7 @@ export async function checkUsageLimit(
     if (mealPlansSnapshot.size >= limits.maxMealPlansPerMonth) {
       return {
         allowed: false,
-        reason: `Monthly meal plan limit reached. Upgrade to Plus or Premium for unlimited meal plans.`,
+        reason: `Monthly meal plan limit reached. Upgrade to Pro for unlimited meal plans.`,
       };
     }
   }
