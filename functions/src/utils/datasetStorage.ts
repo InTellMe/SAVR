@@ -73,8 +73,8 @@ export async function uploadImageFile(
 export async function generateAndUploadThumbnail(
   imageBuffer: Buffer,
   imageId: string,
-  maxWidth: number = 512,
-  maxHeight: number = 512
+  _maxWidth: number = 512,
+  _maxHeight: number = 512
 ): Promise<string> {
   // Note: For production, use sharp or similar library to resize
   // For now, we'll just upload the original as thumbnail (can be optimized later)
