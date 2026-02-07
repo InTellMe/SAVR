@@ -44,7 +44,7 @@ export default function VideoHero() {
     if (!showFallback) {
       timeoutId = setTimeout(() => {
         // If we reach here and haven't explicitly loaded, assume failure
-        console.warn('Video load timeout reached, showing fallback');
+        // Video iframe didn't load in time — show fallback logo silently
         setShowFallback(true);
       }, VIDEO_LOAD_TIMEOUT);
     }
@@ -75,7 +75,7 @@ export default function VideoHero() {
   return (
     <div className="relative mb-8 flex justify-center">
       {/* Video container */}
-      <div className="relative w-48 md:w-72 h-auto animate-float">
+      <div className="relative w-96 md:w-[36rem] h-auto animate-float">
         {showFallback ? (
           // Fallback logo image
           <Image

@@ -5,7 +5,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { useSearchParams } from 'next/navigation';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function DashboardPage() {
@@ -18,6 +19,9 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { user, userData } = useAuth();
+  const searchParams = useSearchParams();
+  const stripeSuccess = searchParams.get('stripeSuccess') === 'true';
+  const [showSuccessBanner, setShowSuccessBanner] = useState(stripeSuccess);
   const [stats, setStats] = useState({
     inventoryCount: 0,
     recipeCount: 0,
@@ -30,23 +34,11 @@ function DashboardContent() {
       if (!user) return;
 
       try {
-        const inventoryQuery = query(
-          collection(db, 'inventory'),
-          where('userId', '==', user.uid)
-        );
-        const recipeQuery = query(
-          collection(db, 'recipes'),
-          where('userId', '==', user.uid)
-        );
-        const mealPlanQuery = query(
-          collection(db, 'mealPlans'),
-          where('userId', '==', user.uid)
-        );
-
+        // Query subcollections directly — matches Firestore structure and security rules
         const [inventorySnap, recipeSnap, mealPlanSnap] = await Promise.all([
-          getDocs(inventoryQuery),
-          getDocs(recipeQuery),
-          getDocs(mealPlanQuery),
+          getDocs(collection(db, 'inventory', user.uid, 'items')),
+          getDocs(collection(db, 'recipes', user.uid, 'items')),
+          getDocs(collection(db, 'mealPlans', user.uid, 'plans')),
         ]);
 
         setStats({
@@ -69,6 +61,16 @@ function DashboardContent() {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
+        {showSuccessBanner && (
+          <div className="mb-6 rounded-xl px-5 py-4 flex items-center justify-between" style={{ background: 'rgba(0, 191, 166, 0.1)', border: '1px solid rgba(0, 191, 166, 0.25)' }}>
+            <div>
+              <p className="font-semibold text-[#00bfa6]">Subscription activated!</p>
+              <p className="text-sm text-[#9ca3c2]">Your plan is now active. Your 5-day free trial has started — enjoy full access.</p>
+            </div>
+            <button onClick={() => setShowSuccessBanner(false)} className="text-[#9ca3c2] hover:text-white ml-4 text-lg">&times;</button>
+          </div>
+        )}
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
             Welcome back, {user?.email}!

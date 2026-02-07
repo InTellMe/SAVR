@@ -48,7 +48,7 @@ export async function createCheckoutSession(
   const resolvedCancelUrl =
     cancelUrl || `${appBaseUrl}/pricing?stripeCancelled=true`;
 
-  // Create checkout session
+  // Create checkout session with 5-day free trial
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
@@ -59,8 +59,12 @@ export async function createCheckoutSession(
         quantity: 1,
       },
     ],
-    allow_promotion_codes: true, // Enable coupon codes
-    payment_method_collection: 'if_required', // Skip payment if total is $0.00
+    subscription_data: {
+      trial_period_days: 5,
+      metadata: { userId },
+    },
+    allow_promotion_codes: true,
+    payment_method_collection: 'if_required',
     success_url: resolvedSuccessUrl,
     cancel_url: resolvedCancelUrl,
     metadata: { userId },
@@ -135,10 +139,36 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     tier = tierFromPriceId(priceId);
   }
 
-  await updateUserSubscription(userId, {
+  // Determine actual subscription status (may be 'trialing' for free trial signups)
+  let internalStatus: 'active' | 'trialing' = 'active';
+  let trialEnd: Date | null = null;
+
+  if (session.subscription) {
+    const sub =
+      typeof session.subscription === 'string'
+        ? await stripe.subscriptions.retrieve(session.subscription)
+        : (session.subscription as Stripe.Subscription);
+    if (sub.status === 'trialing') {
+      internalStatus = 'active'; // grant full access during trial
+      if (sub.trial_end) {
+        trialEnd = new Date(sub.trial_end * 1000);
+      }
+    }
+  }
+
+  const updatePayload: Record<string, unknown> = {
     subscriptionTier: tier,
-    subscriptionStatus: 'active',
+    subscriptionStatus: internalStatus,
     stripeCustomerId,
+  };
+  if (trialEnd) {
+    updatePayload.trialEndsAt = trialEnd;
+  }
+
+  await updateUserSubscription(userId, updatePayload as {
+    subscriptionTier: typeof tier;
+    subscriptionStatus: typeof internalStatus;
+    stripeCustomerId: typeof stripeCustomerId;
   });
 
   if (session.subscription) {

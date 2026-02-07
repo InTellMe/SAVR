@@ -148,7 +148,7 @@ function MealPlansContent() {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-2">
           <h1 className="text-3xl font-bold text-white">Meal Plans</h1>
           <button
             onClick={() => setShowForm(true)}
@@ -157,6 +157,11 @@ function MealPlansContent() {
             📅 Create Meal Plan
           </button>
         </div>
+
+        <p className="text-[#9ca3c2] text-sm mb-6">
+          AI-generated meal schedules based on your inventory. Choose the number of days and dietary preferences,
+          and SAVR will plan balanced meals that minimize food waste.
+        </p>
 
         {error && (
           <div className="border-red-500/20 bg-red-500/10 border text-red-400 px-4 py-3 rounded mb-6">
@@ -229,10 +234,18 @@ function MealPlansContent() {
 
                 <div>
                   <label className="block text-sm font-medium text-[#9ca3c2] mb-2">
-                    Dietary Restrictions
+                    Dietary Preferences
                   </label>
-                  <div className="space-y-2">
-                    {['vegetarian', 'vegan', 'gluten-free', 'dairy-free'].map(option => (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 max-h-40 overflow-y-auto">
+                    {[
+                      'vegetarian', 'vegan', 'pescatarian', 'flexitarian',
+                      'gluten-free', 'dairy-free', 'nut-free', 'egg-free', 'soy-free',
+                      'keto', 'paleo', 'whole30', 'mediterranean',
+                      'low-carb', 'low-fat', 'low-sodium', 'low-sugar',
+                      'high-protein', 'high-fiber',
+                      'diabetic-friendly', 'heart-healthy', 'anti-inflammatory',
+                      'kosher', 'halal',
+                    ].map(option => (
                       <label key={option} className="flex items-center">
                         <input
                           type="checkbox"

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePathname } from 'next/navigation';
 
@@ -33,15 +32,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <Image
-              src="https://res.cloudinary.com/dksj2niho/image/upload/w_80,h_80,c_fit,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
-              alt="SAVR"
-              width={36}
-              height={36}
-              className="w-9 h-9"
-              unoptimized
-            />
+          <Link href="/" className="flex items-center group">
             <span className="text-xl font-bold text-white tracking-tight">SAVR</span>
           </Link>
 
@@ -67,6 +58,7 @@ export default function Navbar() {
             ) : (
               <>
                 <Link href="/pricing" className={navLinkClass('/pricing')}>Pricing</Link>
+                <Link href="/faq" className={navLinkClass('/faq')}>FAQ</Link>
                 <Link href="/sign-in" className="text-sm font-medium text-[#9ca3c2] hover:text-white transition-colors duration-200">
                   Sign In
                 </Link>
@@ -143,6 +135,13 @@ export default function Navbar() {
                   className="block py-3 px-4 rounded-lg text-sm font-medium text-[#9ca3c2] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-colors"
                 >
                   Pricing
+                </Link>
+                <Link
+                  href="/faq"
+                  onClick={() => setMobileOpen(false)}
+                  className="block py-3 px-4 rounded-lg text-sm font-medium text-[#9ca3c2] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-colors"
+                >
+                  FAQ
                 </Link>
                 <Link
                   href="/sign-in"
