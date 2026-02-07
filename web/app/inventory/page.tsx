@@ -184,7 +184,20 @@ function InventoryContent() {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-white mb-8">Inventory Management</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">Inventory Management</h1>
+        <p className="text-[#9ca3c2] text-sm mb-4">
+          Your ingredients are listed below. You can add items manually, scan a barcode, or{' '}
+          <a href="/upload" className="text-[#00d4ff] hover:underline">upload a photo</a> for AI detection.
+          Tap <span className="font-semibold text-white">Edit</span> on any item to correct its name, quantity, or category.
+        </p>
+        <div className="rounded-xl px-5 py-4 mb-6 text-sm" style={{ background: 'rgba(0, 212, 255, 0.06)', border: '1px solid rgba(0, 212, 255, 0.15)' }}>
+          <p className="font-semibold text-[#00d4ff] mb-1">AI import not quite right?</p>
+          <p className="text-[#9ca3c2]">
+            If an uploaded photo missed items or got quantities wrong, just use the <span className="font-semibold text-white">Edit</span> button
+            to fix them, or <span className="font-semibold text-white">Add Item Manually</span> below to fill in anything that was missed.
+            You can also delete incorrect entries and re-add them.
+          </p>
+        </div>
 
         {error && (
           <div className="border border-red-500/20 bg-red-500/10 text-red-400 px-4 py-3 rounded mb-6">

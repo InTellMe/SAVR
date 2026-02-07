@@ -106,10 +106,19 @@ function UploadContent() {
 
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-white mb-4">Upload Pantry Photo</h1>
-        <p className="text-[#9ca3c2] mb-8">
-          Upload a photo of your pantry or fridge. We&apos;ll analyze it and extract ingredients that you
+        <p className="text-[#9ca3c2] mb-4">
+          Upload a photo of your pantry or fridge. Our AI will analyze it and extract ingredients that you
           can add to your inventory with one click.
         </p>
+        <div className="rounded-xl px-5 py-4 mb-8 text-sm" style={{ background: 'rgba(0, 212, 255, 0.06)', border: '1px solid rgba(0, 212, 255, 0.15)' }}>
+          <p className="font-semibold text-[#00d4ff] mb-1">Tips for best results</p>
+          <ul className="text-[#9ca3c2] space-y-1 list-disc list-inside">
+            <li>Use good lighting and avoid blurry photos.</li>
+            <li>Lay items out so labels are visible when possible.</li>
+            <li>After analysis, review detected items — you can remove any that are wrong before saving.</li>
+            <li>If something is missed, head to <span className="text-[#00d4ff]">Inventory</span> to add it manually or scan a barcode.</li>
+          </ul>
+        </div>
 
         {error && (
           <div className="mb-4 rounded border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-400">

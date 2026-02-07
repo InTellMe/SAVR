@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions/v1';
+import { onCall as onCallV2, HttpsError as HttpsErrorV2, onRequest as onRequestV2 } from 'firebase-functions/v2/https';
 import { db } from './utils/firebase';
 import {
   extractIngredientsFromImage,
@@ -371,29 +372,36 @@ export const chat = functions
     }
   });
 
-// Stripe Checkout Session Creation
-export const createStripeCheckout = functions.https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+// Stripe Checkout Session Creation (v2 with explicit CORS)
+export const createStripeCheckout = onCallV2(
+  { cors: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsErrorV2('unauthenticated', 'User must be authenticated');
+    }
+
+    const { priceId, successUrl, cancelUrl } = request.data as {
+      priceId: string;
+      successUrl: string;
+      cancelUrl: string;
+    };
+    const userId = request.auth.uid;
+
+    try {
+      const sessionUrl = await createCheckoutSession(userId, priceId, successUrl, cancelUrl);
+      return { success: true, url: sessionUrl };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create checkout session';
+      console.error('Stripe checkout error:', error);
+      throw new HttpsErrorV2('internal', errorMessage);
+    }
   }
+);
 
-  const { priceId, successUrl, cancelUrl } = data as { priceId: string; successUrl: string; cancelUrl: string };
-  const userId = context.auth.uid;
-
-  try {
-    const sessionUrl = await createCheckoutSession(userId, priceId, successUrl, cancelUrl);
-    return { success: true, url: sessionUrl };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to create checkout session';
-    console.error('Stripe checkout error:', error);
-    throw new functions.https.HttpsError('internal', errorMessage);
-  }
-});
-
-// Stripe Webhook Handler
-export const stripeWebhook = functions.https.onRequest(async (req, res) => {
+// Stripe Webhook Handler (v2 onRequest — no CORS needed, called server-to-server by Stripe)
+export const stripeWebhook = onRequestV2(async (req, res) => {
   const signature = req.headers['stripe-signature'] as string;
-  
+
   if (!signature) {
     res.status(400).send('No signature');
     return;
@@ -409,24 +417,27 @@ export const stripeWebhook = functions.https.onRequest(async (req, res) => {
   }
 });
 
-// Stripe Customer Portal Session
-export const createStripePortal = functions.https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  }
+// Stripe Customer Portal Session (v2 with explicit CORS)
+export const createStripePortal = onCallV2(
+  { cors: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsErrorV2('unauthenticated', 'User must be authenticated');
+    }
 
-  const { returnUrl } = data as { returnUrl: string };
-  const userId = context.auth.uid;
+    const { returnUrl } = request.data as { returnUrl: string };
+    const userId = request.auth.uid;
 
-  try {
-    const portalUrl = await createPortalSession(userId, returnUrl);
-    return { success: true, url: portalUrl };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to create portal session';
-    console.error('Portal creation error:', error);
-    throw new functions.https.HttpsError('internal', errorMessage);
+    try {
+      const portalUrl = await createPortalSession(userId, returnUrl);
+      return { success: true, url: portalUrl };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create portal session';
+      console.error('Portal creation error:', error);
+      throw new HttpsErrorV2('internal', errorMessage);
+    }
   }
-});
+);
 
 // User initialization function (triggered on user creation)
 export const onUserCreate = functions.auth.user().onCreate(async (user: functions.auth.UserRecord) => {

@@ -113,7 +113,7 @@ export default function PricingPage() {
             <span className="gradient-text">pricing</span>
           </h1>
           <p className="text-lg max-w-xl mx-auto" style={{ color: '#9ca3c2' }}>
-            Choose the plan that fits your kitchen. All plans support coupon codes.
+            Try any plan free for 5 days. No charge until your trial ends. Coupon codes accepted at checkout.
           </p>
 
           {/* Billing toggle */}
@@ -200,7 +200,7 @@ export default function PricingPage() {
               <button
                 onClick={() => handleStripeSubscribe(billingCycle === 'monthly' ? plan.monthlyPriceId : plan.yearlyPriceId)}
                 disabled={plan.isCurrent || loading}
-                className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-200 mb-8 ${
+                className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-200 mb-2 ${
                   plan.isCurrent
                     ? 'cursor-not-allowed opacity-50'
                     : ''
@@ -211,8 +211,14 @@ export default function PricingPage() {
                     : { background: 'rgba(255, 255, 255, 0.06)', color: '#e8eaf6', border: '1px solid rgba(255, 255, 255, 0.1)' }
                 }
               >
-                {loading ? 'Processing...' : plan.isCurrent ? 'Current Plan' : 'Get Started'}
+                {loading ? 'Processing...' : plan.isCurrent ? 'Current Plan' : 'Start 5-Day Free Trial'}
               </button>
+              {!plan.isCurrent && (
+                <p className="text-xs text-center mb-6" style={{ color: '#6b7294' }}>
+                  No charge for 5 days. Cancel anytime.
+                </p>
+              )}
+              {plan.isCurrent && <div className="mb-6" />}
 
               <div className="space-y-3">
                 {plan.features.map((feature, idx) => (
@@ -244,6 +250,14 @@ export default function PricingPage() {
           </div>
           <div className="space-y-4">
             <FAQItem
+              question="How does the 5-day free trial work?"
+              answer="Every plan starts with a 5-day free trial. You'll get full access to all features in your chosen plan. Your card is collected at signup but won't be charged until the trial ends. Cancel anytime during the trial and you won't be billed."
+            />
+            <FAQItem
+              question="Can I use a coupon code?"
+              answer="Yes! Both monthly and yearly plans accept coupon codes. Enter your code at checkout. If a coupon reduces your total to $0.00, no payment method is required."
+            />
+            <FAQItem
               question="Can I switch plans anytime?"
               answer="Yes! You can upgrade from Basic to Pro at any time. Subscriptions can be canceled anytime and you'll retain access until the end of your billing period."
             />
@@ -253,7 +267,7 @@ export default function PricingPage() {
             />
             <FAQItem
               question="Is my data secure?"
-              answer="Absolutely. We use industry-standard encryption and security practices. Your data is stored securely on Google Cloud Platform and we never share your information with third parties."
+              answer="We use industry-standard encryption and security practices. Your data is stored securely on Google Cloud Platform and we never share your information with third parties."
             />
             <FAQItem
               question="Can I get a refund?"

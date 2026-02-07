@@ -55,9 +55,10 @@ function RecipesContent() {
     recipeType: 'human' as RecipeType,
     species: 'dog' as PetSpecies,
     dietaryRestrictions: [] as string[],
-    cuisinePreference: '',
+    cuisinePreferences: [] as string[],
     skillLevel: 'intermediate',
     maxCookingTime: 60,
+    specialConsiderations: '',
   });
 
   useEffect(() => {
@@ -105,12 +106,16 @@ function RecipesContent() {
 
       // Call Cloud Function
       const createRecipe = httpsCallable(functions, 'createRecipe');
+      const cuisineStr = formData.cuisinePreferences.length > 0
+        ? formData.cuisinePreferences.join(', ')
+        : undefined;
+
       const result = await createRecipe({
         ingredients,
         recipeType: formData.recipeType,
         species: formData.recipeType === 'pet' ? formData.species : undefined,
         preferences: {
-          cuisine: formData.recipeType === 'human' ? formData.cuisinePreference || undefined : undefined,
+          cuisine: formData.recipeType === 'human' ? cuisineStr : undefined,
           dietary: formData.recipeType === 'human' ? formData.dietaryRestrictions : undefined,
           difficulty:
             formData.skillLevel === 'beginner'
@@ -119,6 +124,7 @@ function RecipesContent() {
               ? 'hard'
               : 'medium',
           cookTime: formData.maxCookingTime,
+          specialConsiderations: formData.specialConsiderations || undefined,
         },
       });
 
@@ -186,7 +192,7 @@ function RecipesContent() {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-2">
           <h1 className="text-3xl font-bold text-white">My Recipes</h1>
           <button
             onClick={() => setShowForm(true)}
@@ -195,6 +201,12 @@ function RecipesContent() {
             ✨ Generate New Recipe
           </button>
         </div>
+
+        <p className="text-[#9ca3c2] text-sm mb-6">
+          Generate recipes from your current inventory. Choose between human meals and vet-reviewed pet treats.
+          Set dietary preferences, cuisine style, skill level, and max cooking time to tailor results.
+          Share any recipe with friends via a shareable link.
+        </p>
 
         {error && (
           <div className="border border-red-500/20 bg-red-500/10 text-red-400 px-4 py-3 rounded mb-6">
@@ -297,10 +309,18 @@ function RecipesContent() {
                 {formData.recipeType === 'human' && (
                 <div>
                   <label className="block text-sm font-medium text-[#9ca3c2] mb-2">
-                    Dietary Restrictions
+                    Dietary Preferences
                   </label>
-                  <div className="space-y-2">
-                    {['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'nut-free', 'keto', 'paleo', 'low-sodium', 'diabetic-friendly'].map(option => (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 max-h-48 overflow-y-auto">
+                    {[
+                      'vegetarian', 'vegan', 'pescatarian', 'flexitarian',
+                      'gluten-free', 'dairy-free', 'nut-free', 'egg-free', 'soy-free', 'shellfish-free',
+                      'keto', 'paleo', 'whole30', 'mediterranean',
+                      'low-carb', 'low-fat', 'low-sodium', 'low-sugar',
+                      'high-protein', 'high-fiber',
+                      'diabetic-friendly', 'heart-healthy', 'anti-inflammatory',
+                      'fodmap-friendly', 'kosher', 'halal',
+                    ].map(option => (
                       <label key={option} className="flex items-center">
                         <input
                           type="checkbox"
@@ -318,7 +338,7 @@ function RecipesContent() {
                               });
                             }
                           }}
-                          className="mr-2"
+                          className="mr-2 accent-[#00d4ff]"
                         />
                         <span className="text-sm capitalize">{option}</span>
                       </label>
@@ -329,16 +349,41 @@ function RecipesContent() {
 
                 {formData.recipeType === 'human' && (
                   <div>
-                    <label className="block text-sm font-medium text-[#9ca3c2] mb-1">
-                      Cuisine Preference (optional)
+                    <label className="block text-sm font-medium text-[#9ca3c2] mb-2">
+                      Cuisine Style
                     </label>
-                    <input
-                      type="text"
-                      value={formData.cuisinePreference}
-                      onChange={(e) => setFormData({ ...formData, cuisinePreference: e.target.value })}
-                      placeholder="e.g., Italian, Mexican, Asian"
-                      className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
-                    />
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 max-h-48 overflow-y-auto">
+                      {[
+                        'Italian', 'Mexican', 'Chinese', 'Japanese', 'Korean', 'Thai',
+                        'Indian', 'Vietnamese', 'French', 'Greek', 'Mediterranean',
+                        'Spanish', 'Middle Eastern', 'Moroccan', 'Ethiopian',
+                        'Caribbean', 'Southern (US)', 'Cajun/Creole', 'Tex-Mex',
+                        'Brazilian', 'Peruvian', 'Turkish', 'Filipino',
+                        'American', 'British', 'German', 'Irish',
+                      ].map(cuisine => (
+                        <label key={cuisine} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.cuisinePreferences.includes(cuisine)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  cuisinePreferences: [...formData.cuisinePreferences, cuisine]
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  cuisinePreferences: formData.cuisinePreferences.filter(c => c !== cuisine)
+                                });
+                              }
+                            }}
+                            className="mr-2 accent-[#00d4ff]"
+                          />
+                          <span className="text-sm">{cuisine}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -367,6 +412,22 @@ function RecipesContent() {
                     onChange={(e) => setFormData({ ...formData, maxCookingTime: parseInt(e.target.value) })}
                     className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-1">
+                    Special Considerations (optional)
+                  </label>
+                  <textarea
+                    value={formData.specialConsiderations}
+                    onChange={(e) => setFormData({ ...formData, specialConsiderations: e.target.value })}
+                    placeholder="e.g., high-protein for muscle building, avoid spicy food, meal prep friendly, under 500 calories..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white text-sm resize-none"
+                  />
+                  <p className="mt-1 text-xs" style={{ color: '#6b7294' }}>
+                    Any extra instructions the AI should consider when generating your recipe.
+                  </p>
                 </div>
               </div>
 

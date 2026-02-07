@@ -172,6 +172,14 @@ export default function Home() {
               Compare Plans
             </Link>
           </div>
+
+          {/* Mobile app coming soon */}
+          <div className="mt-12 inline-flex items-center gap-3 px-5 py-3 rounded-full" style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+            <svg className="w-5 h-5 text-[#a855f7]" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+            </svg>
+            <span className="text-sm font-medium text-[#a855f7]">Mobile app coming soon</span>
+          </div>
         </div>
       </section>
 
@@ -193,6 +201,9 @@ export default function Home() {
             <div className="flex items-center gap-8">
               <Link href="/pricing" className="text-sm text-[#6b7294] hover:text-[#00d4ff] transition-colors">
                 Pricing
+              </Link>
+              <Link href="/faq" className="text-sm text-[#6b7294] hover:text-[#00d4ff] transition-colors">
+                FAQ
               </Link>
               <Link href="/terms" className="text-sm text-[#6b7294] hover:text-[#00d4ff] transition-colors">
                 Terms
