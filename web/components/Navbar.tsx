@@ -35,7 +35,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3 group">
             <Image
-              src="https://res.cloudinary.com/dksj2niho/image/upload/w_80,h_80,c_fill,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
+              src="https://res.cloudinary.com/dksj2niho/image/upload/w_80,h_80,c_fit,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
               alt="SAVR"
               width={36}
               height={36}
