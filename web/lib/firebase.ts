@@ -10,10 +10,12 @@ import { getFunctions, Functions } from 'firebase/functions';
 const BUILD_DUMMY_KEY = 'dummy_key_for_build';
 
 // Allow dummy config during build/prerendering phase OR development
-// During Next.js build, we're prerendering static pages - this is NOT production runtime
-const isBuildTime = typeof window === 'undefined' && process.env.NEXT_PHASE === 'phase-production-build';
+// We detect build time by checking if we're server-side (no window) and no real Firebase env vars are set
+const isServerSide = typeof window === 'undefined';
 const isDevelopment = process.env.NODE_ENV === 'development';
-const ALLOW_DUMMY_CONFIG = isBuildTime || isDevelopment;
+const hasRealFirebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
+                               process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== BUILD_DUMMY_KEY;
+const ALLOW_DUMMY_CONFIG = isDevelopment || (isServerSide && !hasRealFirebaseConfig);
 
 const getFirebaseConfigValue = (
   value: string | undefined,
