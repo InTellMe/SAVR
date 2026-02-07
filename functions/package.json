@@ -23,7 +23,7 @@
     "firebase-functions": "^7.0.5",
     "openai": "^6.17.0",
     "stripe": "^20.3.0",
-    "typescript": "^5.9.3"
+    "typescript": "~5.3.3"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

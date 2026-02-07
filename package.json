@@ -1,0 +1,20 @@
+{
+  "name": "savr-monorepo",
+  "version": "1.0.0",
+  "description": "SAVR - Smart AI Virtual Recipes",
+  "scripts": {
+    "deploy": "npm run build --prefix web && firebase deploy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/InTellMe/SAVR.git"
+  },
+  "keywords": [
+    "firebase",
+    "recipes",
+    "ai",
+    "meal-planning"
+  ],
+  "author": "InTellMe",
+  "license": "MIT"
+}
