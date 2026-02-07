@@ -21,7 +21,7 @@ export default function Home() {
             {/* Logo */}
             <div className="mb-8 flex justify-center animate-float">
               <Image
-                src="https://res.cloudinary.com/dksj2niho/image/upload/w_640,h_640,c_fill,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
+                src="https://res.cloudinary.com/dksj2niho/image/upload/w_640,h_640,c_fit,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
                 alt="SAVR Logo"
                 width={280}
                 height={280}
@@ -190,7 +190,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center space-x-3">
               <Image
-                src="https://res.cloudinary.com/dksj2niho/image/upload/w_64,h_64,c_fill,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
+                src="https://res.cloudinary.com/dksj2niho/image/upload/w_64,h_64,c_fit,q_auto,f_auto/v1770328403/SAVR_Logo_NO_BG_3_hixen3.png"
                 alt="SAVR"
                 width={28}
                 height={28}
