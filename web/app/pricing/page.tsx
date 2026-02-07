@@ -51,10 +51,7 @@ export default function PricingPage() {
   }
 
   const priceIdPlus =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS ||
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY ||
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID ||
-    'price_plus';
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PLUS || 'price_plus';
   const priceIdPremium =
     process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM || 'price_premium';
 
