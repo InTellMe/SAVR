@@ -31,6 +31,7 @@ function getOpenAI(): OpenAI {
     if (!apiKey) {
       if (isDeploymentAnalysis) {
         // Allow dummy key during Firebase deployment analysis
+        console.warn('[Segmentation] Using dummy OpenAI key during Firebase deployment analysis');
         openaiInstance = new OpenAI({ apiKey: 'dummy_key_for_build' });
       } else {
         // Fail fast at runtime with clear error

@@ -259,8 +259,12 @@ export const createGroceryList = functions
       );
 
       // Filter out undefined recipes and ensure proper typing
+      // Note: Assumes Firestore data is already validated at write time via security rules
       const validRecipes = recipes.filter((r): r is Pick<Recipe, 'title' | 'ingredients'> => 
-        r !== undefined && 'title' in r && 'ingredients' in r
+        r !== undefined && 
+        'title' in r && 
+        'ingredients' in r &&
+        Array.isArray(r.ingredients)
       );
 
       // Fetch current inventory

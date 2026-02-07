@@ -118,14 +118,20 @@ export function normalizeAiIngredient(ingredient: {
 
 export function normalizeAiIngredients(ingredients: Array<Partial<AiIngredient>>): AiIngredient[] {
   if (!Array.isArray(ingredients)) return [];
-  return ingredients.map((ing) =>
-    normalizeAiIngredient({
-      name: ing.name ?? 'unknown',
+  return ingredients.map((ing) => {
+    // Validate required fields
+    if (!ing.name || typeof ing.name !== 'string') {
+      console.warn('Invalid ingredient detected: missing or invalid name', ing);
+      throw new Error('Ingredient name is required and must be a string');
+    }
+    
+    return normalizeAiIngredient({
+      name: ing.name,
       quantity: ing.quantity ?? 1,
-      unit: ing.unit ?? 'unit',
+      unit: ing.unit ?? 'piece', // Use 'piece' instead of 'unit' for clarity
       confidence: ing.confidence,
-    })
-  );
+    });
+  });
 }
 
 export function aiIngredientsToExtracted(ingredients: AiIngredient[]): ExtractedIngredient[] {
