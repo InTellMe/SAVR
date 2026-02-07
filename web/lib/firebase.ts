@@ -12,12 +12,27 @@ const BUILD_DUMMY_KEY = 'dummy_key_for_build';
 const isServerSide = typeof window === 'undefined';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
-const hasRealFirebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
-                               process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== BUILD_DUMMY_KEY;
+
+// Check all required Firebase environment variables
+const requiredFirebaseVars = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+const hasRealFirebaseConfig = requiredFirebaseVars.apiKey && 
+                               requiredFirebaseVars.apiKey !== BUILD_DUMMY_KEY;
+
+const missingVars = Object.entries(requiredFirebaseVars)
+  .filter(([, value]) => !value || value === BUILD_DUMMY_KEY)
+  .map(([key]) => `NEXT_PUBLIC_FIREBASE_${key.replace(/[A-Z]/g, letter => `_${letter}`).toUpperCase()}`);
 
 // PRODUCTION BUILDS REQUIRE REAL FIREBASE CONFIG
 // Fail immediately during production build if Firebase environment variables are missing
-if (isProduction && isServerSide && !hasRealFirebaseConfig) {
+if (isProduction && isServerSide && missingVars.length > 0) {
   throw new Error(
     '\n\n' +
     '═'.repeat(80) + '\n' +
@@ -25,9 +40,25 @@ if (isProduction && isServerSide && !hasRealFirebaseConfig) {
     '═'.repeat(80) + '\n' +
     'Firebase environment variables (NEXT_PUBLIC_FIREBASE_*) are REQUIRED for production builds.\n' +
     'These variables must be set during the build process to be baked into static files.\n\n' +
-    'Missing or invalid: NEXT_PUBLIC_FIREBASE_API_KEY\n\n' +
+    `Missing or invalid variables: ${missingVars.join(', ')}\n\n` +
     'For deployment instructions, see DEPLOYMENT.md\n' +
     'For CI/CD setup, ensure GitHub Secrets are configured in firebase-deploy.yml\n' +
+    '═'.repeat(80) + '\n'
+  );
+}
+
+// CLIENT-SIDE RUNTIME CHECK: Prevent app from running with dummy config in production browser
+if (isProduction && !isServerSide && missingVars.length > 0) {
+  throw new Error(
+    '\n\n' +
+    '═'.repeat(80) + '\n' +
+    '❌ FIREBASE RUNTIME ERROR: Production app running with invalid Firebase credentials\n' +
+    '═'.repeat(80) + '\n' +
+    'The app was built without proper Firebase environment variables.\n' +
+    'This should not happen if the build validation is working correctly.\n\n' +
+    `Missing or invalid variables: ${missingVars.join(', ')}\n\n` +
+    'The app must be rebuilt with proper Firebase credentials.\n' +
+    'For deployment instructions, see DEPLOYMENT.md\n' +
     '═'.repeat(80) + '\n'
   );
 }
