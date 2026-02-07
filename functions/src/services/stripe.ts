@@ -242,9 +242,15 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
   // Note: Stripe API changed - subscription_details is the new structure
   // as of Stripe API 2024-11+. Using type assertion until @stripe/stripe-js types are updated.
   // See: https://stripe.com/docs/api/invoices/object#invoice_object-subscription_details
+  interface InvoiceWithSubscriptionDetails extends Stripe.Invoice {
+    subscription_details?: {
+      subscription?: string;
+    };
+  }
+  const invoiceWithDetails = invoice as InvoiceWithSubscriptionDetails;
   const subscriptionId =
-    typeof (invoice as any).subscription_details?.subscription === 'string'
-      ? (invoice as any).subscription_details.subscription
+    typeof invoiceWithDetails.subscription_details?.subscription === 'string'
+      ? invoiceWithDetails.subscription_details.subscription
       : null;
 
   await upsertUserSubscriptionRecord(userId, {
