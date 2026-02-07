@@ -1,5 +1,7 @@
 # SAVR by InTellMe
 
+> **⚠️ DEPLOYMENT NOTICE**: GitHub Actions automatic deployment is currently not configured. See [ACTION_REQUIRED.md](ACTION_REQUIRED.md) for immediate action needed to enable automated deployments.
+
 SAVR is an AI-powered food management platform that helps you manage your pantry inventory, generate recipes, plan meals, and create grocery lists. Built as a Firebase-hosted React/Next.js web application focusing on a web-based MVP where users upload photos of their pantry and fridge to manage inventory.
 
 ## 🌟 Features
