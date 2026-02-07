@@ -15,20 +15,20 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Check all required Firebase environment variables
 const requiredFirebaseVars = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: { value: process.env.NEXT_PUBLIC_FIREBASE_API_KEY, envVar: 'NEXT_PUBLIC_FIREBASE_API_KEY' },
+  authDomain: { value: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, envVar: 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN' },
+  projectId: { value: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, envVar: 'NEXT_PUBLIC_FIREBASE_PROJECT_ID' },
+  storageBucket: { value: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET, envVar: 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET' },
+  messagingSenderId: { value: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, envVar: 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID' },
+  appId: { value: process.env.NEXT_PUBLIC_FIREBASE_APP_ID, envVar: 'NEXT_PUBLIC_FIREBASE_APP_ID' },
 };
 
-const hasRealFirebaseConfig = requiredFirebaseVars.apiKey && 
-                               requiredFirebaseVars.apiKey !== BUILD_DUMMY_KEY;
+const hasRealFirebaseConfig = requiredFirebaseVars.apiKey.value && 
+                               requiredFirebaseVars.apiKey.value !== BUILD_DUMMY_KEY;
 
-const missingVars = Object.entries(requiredFirebaseVars)
-  .filter(([, value]) => !value || value === BUILD_DUMMY_KEY)
-  .map(([key]) => `NEXT_PUBLIC_FIREBASE_${key.replace(/[A-Z]/g, letter => `_${letter}`).toUpperCase()}`);
+const missingVars = Object.values(requiredFirebaseVars)
+  .filter(({ value }) => !value || value === BUILD_DUMMY_KEY)
+  .map(({ envVar }) => envVar);
 
 // PRODUCTION BUILDS REQUIRE REAL FIREBASE CONFIG
 // Fail immediately during production build if Firebase environment variables are missing
