@@ -233,7 +233,7 @@ export interface ChatResponse {
   response: string;
 }
 
-export type SubscriptionTierName = 'free' | 'pro';
+export type SubscriptionTierName = 'basic' | 'pro';
 
 export interface SubscriptionTier {
   name: SubscriptionTierName;
@@ -245,8 +245,8 @@ export interface SubscriptionTier {
 }
 
 export const TIER_LIMITS: Record<SubscriptionTierName, SubscriptionTier> = {
-  free: {
-    name: 'free',
+  basic: {
+    name: 'basic',
     maxInventoryItems: 50,
     maxRecipesPerMonth: 10,
     maxMealPlansPerMonth: 2,

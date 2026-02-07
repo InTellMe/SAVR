@@ -21,7 +21,9 @@ function SettingsContent() {
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
 
-  const tierLabel = isPaidTier(userData?.subscriptionTier) ? 'Pro' : 'Free';
+  const tier = userData?.subscriptionTier;
+  const tierLabel = 
+    tier === 'pro' || tier === 'plus' || tier === 'premium' ? 'Pro' : 'Basic';
   const hasPaidTier = isPaidTier(userData?.subscriptionTier);
 
   async function handleManageSubscription() {

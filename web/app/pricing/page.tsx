@@ -14,16 +14,8 @@ export default function PricingPage() {
   const [error, setError] = useState('');
 
   const tier = userData?.subscriptionTier;
-  const isFree = !tier || tier === 'free' || tier === 'basic';
+  const isBasic = tier === 'basic' || tier === 'free'; // legacy support
   const isPro = tier === 'pro' || tier === 'plus' || tier === 'premium'; // legacy support
-
-  function handleFree() {
-    if (!user) {
-      router.push('/sign-up');
-      return;
-    }
-    router.push('/dashboard');
-  }
 
   async function handleStripeSubscribe(priceId: string) {
     if (!user) {
@@ -49,6 +41,10 @@ export default function PricingPage() {
     }
   }
 
+  const priceIdBasicMonthly =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_MONTHLY || 'price_basic_monthly';
+  const priceIdBasicYearly =
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_YEARLY || 'price_basic_yearly';
   const priceIdProMonthly =
     process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY || 'price_pro_monthly';
   const priceIdProYearly =
@@ -64,7 +60,7 @@ export default function PricingPage() {
             Choose Your Plan
           </h1>
           <p className="text-xl text-gray-600">
-            Start free, upgrade when you&apos;re ready for more features
+            All plans support coupon codes. Use a 100% off coupon for free access!
           </p>
         </div>
 
@@ -74,13 +70,13 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {/* Free */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          {/* Basic Monthly */}
           <PricingCard
-            name="Free"
-            price="$0"
-            period="forever"
-            description="Perfect for getting started"
+            name="Basic"
+            price="$5.99"
+            period="per month"
+            description="Great for beginners"
             features={[
               'Smart inventory (up to 50 items)',
               '10 AI recipes per month',
@@ -90,9 +86,29 @@ export default function PricingPage() {
               'Community support',
             ]}
             limitations={['No AI chat assistant']}
-            buttonText={isFree ? 'Current Plan' : 'Get Started'}
-            buttonDisabled={isFree}
-            onSelect={handleFree}
+            buttonText={isBasic ? 'Current Plan' : 'Subscribe'}
+            buttonDisabled={isBasic}
+            onSelect={() => handleStripeSubscribe(priceIdBasicMonthly)}
+            loading={loading}
+            recommended={false}
+          />
+
+          {/* Basic Yearly */}
+          <PricingCard
+            name="Basic Yearly"
+            price="$69.99"
+            period="per year"
+            description="Save with annual billing"
+            features={[
+              'Everything in Basic Monthly',
+              'Save ~$2 per year',
+              'Lock in your rate',
+              'Cancel anytime',
+            ]}
+            limitations={['No AI chat assistant']}
+            buttonText={isBasic ? 'Current Plan' : 'Subscribe'}
+            buttonDisabled={isBasic}
+            onSelect={() => handleStripeSubscribe(priceIdBasicYearly)}
             loading={loading}
             recommended={false}
           />
@@ -102,9 +118,9 @@ export default function PricingPage() {
             name="Pro"
             price="$9.99"
             period="per month"
-            description="For passionate home cooks"
+            description="For passionate cooks"
             features={[
-              'Everything in Free',
+              'Everything in Basic',
               'Unlimited inventory',
               'Unlimited recipes & meal plans',
               'Unlimited pet recipes',
@@ -112,7 +128,7 @@ export default function PricingPage() {
               'Ad-free experience',
             ]}
             limitations={[]}
-            buttonText={isPro ? 'Current Plan' : 'Subscribe Monthly'}
+            buttonText={isPro ? 'Current Plan' : 'Subscribe'}
             buttonDisabled={isPro}
             onSelect={() => handleStripeSubscribe(priceIdProMonthly)}
             loading={loading}
@@ -122,17 +138,17 @@ export default function PricingPage() {
           {/* Pro Yearly */}
           <PricingCard
             name="Pro Yearly"
-            price="$99"
+            price="$99.99"
             period="per year"
-            description="Best value - save $20"
+            description="Best value!"
             features={[
               'Everything in Pro Monthly',
-              'Save $20 per year',
+              'Save ~$20 per year',
               'Lock in your rate',
               'Cancel anytime',
             ]}
             limitations={[]}
-            buttonText={isPro ? 'Current Plan' : 'Subscribe Yearly'}
+            buttonText={isPro ? 'Current Plan' : 'Subscribe'}
             buttonDisabled={isPro}
             onSelect={() => handleStripeSubscribe(priceIdProYearly)}
             loading={loading}

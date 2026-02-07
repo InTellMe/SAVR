@@ -6,27 +6,27 @@ export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due';
 /**
  * Returns the effective subscription tier for a user, taking both
  * the stored tier and subscriptionStatus into account.
- * Legacy 'basic'/'plus'/'premium' are mapped to 'free'/'pro'.
+ * Legacy 'free'/'plus'/'premium' are mapped to 'basic'/'pro'.
  */
 export async function getUserSubscriptionTier(userId: string): Promise<SubscriptionTierName> {
   const userDoc = await db.collection('users').doc(userId).get();
   const userData = userDoc.data() as
     | {
-        subscriptionTier?: SubscriptionTierName | 'basic' | 'plus' | 'premium';
+        subscriptionTier?: SubscriptionTierName | 'free' | 'plus' | 'premium';
         subscriptionStatus?: SubscriptionStatus;
       }
     | undefined;
 
-  let storedTier = userData?.subscriptionTier || 'free';
+  let storedTier = userData?.subscriptionTier || 'basic';
   const status = userData?.subscriptionStatus;
 
   // Map legacy tiers
-  if (storedTier === 'basic') storedTier = 'free';
+  if (storedTier === 'free') storedTier = 'basic';
   if (storedTier === 'plus' || storedTier === 'premium') storedTier = 'pro';
 
   // Downgrade paid users if status is non-active
-  if (storedTier === 'pro' && status !== undefined && status !== 'active') {
-    return 'free';
+  if ((storedTier === 'basic' || storedTier === 'pro') && status !== undefined && status !== 'active') {
+    return 'basic'; // downgrade to basic if subscription inactive
   }
 
   return storedTier as SubscriptionTierName;

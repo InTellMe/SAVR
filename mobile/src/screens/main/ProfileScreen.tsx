@@ -40,7 +40,7 @@ export default function ProfileScreen() {
             styles.subscriptionText,
             isPaidTier(userData?.subscriptionTier) && styles.proText
           ]}>
-            {isPaidTier(userData?.subscriptionTier) ? '⭐ Pro' : '🆓 Free'}
+            {userData?.subscriptionTier === 'pro' || userData?.subscriptionTier === 'plus' || userData?.subscriptionTier === 'premium' ? '⭐ Pro' : '📦 Basic'}
           </Text>
         </View>
       </View>
