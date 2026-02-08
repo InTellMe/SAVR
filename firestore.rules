@@ -24,8 +24,15 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId);
 
-      // Creation and deletion are handled by backend (admin SDK / Cloud Functions)
-      allow create, delete: if false;
+      // Allow user to create their own document on first sign-in with default values
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.subscriptionTier == 'basic'
+        && request.resource.data.subscriptionStatus == 'active';
+
+      // Deletion handled by backend only (admin SDK / Cloud Functions)
+      allow delete: if false;
 
       // Users may update profile fields (e.g., displayName, photoURL) but cannot change
       // subscription tier/status or payment identifiers.

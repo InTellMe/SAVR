@@ -10,7 +10,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 export type SubscriptionTierName = 'basic' | 'pro';
@@ -55,9 +55,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (user) {
         // Fetch user data from Firestore
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           setUserData(userDoc.data() as UserData);
+        } else {
+          // Initialize user document if it doesn't exist (client-side initialization)
+          const newUserData: UserData = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            subscriptionTier: 'basic',
+            subscriptionStatus: 'active',
+          };
+          try {
+            await setDoc(userDocRef, {
+              ...newUserData,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+            setUserData(newUserData);
+          } catch (error) {
+            console.error('Failed to create user document:', error);
+            setUserData(newUserData);
+          }
         }
       } else {
         setUserData(null);

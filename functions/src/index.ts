@@ -1,6 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onRequest } from 'firebase-functions/v2/https';
-import { beforeUserCreated } from 'firebase-functions/v2/identity';
 import { db } from './utils/firebase';
 import {
   extractIngredientsFromImage,
@@ -465,25 +464,8 @@ export const createStripePortal = onCall(
   }
 );
 
-// User initialization function (triggered before user creation)
-export const onUserCreate = beforeUserCreated(async (event) => {
-  const user = event.data;
-  if (!user) {
-    console.error('No user data in beforeUserCreated event');
-    return;
-  }
-  
-  await db.collection('users').doc(user.uid).set({
-    uid: user.uid,
-    email: user.email,
-    displayName: user.displayName,
-    photoURL: user.photoURL,
-    subscriptionTier: 'basic',
-    subscriptionStatus: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
-});
+// User initialization is now handled client-side in AuthContext.tsx
+// This ensures the user document is created after Firebase Auth user creation completes
 
 // Dataset Labeling Pipeline Functions
 
