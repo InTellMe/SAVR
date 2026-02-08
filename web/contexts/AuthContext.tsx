@@ -56,29 +56,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         // Fetch user data from Firestore
         const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setUserData(userDoc.data() as UserData);
-        } else {
-          // Initialize user document if it doesn't exist (client-side initialization)
-          const newUserData: UserData = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            subscriptionTier: 'basic',
-            subscriptionStatus: 'active',
-          };
-          try {
+        try {
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            setUserData(userDoc.data() as UserData);
+          } else {
+            // Initialize user document if it doesn't exist (client-side initialization)
+            const newUserData: UserData = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              subscriptionTier: 'basic',
+              subscriptionStatus: 'active',
+            };
+            // Create the user document in Firestore
             await setDoc(userDocRef, {
               ...newUserData,
               createdAt: new Date(),
               updatedAt: new Date(),
             });
             setUserData(newUserData);
-          } catch (error) {
-            console.error('Failed to create user document:', error);
-            setUserData(newUserData);
           }
+        } catch (error) {
+          console.error('Failed to fetch or create user document:', error);
+          // Set basic user data to allow the user to proceed, but log the error
+          // The user document will be created on next sign-in attempt
+          setUserData({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            subscriptionTier: 'basic',
+            subscriptionStatus: 'active',
+          });
         }
       } else {
         setUserData(null);

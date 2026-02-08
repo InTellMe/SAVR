@@ -25,9 +25,10 @@ service cloud.firestore {
       allow read: if isOwner(userId);
 
       // Allow user to create their own document on first sign-in with default values
+      // Email can be null for some auth providers (anonymous, phone), so we check it matches if present
       allow create: if isOwner(userId)
         && request.resource.data.uid == userId
-        && request.resource.data.email == request.auth.token.email
+        && (request.auth.token.email == null || request.resource.data.email == request.auth.token.email)
         && request.resource.data.subscriptionTier == 'basic'
         && request.resource.data.subscriptionStatus == 'active';
 
