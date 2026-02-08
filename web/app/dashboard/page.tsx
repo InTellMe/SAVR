@@ -60,7 +60,7 @@ function DashboardContent() {
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-24 pb-8">
         {showSuccessBanner && (
           <div className="mb-6 rounded-xl px-5 py-4 flex items-center justify-between" style={{ background: 'rgba(0, 191, 166, 0.1)', border: '1px solid rgba(0, 191, 166, 0.25)' }}>
             <div>
@@ -72,7 +72,7 @@ function DashboardContent() {
         )}
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">
             Welcome back, {user?.email}!
           </h1>
           <p className="text-[#9ca3c2]">
@@ -86,7 +86,7 @@ function DashboardContent() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <StatCard
             title="Inventory Items"
             value={loading ? '...' : stats.inventoryCount}
@@ -110,7 +110,7 @@ function DashboardContent() {
         {/* Quick Actions */}
         <div className="glass-card rounded-lg p-6 mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <ActionButton
               href="/upload"
               icon="📸"

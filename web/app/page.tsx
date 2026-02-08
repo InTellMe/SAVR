@@ -128,6 +128,31 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Pet Safety Notice */}
+      <section className="relative py-16 md:py-20">
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="rounded-2xl p-6 md:p-8" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02))', border: '1px solid rgba(245, 158, 11, 0.15)' }}>
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(245, 158, 11, 0.12)' }}>
+                <svg className="w-6 h-6 text-[#f59e0b]" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 18.5c-2.5 0-4.5-1.2-5.3-3.1-.3-.7.1-1.4.8-1.4h9c.7 0 1.1.7.8 1.4-.8 1.9-2.8 3.1-5.3 3.1zM8.5 11a2 2 0 11-4 0 2 2 0 014 0zm11 0a2 2 0 11-4 0 2 2 0 014 0zM10 7a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base md:text-lg font-semibold text-[#f59e0b] mb-2">Pet Recipe Safety</h3>
+                <p className="text-sm leading-relaxed mb-3" style={{ color: '#9ca3c2' }}>
+                  SAVR automatically filters toxic and harmful ingredients when generating pet recipes. Our AI cross-references every ingredient against veterinary safety databases from the ASPCA and Pet Poison Helpline before suggesting any recipe for your dog or cat.
+                </p>
+                <p className="text-xs" style={{ color: '#6b7294' }}>
+                  Pet recipes are intended as occasional treats, not a complete diet. Always consult your veterinarian.{' '}
+                  <Link href="/faq" className="text-[#f59e0b] hover:underline">Learn more in our FAQ</Link>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="relative py-24 md:py-32">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

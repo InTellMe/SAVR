@@ -63,7 +63,7 @@ function SettingsContent() {
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="container mx-auto px-4 pt-24 pb-8 max-w-3xl">
         <h1 className="text-3xl font-bold text-white mb-4">Settings</h1>
         <p className="text-[#9ca3c2] mb-8">
           Manage your account details, subscription, and preferences.
@@ -127,6 +127,20 @@ function SettingsContent() {
               </Link>
             </>
           )}
+        </section>
+
+        {/* Preferences link */}
+        <section className="mb-6 rounded-lg glass-card p-6 shadow">
+          <h2 className="text-xl font-semibold text-white mb-2">Food Preferences</h2>
+          <p className="mb-4 text-sm text-[#9ca3c2]">
+            Set your favorite cuisines, dietary preferences, and restrictions so the AI can personalize every recipe and meal plan.
+          </p>
+          <Link
+            href="/preferences"
+            className="inline-block rounded-lg bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white font-semibold px-5 py-2 text-sm hover:shadow-[0_0_30px_rgba(168,85,247,0.4)]"
+          >
+            Manage preferences
+          </Link>
         </section>
 
         {/* Danger zone */}

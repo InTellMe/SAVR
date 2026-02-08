@@ -156,12 +156,25 @@ body {
 }
 
 /* Mobile-optimized button sizing for both primary and secondary */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .btn-primary,
   .btn-secondary {
     padding: 0.625rem 1.25rem;
     font-size: 0.875rem;
     border-radius: 0.625rem;
+  }
+}
+
+/* Mobile-friendly scaling for all interactive elements */
+@media (max-width: 480px) {
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    justify-content: center;
   }
 }
 

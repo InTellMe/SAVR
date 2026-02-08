@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth, isPaidTier } from '@/contexts/AuthContext';
+import { useAuth, isPaidTier, hasActiveSubscription } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -14,26 +14,30 @@ export default function ProtectedRoute({
   const { user, userData, loading } = useAuth();
   const router = useRouter();
   const hasPaidTier = isPaidTier(userData?.subscriptionTier);
+  const isActive = hasActiveSubscription(userData);
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/sign-in');
+      } else if (!isActive) {
+        // User hasn't completed Stripe onboarding — send to pricing
+        router.push('/pricing');
       } else if (requirePro && !hasPaidTier) {
         router.push('/pricing');
       }
     }
-  }, [user, userData, loading, router, requirePro, hasPaidTier]);
+  }, [user, userData, loading, router, requirePro, hasPaidTier, isActive]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#000000' }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00d4ff]"></div>
       </div>
     );
   }
 
-  if (!user || (requirePro && !hasPaidTier)) {
+  if (!user || !isActive || (requirePro && !hasPaidTier)) {
     return null;
   }
 

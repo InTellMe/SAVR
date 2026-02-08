@@ -169,7 +169,7 @@ function GroceryListsContent() {
     return (
       <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
-        <div className="container mx-auto px-4 py-8 flex justify-center">
+        <div className="container mx-auto px-4 pt-24 pb-8 flex justify-center">
           <LoadingSpinner size="lg" />
         </div>
       </div>
@@ -180,7 +180,7 @@ function GroceryListsContent() {
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-24 pb-8">
         <div className="flex flex-col gap-6 mb-8 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">Grocery Lists</h1>
@@ -191,9 +191,9 @@ function GroceryListsContent() {
           <button
             onClick={handleGenerateList}
             disabled={generating || selectedRecipeIds.length === 0}
-            className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition disabled:opacity-50"
+            className="w-full md:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition disabled:opacity-50 text-sm sm:text-base"
           >
-            {generating ? 'Generating...' : '🛒 Generate List'}
+            {generating ? 'Generating...' : 'Generate List'}
           </button>
         </div>
 
@@ -257,7 +257,7 @@ function GroceryListsContent() {
             <button
               onClick={handleGenerateList}
               disabled={generating}
-              className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition text-sm sm:text-base"
             >
               Generate Grocery List
             </button>

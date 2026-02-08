@@ -123,7 +123,7 @@ function ChatContent() {
     <div className="min-h-screen flex flex-col" style={{ background: '#000000' }}>
       <Navbar />
       
-      <div className="flex-1 container mx-auto px-4 py-8 flex flex-col max-w-4xl">
+      <div className="flex-1 container mx-auto px-4 pt-24 pb-8 flex flex-col max-w-4xl">
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
           <p className="text-orange-900 font-medium">
             💬 AI Cooking Assistant - Ask me anything about cooking, recipes, substitutions, or techniques!

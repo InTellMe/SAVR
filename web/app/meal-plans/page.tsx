@@ -136,7 +136,7 @@ function MealPlansContent() {
     return (
       <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
-        <div className="container mx-auto px-4 py-8 flex justify-center">
+        <div className="container mx-auto px-4 pt-24 pb-8 flex justify-center">
           <LoadingSpinner size="lg" />
         </div>
       </div>
@@ -147,14 +147,14 @@ function MealPlansContent() {
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-3xl font-bold text-white">Meal Plans</h1>
+      <div className="container mx-auto px-4 pt-24 pb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Meal Plans</h1>
           <button
             onClick={() => setShowForm(true)}
-            className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
+            className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition text-sm sm:text-base"
           >
-            📅 Create Meal Plan
+            Create Meal Plan
           </button>
         </div>
 
@@ -178,7 +178,7 @@ function MealPlansContent() {
             </p>
             <button
               onClick={() => setShowForm(true)}
-              className="px-6 py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition text-sm sm:text-base"
             >
               Create Meal Plan
             </button>
