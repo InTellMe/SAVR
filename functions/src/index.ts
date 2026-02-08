@@ -1,5 +1,5 @@
-import * as functions from 'firebase-functions/v1';
-import { onCall as onCallV2, HttpsError as HttpsErrorV2, onRequest as onRequestV2 } from 'firebase-functions/v2/https';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onRequest } from 'firebase-functions/v2/https';
 import { db } from './utils/firebase';
 import {
   extractIngredientsFromImage,
@@ -49,32 +49,36 @@ import { runSegmentationInference } from './services/segmentation';
 import { exportToCocoFormat } from './utils/datasetExport';
 
 // Image Analysis Function
-export const analyzeImage = functions
-  .runWith({ timeoutSeconds: 300, memory: '512MB' })
-  .https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
+export const analyzeImage = onCall(
+  {
+    timeoutSeconds: 300,
+    memory: '512MiB',
+    cors: true,
+  },
+  async (request) => {
     // Verify authentication
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { imageUrl } = data as AnalyzeImageRequest;
+    const { imageUrl } = request.data as AnalyzeImageRequest;
     if (!imageUrl || typeof imageUrl !== 'string') {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'imageUrl is required and must be a string'
       );
     }
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
 
     const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
     if (!rateCheck.allowed) {
-      throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
     }
 
     // Check usage limits
     const usageCheck = await checkUsageLimit(userId, 'inventory');
     if (!usageCheck.allowed) {
-      throw new functions.https.HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
+      throw new HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
     }
 
     try {
@@ -84,44 +88,49 @@ export const analyzeImage = functions
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to analyze image';
       console.error('Image analysis error:', error);
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
-  });
+  }
+);
 
 // Recipe Generation Function
-export const createRecipe = functions
-  .runWith({ timeoutSeconds: 120, memory: '512MB' })
-  .https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const createRecipe = onCall(
+  {
+    timeoutSeconds: 120,
+    memory: '512MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { ingredients, preferences, recipeType, species } = data as CreateRecipeRequest;
+    const { ingredients, preferences, recipeType, species } = request.data as CreateRecipeRequest;
     if (!Array.isArray(ingredients) || ingredients.length === 0) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'ingredients must be a non-empty string array'
       );
     }
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
     const mode = recipeType === 'pet' ? 'pet' : 'human';
     const petSpecies = species ?? 'dog';
 
     const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
     if (!rateCheck.allowed) {
-      throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
     }
 
     // Check general recipe usage limits
     const usageCheck = await checkUsageLimit(userId, 'recipes');
     if (!usageCheck.allowed) {
-      throw new functions.https.HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
+      throw new HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
     }
 
     if (mode === 'pet') {
       const petCheck = await checkUsageLimit(userId, 'petRecipes');
       if (!petCheck.allowed) {
-        throw new functions.https.HttpsError('resource-exhausted', petCheck.reason || 'Pet recipe limit reached');
+        throw new HttpsError('resource-exhausted', petCheck.reason || 'Pet recipe limit reached');
       }
     }
 
@@ -157,42 +166,47 @@ export const createRecipe = functions
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate recipe';
       console.error('Recipe generation error:', error);
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
-  });
+  }
+);
 
 // Meal Plan Generation Function
-export const createMealPlan = functions
-  .runWith({ timeoutSeconds: 180, memory: '512MB' })
-  .https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const createMealPlan = onCall(
+  {
+    timeoutSeconds: 180,
+    memory: '512MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { days, ingredients, preferences } = data as CreateMealPlanRequest;
+    const { days, ingredients, preferences } = request.data as CreateMealPlanRequest;
     if (typeof days !== 'number' || days < 1 || days > 14) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'days must be a number between 1 and 14'
       );
     }
     if (!Array.isArray(ingredients) || ingredients.length === 0) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'ingredients must be a non-empty string array'
       );
     }
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
 
     const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
     if (!rateCheck.allowed) {
-      throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
     }
 
     // Check usage limits
     const usageCheck = await checkUsageLimit(userId, 'mealPlans');
     if (!usageCheck.allowed) {
-      throw new functions.https.HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
+      throw new HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
     }
 
     try {
@@ -224,26 +238,31 @@ export const createMealPlan = functions
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate meal plan';
       console.error('Meal plan generation error:', error);
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
-  });
+  }
+);
 
 // Grocery List Generation Function
-export const createGroceryList = functions
-  .runWith({ timeoutSeconds: 60, memory: '256MB' })
-  .https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const createGroceryList = onCall(
+  {
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { recipeIds } = data as CreateGroceryListRequest;
+    const { recipeIds } = request.data as CreateGroceryListRequest;
     if (!Array.isArray(recipeIds) || recipeIds.length === 0) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'recipeIds must be a non-empty string array'
       );
     }
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
 
     try {
       // Fetch recipes
@@ -301,36 +320,41 @@ export const createGroceryList = functions
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate grocery list';
       console.error('Grocery list generation error:', error);
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
-  });
+  }
+);
 
 // Chat Assistant Function
-export const chat = functions
-  .runWith({ timeoutSeconds: 60, memory: '256MB' })
-  .https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const chat = onCall(
+  {
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { message, conversationHistory, contextData } = data as ChatRequest;
+    const { message, conversationHistory, contextData } = request.data as ChatRequest;
     if (!message || typeof message !== 'string') {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'message is required and must be a string'
       );
     }
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
 
     const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
     if (!rateCheck.allowed) {
-      throw new functions.https.HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
     }
 
     // Check usage limits (Pro only feature)
     const usageCheck = await checkUsageLimit(userId, 'aiChat');
     if (!usageCheck.allowed) {
-      throw new functions.https.HttpsError('permission-denied', usageCheck.reason || 'Feature not available');
+      throw new HttpsError('permission-denied', usageCheck.reason || 'Feature not available');
     }
 
     try {
@@ -368,16 +392,17 @@ export const chat = functions
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to process chat';
       console.error('Chat error:', error);
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
-  });
+  }
+);
 
 // Stripe Checkout Session Creation (v2 with explicit CORS)
-export const createStripeCheckout = onCallV2(
+export const createStripeCheckout = onCall(
   { cors: true },
   async (request) => {
     if (!request.auth) {
-      throw new HttpsErrorV2('unauthenticated', 'User must be authenticated');
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
     const { priceId, successUrl, cancelUrl } = request.data as {
@@ -393,13 +418,13 @@ export const createStripeCheckout = onCallV2(
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create checkout session';
       console.error('Stripe checkout error:', error);
-      throw new HttpsErrorV2('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
   }
 );
 
 // Stripe Webhook Handler (v2 onRequest — no CORS needed, called server-to-server by Stripe)
-export const stripeWebhook = onRequestV2(async (req, res) => {
+export const stripeWebhook = onRequest(async (req, res) => {
   const signature = req.headers['stripe-signature'] as string;
 
   if (!signature) {
@@ -418,11 +443,11 @@ export const stripeWebhook = onRequestV2(async (req, res) => {
 });
 
 // Stripe Customer Portal Session (v2 with explicit CORS)
-export const createStripePortal = onCallV2(
+export const createStripePortal = onCall(
   { cors: true },
   async (request) => {
     if (!request.auth) {
-      throw new HttpsErrorV2('unauthenticated', 'User must be authenticated');
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
     const { returnUrl } = request.data as { returnUrl: string };
@@ -434,46 +459,39 @@ export const createStripePortal = onCallV2(
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create portal session';
       console.error('Portal creation error:', error);
-      throw new HttpsErrorV2('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
   }
 );
 
-// User initialization function (triggered on user creation)
-export const onUserCreate = functions.auth.user().onCreate(async (user: functions.auth.UserRecord) => {
-  await db.collection('users').doc(user.uid).set({
-    uid: user.uid,
-    email: user.email,
-    displayName: user.displayName,
-    photoURL: user.photoURL,
-    subscriptionTier: 'basic',
-    subscriptionStatus: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
-});
+// User initialization is now handled client-side in AuthContext.tsx
+// This ensures the user document is created after Firebase Auth user creation completes
 
 // Dataset Labeling Pipeline Functions
 
 /**
  * Upload image for labeling
  */
-export const uploadLabelingImage = functions
-  .runWith({ timeoutSeconds: 300, memory: '512MB' })
-  .https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const uploadLabelingImage = onCall(
+  {
+    timeoutSeconds: 300,
+    memory: '512MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { imageUrl, source, videoId, frameIndex } = data as UploadImageRequest;
+    const { imageUrl, source, videoId, frameIndex } = request.data as UploadImageRequest;
     if (!imageUrl || typeof imageUrl !== 'string') {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'imageUrl is required and must be a string'
       );
     }
 
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
 
     try {
       // For now, we assume imageUrl is already uploaded and we just need to create the document
@@ -482,7 +500,7 @@ export const uploadLabelingImage = functions
       const imageId = db.collection('images').doc().id;
       
       // Default dimensions - in production, fetch actual dimensions from image
-      const dataWithDefaults = data as UploadImageRequest & { width?: number; height?: number; autoLabel?: boolean };
+      const dataWithDefaults = request.data as UploadImageRequest & { width?: number; height?: number; autoLabel?: boolean };
       const width = dataWithDefaults.width || 1920;
       const height = dataWithDefaults.height || 1080;
 
@@ -514,38 +532,40 @@ export const uploadLabelingImage = functions
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
       console.error('Image upload error:', error);
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
-  });
+  }
+);
 
 /**
  * Get image annotations
  */
-export const getImageAnnotations = functions.https.onCall(
-  async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const getImageAnnotations = onCall(
+  { cors: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { imageId } = data as GetImageAnnotationsRequest;
+    const { imageId } = request.data as GetImageAnnotationsRequest;
     if (!imageId || typeof imageId !== 'string') {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'imageId is required and must be a string'
       );
     }
 
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
 
     try {
       const image = await getImageDocument(imageId);
       if (!image) {
-        throw new functions.https.HttpsError('not-found', 'Image not found');
+        throw new HttpsError('not-found', 'Image not found');
       }
 
       // Check ownership
       if (image.ownerUid !== userId) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied');
+        throw new HttpsError('permission-denied', 'Access denied');
       }
 
       const annotations = await getImageAnnotationsFromStorage(imageId);
@@ -560,11 +580,11 @@ export const getImageAnnotations = functions.https.onCall(
       return response;
     } catch (error: unknown) {
       console.error('Get annotations error:', error);
-      if (error instanceof functions.https.HttpsError) {
+      if (error instanceof HttpsError) {
         throw error;
       }
       const errorMessage = error instanceof Error ? error.message : 'Failed to get annotations';
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
   }
 );
@@ -572,37 +592,38 @@ export const getImageAnnotations = functions.https.onCall(
 /**
  * Save annotation (user corrections)
  */
-export const saveAnnotation = functions.https.onCall(
-  async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const saveAnnotation = onCall(
+  { cors: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { imageId, objects, parentAnnotationId, status } = data as SaveAnnotationRequest;
+    const { imageId, objects, parentAnnotationId, status } = request.data as SaveAnnotationRequest;
     if (!imageId || typeof imageId !== 'string') {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'imageId is required and must be a string'
       );
     }
     if (!Array.isArray(objects)) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'objects must be an array'
       );
     }
 
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
 
     try {
       const image = await getImageDocument(imageId);
       if (!image) {
-        throw new functions.https.HttpsError('not-found', 'Image not found');
+        throw new HttpsError('not-found', 'Image not found');
       }
 
       // Check ownership
       if (image.ownerUid !== userId) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied');
+        throw new HttpsError('permission-denied', 'Access denied');
       }
 
       const annotation = await createAnnotationDocument(
@@ -629,11 +650,11 @@ export const saveAnnotation = functions.https.onCall(
       return response;
     } catch (error: unknown) {
       console.error('Save annotation error:', error);
-      if (error instanceof functions.https.HttpsError) {
+      if (error instanceof HttpsError) {
         throw error;
       }
       const errorMessage = error instanceof Error ? error.message : 'Failed to save annotation';
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
   }
 );
@@ -641,31 +662,35 @@ export const saveAnnotation = functions.https.onCall(
 /**
  * Trigger segmentation inference (can be called manually or automatically)
  */
-export const triggerSegmentation = functions
-  .runWith({ timeoutSeconds: 300, memory: '1GB' })
-  .https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const triggerSegmentation = onCall(
+  {
+    timeoutSeconds: 300,
+    memory: '1GiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { imageId } = data as { imageId: string };
+    const { imageId } = request.data as { imageId: string };
     if (!imageId || typeof imageId !== 'string') {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'imageId is required and must be a string'
       );
     }
 
-    const userId = context.auth.uid;
+    const userId = request.auth.uid;
 
     try {
       const image = await getImageDocument(imageId);
       if (!image) {
-        throw new functions.https.HttpsError('not-found', 'Image not found');
+        throw new HttpsError('not-found', 'Image not found');
       }
 
       if (image.ownerUid !== userId) {
-        throw new functions.https.HttpsError('permission-denied', 'Access denied');
+        throw new HttpsError('permission-denied', 'Access denied');
       }
 
       // Get signed URL for image
@@ -698,13 +723,14 @@ export const triggerSegmentation = functions
       };
     } catch (error: unknown) {
       console.error('Segmentation inference error:', error);
-      if (error instanceof functions.https.HttpsError) {
+      if (error instanceof HttpsError) {
         throw error;
       }
       const errorMessage = error instanceof Error ? error.message : 'Failed to run segmentation';
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
-  });
+  }
+);
 
 /**
  * Helper function to trigger segmentation asynchronously
@@ -735,20 +761,24 @@ async function triggerSegmentationInference(
 /**
  * Export dataset for training
  */
-export const exportDataset = functions
-  .runWith({ timeoutSeconds: 300, memory: '512MB' })
-  .https.onCall(async (data: unknown, context: functions.https.CallableContext) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+export const exportDataset = onCall(
+  {
+    timeoutSeconds: 300,
+    memory: '512MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { labelStatus, ownerUid, startDate, endDate } = data as ExportDatasetRequest;
-    const userId = context.auth.uid;
+    const { labelStatus, ownerUid, startDate, endDate } = request.data as ExportDatasetRequest;
+    const userId = request.auth.uid;
 
     // Only allow users to export their own data (unless admin)
     const filterUid = ownerUid || userId;
     if (filterUid !== userId) {
-      throw new functions.https.HttpsError('permission-denied', 'Can only export your own data');
+      throw new HttpsError('permission-denied', 'Can only export your own data');
     }
 
     try {
@@ -769,6 +799,7 @@ export const exportDataset = functions
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to export dataset';
       console.error('Export dataset error:', error);
-      throw new functions.https.HttpsError('internal', errorMessage);
+      throw new HttpsError('internal', errorMessage);
     }
-  });
+  }
+);
