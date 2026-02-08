@@ -45,13 +45,14 @@ export default function SignUpPage() {
         uid: currentUser.uid,
         email,
         subscriptionTier: 'free',
-        subscriptionStatus: 'active',
+        subscriptionStatus: 'pending',
         createdAt: new Date().toISOString(),
       };
 
       await setDoc(doc(db, 'users', currentUser.uid), userDoc);
 
-      router.push('/dashboard');
+      // Redirect to pricing to complete Stripe onboarding
+      router.push('/pricing');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create account');
     } finally {
@@ -74,13 +75,14 @@ export default function SignUpPage() {
           email: currentUser.email,
           displayName: currentUser.displayName,
           subscriptionTier: 'free',
-          subscriptionStatus: 'active',
+          subscriptionStatus: 'pending',
           createdAt: new Date().toISOString(),
         };
         await setDoc(userDocRef, userDoc, { merge: true });
       }
 
-      router.push('/dashboard');
+      // Redirect to pricing to complete Stripe onboarding
+      router.push('/pricing');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign up with Google');
     } finally {
@@ -100,7 +102,7 @@ export default function SignUpPage() {
               Create your account
             </h2>
             <p className="mt-2 text-center text-sm" style={{ color: '#9ca3c2' }}>
-              Or{' '}
+              Start your 5-day free trial. Or{' '}
               <Link href="/sign-in" className="font-medium text-[#00d4ff] hover:text-[#00bfa6] transition-colors">
                 sign in to existing account
               </Link>

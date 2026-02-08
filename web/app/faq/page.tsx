@@ -101,6 +101,36 @@ const FAQ_DATA: FAQCategory[] = [
     ],
   },
   {
+    title: 'Pet Recipe Safety',
+    items: [
+      {
+        question: 'How does SAVR ensure pet recipes are safe?',
+        answer:
+          'Every pet recipe is generated using a curated safety database of foods that are known to be toxic or harmful to dogs and cats. Before a recipe is finalized, the AI cross-references every ingredient against this database and automatically removes anything flagged as unsafe. The AI also follows veterinary nutritional guidelines for portion sizes and ingredient ratios.',
+      },
+      {
+        question: 'What toxic ingredients are filtered out?',
+        answer:
+          'For dogs, the system filters chocolate, xylitol, grapes, raisins, onions, garlic, macadamia nuts, avocado, alcohol, caffeine, and many more. For cats, additional items such as lilies, essential oils, and certain dairy products are excluded. The list is updated regularly based on the latest veterinary research.',
+      },
+      {
+        question: 'Should I rely solely on SAVR for my pet\'s diet?',
+        answer:
+          'No. SAVR pet recipes are intended as occasional treats or meal supplements, not as a complete and balanced diet. Always consult your veterinarian before making significant dietary changes for your pet. If your pet has specific health conditions, allergies, or is on medication, please discuss any new foods with your vet first.',
+      },
+      {
+        question: 'What veterinary guidance does SAVR follow?',
+        answer:
+          'Our pet recipe engine is built on guidelines from the ASPCA Animal Poison Control Center, the Pet Poison Helpline, and peer-reviewed veterinary nutrition research. Recipes follow species-appropriate macronutrient ratios and avoid known allergens and toxins for each species.',
+      },
+      {
+        question: 'Can I report a safety concern with a pet recipe?',
+        answer:
+          'Absolutely. If you believe a recipe contains an unsafe ingredient, please contact us immediately through the AI chat assistant or our support channel. We take every report seriously and will review and update our safety database as needed.',
+      },
+    ],
+  },
+  {
     title: 'AI Chat Assistant',
     items: [
       {

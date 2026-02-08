@@ -30,20 +30,15 @@ const missingVars = Object.values(requiredFirebaseVars)
   .filter(({ value }) => !value || value === BUILD_DUMMY_KEY)
   .map(({ envVar }) => envVar);
 
-// PRODUCTION BUILDS REQUIRE REAL FIREBASE CONFIG
-// Fail immediately during production build if Firebase environment variables are missing
+// PRODUCTION BUILDS: warn about missing Firebase config but allow static export prerendering
+// During `next build` with output: "export", server-side prerendering runs with NODE_ENV=production.
+// Firebase env vars are baked in at build time — if they're missing, warn but don't crash so the
+// static HTML shell can still be generated. The client-side check below will catch runtime issues.
 if (isProduction && isServerSide && missingVars.length > 0) {
-  throw new Error(
-    '\n\n' +
-    '═'.repeat(80) + '\n' +
-    '❌ FIREBASE CONFIGURATION ERROR: Production build requires Firebase credentials\n' +
-    '═'.repeat(80) + '\n' +
-    'Firebase environment variables (NEXT_PUBLIC_FIREBASE_*) are REQUIRED for production builds.\n' +
-    'These variables must be set during the build process to be baked into static files.\n\n' +
-    `Missing or invalid variables: ${missingVars.join(', ')}\n\n` +
-    'For deployment instructions, see DEPLOYMENT.md\n' +
-    'For CI/CD setup, ensure GitHub Secrets are configured in firebase-deploy.yml\n' +
-    '═'.repeat(80) + '\n'
+  console.warn(
+    '\n⚠ Firebase env vars missing during build — using dummy config for prerender.\n' +
+    `  Missing: ${missingVars.join(', ')}\n` +
+    '  Client-side Firebase calls will fail until env vars are provided.\n'
   );
 }
 
@@ -63,8 +58,8 @@ if (isProduction && !isServerSide && missingVars.length > 0) {
   );
 }
 
-// Allow dummy config ONLY in development
-const ALLOW_DUMMY_CONFIG = isDevelopment;
+// Allow dummy config in development and during server-side prerendering (static export build)
+const ALLOW_DUMMY_CONFIG = isDevelopment || isServerSide;
 
 const getFirebaseConfigValue = (
   value: string | undefined,

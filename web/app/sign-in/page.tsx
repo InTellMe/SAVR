@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -14,6 +16,25 @@ export default function SignInPage() {
   const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
 
+  async function redirectAfterAuth() {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      router.push('/dashboard');
+      return;
+    }
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      const status = userDoc.exists() ? userDoc.data()?.subscriptionStatus : 'pending';
+      if (status === 'active' || status === 'trialing') {
+        router.push('/dashboard');
+      } else {
+        router.push('/pricing');
+      }
+    } catch {
+      router.push('/dashboard');
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -21,7 +42,7 @@ export default function SignInPage() {
 
     try {
       await signIn(email, password);
-      router.push('/dashboard');
+      await redirectAfterAuth();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');
     } finally {
@@ -35,7 +56,7 @@ export default function SignInPage() {
 
     try {
       await signInWithGoogle();
-      router.push('/dashboard');
+      await redirectAfterAuth();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
     } finally {

@@ -105,6 +105,16 @@ export default function PricingPage() {
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20">
+        {/* Onboarding banner for new users */}
+        {user && userData?.subscriptionStatus === 'pending' && (
+          <div className="max-w-2xl mx-auto mb-10 rounded-xl px-6 py-5 text-center" style={{ background: 'rgba(0, 212, 255, 0.06)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
+            <h3 className="text-lg font-semibold text-white mb-2">Choose a plan to get started</h3>
+            <p className="text-sm text-[#9ca3c2]">
+              Select a plan below to begin your 5-day free trial. Your payment info is collected now but you will not be charged until the trial ends. Cancel anytime.
+            </p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-16">
           <h2 className="text-sm font-semibold uppercase tracking-widest text-[#00d4ff] mb-4">Pricing</h2>

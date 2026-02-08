@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import PwaRegister from "@/components/PwaRegister";
@@ -21,6 +22,34 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased">
+        {/* Google Analytics - G-WXDLLPJ8T2 */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-WXDLLPJ8T2"
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-1" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-WXDLLPJ8T2');
+          `}
+        </Script>
+
+        {/* Google Analytics - G-2HGG95TESN */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-2HGG95TESN"
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-2" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-2HGG95TESN');
+          `}
+        </Script>
+
         <PwaRegister />
         <AuthProvider>
           {children}

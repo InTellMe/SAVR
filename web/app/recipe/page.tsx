@@ -72,7 +72,7 @@ function SharedRecipeContent() {
     return (
       <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
-        <div className="container mx-auto px-4 py-16 text-center">
+        <div className="container mx-auto px-4 pt-28 pb-16 text-center">
           <p className="text-[#9ca3c2]">Loading recipe...</p>
         </div>
       </div>
@@ -83,7 +83,7 @@ function SharedRecipeContent() {
     return (
       <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
-        <div className="container mx-auto px-4 py-16 text-center">
+        <div className="container mx-auto px-4 pt-28 pb-16 text-center">
           <p className="text-red-400 mb-4">{error || 'Recipe not found.'}</p>
           <Link href="/" className="text-[#00d4ff] hover:underline">
             Go to SAVR
@@ -96,7 +96,7 @@ function SharedRecipeContent() {
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="container mx-auto px-4 pt-24 pb-8 max-w-2xl">
         <p className="text-sm text-[#9ca3c2] mb-2">Shared recipe from SAVR</p>
         <h1 className="text-3xl font-bold text-white mb-4">{recipe.title}</h1>
         {recipe.recipeType === 'pet' && (
@@ -159,7 +159,7 @@ export default function SharedRecipePage() {
     <Suspense fallback={
       <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
-        <div className="container mx-auto px-4 py-16 text-center">
+        <div className="container mx-auto px-4 pt-28 pb-16 text-center">
           <p className="text-[#9ca3c2]">Loading...</p>
         </div>
       </div>

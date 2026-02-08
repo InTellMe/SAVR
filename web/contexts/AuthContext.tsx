@@ -28,6 +28,13 @@ export function isPaidTier(tier: UserData['subscriptionTier'] | undefined): bool
   return tier === 'basic' || tier === 'pro' || tier === 'plus' || tier === 'premium' || tier === 'free';
 }
 
+export function hasActiveSubscription(userData: UserData | null): boolean {
+  if (!userData) return false;
+  // User must have completed Stripe onboarding (status is 'active' or 'trialing')
+  const status = userData.subscriptionStatus;
+  return status === 'active' || status === 'trialing';
+}
+
 interface AuthContextType {
   user: User | null;
   userData: UserData | null;
@@ -52,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
-      
+
       if (user) {
         // Fetch user data from Firestore
         const userDocRef = doc(db, 'users', user.uid);
@@ -61,13 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (userDoc.exists()) {
             setUserData(userDoc.data() as UserData);
           } else {
-            // Initialize user document if it doesn't exist (client-side initialization)
+            // Initialize user document with pending status — user must complete Stripe onboarding
             const newUserData: UserData = {
               uid: user.uid,
               email: user.email,
               displayName: user.displayName,
-              subscriptionTier: 'basic',
-              subscriptionStatus: 'active',
+              subscriptionTier: 'free',
+              subscriptionStatus: 'pending',
             };
             // Create the user document in Firestore
             await setDoc(userDocRef, {
@@ -79,20 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
           console.error('Failed to fetch or create user document:', error);
-          // Set basic user data to allow the user to proceed, but log the error
-          // The user document will be created on next sign-in attempt
           setUserData({
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
-            subscriptionTier: 'basic',
-            subscriptionStatus: 'active',
+            subscriptionTier: 'free',
+            subscriptionStatus: 'pending',
           });
         }
       } else {
         setUserData(null);
       }
-      
+
       setLoading(false);
     });
 

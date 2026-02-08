@@ -172,7 +172,7 @@ function InventoryContent() {
     return (
       <div className="min-h-screen" style={{ background: '#000000' }}>
         <Navbar />
-        <div className="container mx-auto px-4 py-8 flex justify-center">
+        <div className="container mx-auto px-4 pt-24 pb-8 flex justify-center">
           <LoadingSpinner size="lg" />
         </div>
       </div>
@@ -183,7 +183,7 @@ function InventoryContent() {
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-24 pb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Inventory Management</h1>
         <p className="text-[#9ca3c2] text-sm mb-4">
           Your ingredients are listed below. You can add items manually, scan a barcode, or{' '}

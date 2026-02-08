@@ -55,6 +55,7 @@ export default function Navbar() {
                 <Link href="/meal-plans" className={navLinkClass('/meal-plans')}>Meal Plans</Link>
                 <Link href="/grocery-lists" className={navLinkClass('/grocery-lists')}>Lists</Link>
                 <Link href="/chat" className={navLinkClass('/chat')}>Chat</Link>
+                <Link href="/preferences" className={navLinkClass('/preferences')}>Preferences</Link>
                 <Link href="/settings" className={navLinkClass('/settings')}>Settings</Link>
                 <button
                   onClick={handleLogout}
@@ -113,6 +114,7 @@ export default function Navbar() {
                   { href: '/meal-plans', label: 'Meal Plans' },
                   { href: '/grocery-lists', label: 'Grocery Lists' },
                   { href: '/chat', label: 'Chat' },
+                  { href: '/preferences', label: 'Preferences' },
                   { href: '/settings', label: 'Settings' },
                 ].map(({ href, label }) => (
                   <Link

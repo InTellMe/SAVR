@@ -104,7 +104,7 @@ function UploadContent() {
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-24 pb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Upload Pantry Photo</h1>
         <p className="text-[#9ca3c2] mb-4">
           Upload a photo of your pantry or fridge. Our AI will analyze it and extract ingredients that you
