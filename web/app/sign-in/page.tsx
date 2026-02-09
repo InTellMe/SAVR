@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -12,7 +12,7 @@ export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ReactNode>('');
   const [loading, setLoading] = useState(false);
   const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
@@ -47,9 +47,18 @@ export default function SignInPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to sign in';
       if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password') || message.includes('auth/user-not-found')) {
-        setError('Invalid email or password. Please try again.');
+        setError(
+          <span>
+            Invalid email or password. If you signed up with Google, use the Google button below.
+            Otherwise, <Link href="/forgot-password" className="underline text-[#00d4ff]">reset your password</Link>.
+          </span>
+        );
       } else if (message.includes('auth/too-many-requests')) {
-        setError('Too many failed attempts. Please try again later or reset your password.');
+        setError(
+          <span>
+            Too many failed attempts. Please <Link href="/forgot-password" className="underline text-[#00d4ff]">reset your password</Link> or try again later.
+          </span>
+        );
       } else {
         setError(message);
       }
@@ -69,6 +78,13 @@ export default function SignInPage() {
       const message = err instanceof Error ? err.message : 'Failed to sign in with Google';
       if (message.includes('auth/popup-closed-by-user')) {
         setError('Sign-in cancelled. Please try again.');
+      } else if (message.includes('auth/account-exists-with-different-credential') || message.includes('auth/credential-already-in-use')) {
+        setError(
+          <span>
+            An account with this email was created using email and password.
+            Please sign in with your password above, then link your Google account in Settings.
+          </span>
+        );
       } else {
         setError(message);
       }

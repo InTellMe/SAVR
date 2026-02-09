@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth, hasActiveSubscription } from '@/contexts/AuthContext';
+import { useState, ReactNode } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
@@ -14,7 +14,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ReactNode>('');
   const [loading, setLoading] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
   const router = useRouter();
@@ -75,7 +75,12 @@ export default function SignUpPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create account';
       if (message.includes('auth/email-already-in-use')) {
-        setError('An account with this email already exists. Please sign in instead.');
+        setError(
+          <span>
+            An account with this email already exists. You may have previously signed up with Google.{' '}
+            <Link href="/sign-in" className="underline text-[#00d4ff]">Sign in instead</Link>
+          </span>
+        );
       } else {
         setError(message);
       }
@@ -119,6 +124,20 @@ export default function SignUpPage() {
       const message = err instanceof Error ? err.message : 'Failed to sign up with Google';
       if (message.includes('auth/popup-closed-by-user')) {
         setError('Sign-up cancelled. Please try again.');
+      } else if (message.includes('auth/account-exists-with-different-credential') || message.includes('auth/credential-already-in-use')) {
+        setError(
+          <span>
+            An account with this email already exists using email and password.{' '}
+            <Link href="/sign-in" className="underline text-[#00d4ff]">Sign in with your password</Link>, then link your Google account in Settings.
+          </span>
+        );
+      } else if (message.includes('auth/email-already-in-use')) {
+        setError(
+          <span>
+            This email is already registered.{' '}
+            <Link href="/sign-in" className="underline text-[#00d4ff]">Sign in instead</Link>
+          </span>
+        );
       } else {
         setError(message);
       }
