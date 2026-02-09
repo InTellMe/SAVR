@@ -456,7 +456,7 @@ This is a proprietary SaaS product by InTellMe. Internal team only.
 
 Built with:
 
-- Next.js by Vercel
+- Next.js
 - React Native by Meta
 - Firebase by Google
 - OpenAI APIs

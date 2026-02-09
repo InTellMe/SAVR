@@ -58,7 +58,7 @@ project-root/
 - **Frontend**: Next.js 14+, React 18+, TypeScript, Tailwind CSS
 - **Backend**: Node.js/Express, FastAPI (Python), or Next.js API routes
 - **Database**: PostgreSQL (primary), Firebase/Firestore, Redis (caching)
-- **Deployment**: Vercel, Railway, Docker containers
+- **Deployment**: Firebase Hosting, Railway, Docker containers
 - **Testing**: Jest, Pytest, Playwright/Cypress
 - **CI/CD**: GitHub Actions
 

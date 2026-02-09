@@ -122,7 +122,7 @@ In Cursor's chat, invoke agents with their directive:
 - WCAG 2.1 AA accessibility
 
 ### Infrastructure Standards
-- Vercel/Railway deployment configs
+- Firebase Hosting/Railway deployment configs
 - Docker configurations
 - GitHub Actions CI/CD
 - Environment management

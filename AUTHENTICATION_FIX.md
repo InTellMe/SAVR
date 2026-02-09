@@ -92,4 +92,4 @@ NODE_ENV=production npm run build
 ## Notes
 - This fix was implemented in PR #39 from the `codex/investigate-authentication-error-400` branch
 - The same pattern should be used for mobile app Firebase initialization (`mobile/src/config/firebase.ts`)
-- All Firebase environment variables must be set in production deployments (Vercel, Firebase Hosting, etc.)
+- All Firebase environment variables must be set in production deployments (Firebase Hosting, etc.)

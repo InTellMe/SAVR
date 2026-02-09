@@ -34,35 +34,6 @@ Include `@devops` in your prompt to activate this agent.
 
 ## Platform Configurations
 
-### Vercel (Primary for Next.js)
-```json
-// vercel.json
-{
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "regions": ["iad1"],
-  "env": {
-    "DATABASE_URL": "@database-url",
-    "AUTH_SECRET": "@auth-secret"
-  },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store" }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/v1/:path*",
-      "destination": "https://api.intellmeai.com/:path*"
-    }
-  ]
-}
-```
-
 ### Railway Configuration
 ```toml
 # railway.toml
@@ -283,13 +254,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Deploy to Vercel (Staging)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          scope: ${{ secrets.VERCEL_ORG_ID }}
+      - name: Deploy to Firebase (Staging)
+        run: |
+          npm install -g firebase-tools
+          firebase use staging --non-interactive
+          firebase deploy --only hosting --non-interactive
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
   deploy-production:
     if: github.event.inputs.environment == 'production'
@@ -300,14 +271,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Deploy to Vercel (Production)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          scope: ${{ secrets.VERCEL_ORG_ID }}
+      - name: Deploy to Firebase (Production)
+        run: |
+          npm install -g firebase-tools
+          firebase use production --non-interactive
+          firebase deploy --only hosting --non-interactive
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 ```
 
 ### Release Workflow

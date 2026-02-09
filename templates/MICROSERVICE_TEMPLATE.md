@@ -369,13 +369,14 @@ export function absoluteUrl(path: string): string {
 
 ## Deployment
 
-### Vercel (Recommended)
+### Firebase Hosting (Recommended)
 ```bash
-# Install Vercel CLI
-npm i -g vercel
+# Install Firebase CLI
+npm i -g firebase-tools
 
-# Deploy
-vercel
+# Login and deploy
+firebase login
+firebase deploy
 ```
 
 ### Railway
