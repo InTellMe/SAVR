@@ -18,25 +18,27 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId);
 
-      // Allow user to create their own document on first sign-in with default values
-      // Email can be null for some auth providers (anonymous, phone), so we check it matches if present
+      // Allow user to create their own document on first sign-in/sign-up with default values.
+      // New users start with 'basic' tier and 'pending' status until Stripe onboarding completes.
+      // Email can be null for some auth providers (anonymous, phone), so we check it matches if present.
       allow create: if isOwner(userId)
         && request.resource.data.uid == userId
         && (request.auth.token.email == null || request.resource.data.email == request.auth.token.email)
         && request.resource.data.subscriptionTier == 'basic'
-        && request.resource.data.subscriptionStatus == 'active';
+        && request.resource.data.subscriptionStatus == 'pending';
 
       // Deletion handled by backend only (admin SDK / Cloud Functions)
       allow delete: if false;
 
       // Users may update profile fields (e.g., displayName, photoURL) but cannot change
       // subscription tier/status or payment identifiers.
+      // stripeCustomerId may not exist on new user documents, so guard with 'in' check.
       allow update: if isOwner(userId)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.email == resource.data.email
         && request.resource.data.subscriptionTier == resource.data.subscriptionTier
         && request.resource.data.subscriptionStatus == resource.data.subscriptionStatus
-        && request.resource.data.stripeCustomerId == resource.data.stripeCustomerId;
+        && (!('stripeCustomerId' in resource.data) || request.resource.data.stripeCustomerId == resource.data.stripeCustomerId);
     }
     
     // Inventory collection - users can manage their own inventory under their UID

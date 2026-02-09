@@ -11,6 +11,7 @@ import { db, auth } from '@/lib/firebase';
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signInWithGoogle } = useAuth();
@@ -44,7 +45,14 @@ export default function SignInPage() {
       await signIn(email, password);
       await redirectAfterAuth();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in');
+      const message = err instanceof Error ? err.message : 'Failed to sign in';
+      if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password') || message.includes('auth/user-not-found')) {
+        setError('Invalid email or password. Please try again.');
+      } else if (message.includes('auth/too-many-requests')) {
+        setError('Too many failed attempts. Please try again later or reset your password.');
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -58,11 +66,34 @@ export default function SignInPage() {
       await signInWithGoogle();
       await redirectAfterAuth();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
+      const message = err instanceof Error ? err.message : 'Failed to sign in with Google';
+      if (message.includes('auth/popup-closed-by-user')) {
+        setError('Sign-in cancelled. Please try again.');
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const EyeIcon = ({ show }: { show: boolean }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      {show ? (
+        <>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      ) : (
+        <>
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+          <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+          <line x1="1" y1="1" x2="23" y2="23" />
+        </>
+      )}
+    </svg>
+  );
 
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>
@@ -110,23 +141,38 @@ export default function SignInPage() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-[#9ca3c2] mb-1">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-white placeholder-[#6b7294] outline-none transition-all duration-200"
-                  style={{ background: 'rgba(6, 9, 24, 0.8)', border: '1px solid rgba(255, 255, 255, 0.08)' }}
-                  onFocus={(e) => e.target.style.borderColor = 'rgba(0, 212, 255, 0.4)'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
-                  placeholder="Enter your password"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="password" className="block text-sm font-medium text-[#9ca3c2]">
+                    Password
+                  </label>
+                  <Link href="/forgot-password" className="text-sm font-medium text-[#00d4ff] hover:text-[#00bfa6] transition-colors">
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 rounded-xl text-white placeholder-[#6b7294] outline-none transition-all duration-200"
+                    style={{ background: 'rgba(6, 9, 24, 0.8)', border: '1px solid rgba(255, 255, 255, 0.08)' }}
+                    onFocus={(e) => e.target.style.borderColor = 'rgba(0, 212, 255, 0.4)'}
+                    onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7294] hover:text-[#9ca3c2] transition-colors"
+                    tabIndex={-1}
+                  >
+                    <EyeIcon show={showPassword} />
+                  </button>
+                </div>
               </div>
             </div>
 
