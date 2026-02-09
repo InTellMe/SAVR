@@ -6,6 +6,7 @@ mobile/node_modules/
 
 # Build outputs
 functions/lib/
+.next/
 web/.next/
 web/out/
 mobile/dist/

@@ -9,6 +9,7 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -42,6 +43,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -68,15 +70,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (userDoc.exists()) {
             setUserData(userDoc.data() as UserData);
           } else {
-            // Initialize user document with pending status — user must complete Stripe onboarding
+            // Initialize user document with pending status — user must complete Stripe onboarding.
+            // Uses 'basic' tier and 'pending' status to match Firestore security rules.
             const newUserData: UserData = {
               uid: user.uid,
               email: user.email,
               displayName: user.displayName,
-              subscriptionTier: 'free',
+              subscriptionTier: 'basic',
               subscriptionStatus: 'pending',
             };
-            // Create the user document in Firestore
             await setDoc(userDocRef, {
               ...newUserData,
               createdAt: new Date(),
@@ -86,11 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
           console.error('Failed to fetch or create user document:', error);
+          // Use in-memory fallback so UI can still redirect to pricing
           setUserData({
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
-            subscriptionTier: 'free',
+            subscriptionTier: 'basic',
             subscriptionStatus: 'pending',
           });
         }
@@ -114,14 +117,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    // Add required OAuth scopes for Google Sign-In
     provider.addScope('profile');
     provider.addScope('email');
-    // Set custom parameters for a better sign-in experience
     provider.setCustomParameters({
       prompt: 'select_account'
     });
     await signInWithPopup(auth, provider);
+  };
+
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
   };
 
   const logout = async () => {
@@ -135,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signInWithGoogle,
+    resetPassword,
     logout,
   };
 
