@@ -28,7 +28,7 @@
 
 Copy this checklist and check off as you add each secret:
 
-### Firebase Secrets
+### Firebase Deployment Secrets (Web App)
 - [ ] `FIREBASE_TOKEN` - Get from: `firebase login:ci`
 - [ ] `FIREBASE_PROJECT_ID` - Get from: Firebase Console → Project Settings
 - [ ] `NEXT_PUBLIC_FIREBASE_API_KEY` - Get from: Firebase Web App Config
@@ -38,9 +38,15 @@ Copy this checklist and check off as you add each secret:
 - [ ] `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` - Get from: Firebase Web App Config
 - [ ] `NEXT_PUBLIC_FIREBASE_APP_ID` - Get from: Firebase Web App Config
 
-### Application Secrets
+### Application Secrets (Web App)
 - [ ] `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Get from: Stripe Dashboard → API Keys
 - [ ] `NEXT_PUBLIC_APP_URL` - Set to: `https://www.SAVR.cam` (or your domain)
+
+### Mobile Build Secrets (Optional - only if deploying mobile app)
+- [ ] `EXPO_TOKEN` - Get from: https://expo.dev/accounts/[account]/settings/access-tokens
+- [ ] `GOOGLE_PLAY_SERVICE_ACCOUNT_KEY` - Get from: Google Play Console → API access
+
+**Note**: The 10 web app secrets above are required for basic deployment. Mobile secrets are only needed if you're building/submitting the mobile app via GitHub Actions.
 
 ---
 
@@ -155,8 +161,10 @@ Since deployments are broken, these features are NOT live:
 
 ---
 
-**🎯 BOTTOM LINE**: Add the 10 GitHub Secrets listed above, then deployments will work automatically on every push to main.
+**🎯 BOTTOM LINE**: Add the 10 GitHub Secrets listed above for web deployment, then deployments will work automatically on every push to main. Add 2 additional secrets if you need mobile app builds.
 
-**⏱️ TIME TO FIX**: ~5 minutes (if you have Firebase/Stripe access)
+**⏱️ TIME TO FIX**: ~5 minutes (if you have Firebase/Stripe access), +2 minutes for mobile secrets
 
 **🔗 START HERE**: https://github.com/InTellMe/SAVR/settings/secrets/actions
+
+**📖 DETAILED GUIDE**: See `GITHUB_SECRETS_SETUP.md` for complete setup instructions including mobile app secrets
