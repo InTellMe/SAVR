@@ -74,6 +74,7 @@ export const createGroceryList = onCall(
   {
     timeoutSeconds: 60,
     memory: '256MiB',
+    secrets: ['OPENAI_API_KEY'],
     cors: true,
   },
   async (request) => {
@@ -252,10 +253,7 @@ export const stripeWebhook = onRequest(
 );
 
 // User Creation Trigger (v1 API - auth triggers not yet available in v2)
-export const onUserCreate = functionsV1
-  .runWith({ secrets: [] })
-  .auth.user()
-  .onCreate(async (user) => {
+export const onUserCreate = functionsV1.auth.user().onCreate(async (user) => {
     const userId = user.uid;
     const email = user.email || '';
     const displayName = user.displayName || '';

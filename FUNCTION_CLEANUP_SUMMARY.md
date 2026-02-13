@@ -5,15 +5,15 @@ Successfully consolidated Firebase Functions from 13 exports to 5 core functions
 
 ## Line Count Changes
 - **Original Line Count:** 760 lines (index.ts.bak)
-- **New Line Count:** 284 lines (index.ts)
-- **Lines Removed:** 476 lines (62.6% reduction)
+- **New Line Count:** 282 lines (index.ts)
+- **Lines Removed:** 478 lines (62.9% reduction)
 
 ## Discrepancy Explanation
-Removed 476 lines consisting of:
-- 8 zombie function exports and their implementations (~300 lines)
-- Unused imports and type definitions (~30 lines)
-- Supporting functions (triggerSegmentationInference) (~50 lines)
-- Comments and whitespace from removed sections (~96 lines)
+Removed 478 lines consisting of:
+- 9 zombie function exports and their implementations (~450 lines)
+- Unused imports and type definitions (~8 lines)
+- Unnecessary runWith() wrapper for auth trigger (~3 lines)
+- Comments and whitespace from removed sections (~17 lines)
 
 Added ~30 lines for:
 - v2 imports and onUserCreate auth trigger
@@ -40,8 +40,8 @@ Added ~30 lines for:
 - **Type:** onCall (v2)
 - **Memory:** 256MiB
 - **Timeout:** 60s
-- **Secrets:** None (reads from Firestore)
-- **Purpose:** Generate shopping list from selected recipes
+- **Secrets:** OPENAI_API_KEY
+- **Purpose:** Generate shopping list from selected recipes using AI consolidation
 
 ### 4. stripeWebhook ✅
 - **Type:** onRequest (v2)
@@ -53,8 +53,9 @@ Added ~30 lines for:
 - **Secrets:** None
 - **Purpose:** Initialize user document in Firestore on account creation
 - **Note:** Uses v1 API because auth triggers not yet available in v2
+- **Note:** Does not use runWith() as v1 auth triggers don't need this wrapper
 
-## Functions Removed (8 Zombie Functions)
+## Functions Removed (9 Zombie Functions)
 
 1. **createRecipe** - Recipe generation (72 lines)
 2. **createMealPlan** - Meal planning (65 lines)
@@ -66,12 +67,14 @@ Added ~30 lines for:
 8. **triggerSegmentation** - AI segmentation inference (65 lines)
 9. **exportDataset** - Dataset export (35 lines)
 
-Total removed: ~450 lines of function implementations
+Total function code removed: ~450 lines
+Additional cleanup (imports, types, helpers, whitespace): ~28 lines
+**Total removed: 478 lines (62.9% reduction)**
 
 ## Secret Manager Configuration
 
 ### Secrets Configured in Functions:
-- **OPENAI_API_KEY:** Used by analyzeImage and chat functions
+- **OPENAI_API_KEY:** Used by analyzeImage, chat, and createGroceryList functions
 - **STRIPE_SECRET_KEY:** Used by stripeWebhook function
 - **STRIPE_WEBHOOK_SECRET:** Used by stripeWebhook function
 
