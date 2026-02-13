@@ -8,6 +8,7 @@ import {
 } from './services/ai';
 import {
   handleStripeWebhook,
+  createCheckoutSession,
 } from './services/stripe';
 import { checkUsageLimit } from './utils/subscription';
 import { checkAndIncrement } from './utils/rateLimit';
@@ -227,6 +228,35 @@ export const chat = onCall(
 
 
 
+// Stripe Checkout Session Creation
+export const createStripeCheckout = onCall(
+  {
+    secrets: ['STRIPE_SECRET_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { priceId, successUrl, cancelUrl } = request.data as {
+      priceId: string;
+      successUrl: string;
+      cancelUrl: string;
+    };
+    const userId = request.auth.uid;
+
+    try {
+      const sessionUrl = await createCheckoutSession(userId, priceId, successUrl, cancelUrl);
+      return { success: true, url: sessionUrl };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create checkout session';
+      console.error('Stripe checkout error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
 // Stripe Webhook Handler
 export const stripeWebhook = onRequest(
   {
@@ -265,7 +295,7 @@ export const onUserCreate = functionsV1.auth.user().onCreate(async (user) => {
         email,
         displayName,
         subscriptionTier: 'basic',
-        subscriptionStatus: 'active',
+        subscriptionStatus: 'pending',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });

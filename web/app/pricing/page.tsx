@@ -15,8 +15,10 @@ export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const tier = userData?.subscriptionTier;
-  const isBasic = tier === 'basic' || tier === 'free';
-  const isPro = tier === 'pro' || tier === 'plus' || tier === 'premium';
+  const status = userData?.subscriptionStatus;
+  const hasActiveSub = status === 'active' || status === 'trialing';
+  const isBasic = hasActiveSub && (tier === 'basic' || tier === 'free');
+  const isPro = hasActiveSub && (tier === 'pro' || tier === 'plus' || tier === 'premium');
 
   async function handleStripeSubscribe(priceId: string) {
     if (!user) {
