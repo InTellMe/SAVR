@@ -20,6 +20,10 @@
 #
 # Security: This workflow only runs on direct pushes to main (not PRs or forks).
 # Secrets are NOT available to workflows triggered from forked repositories.
+#
+# Note: Secrets must be explicitly referenced and cannot be accessed dynamically
+# through loops or arrays in GitHub Actions. Each secret requires a direct reference
+# like ${{ secrets.SECRET_NAME }} at workflow parse time.
 
 name: Firebase Deploy
 permissions:
@@ -28,6 +32,10 @@ permissions:
 on:
   push:
     branches: [main]
+
+env:
+  # Centralized path for service account credentials
+  SERVICE_ACCOUNT_FILE: firebase-service-account.json
 
 jobs:
   deploy:
@@ -69,8 +77,6 @@ jobs:
           fi
           
           # Check Next.js public environment variables
-          # Note: Secrets must be explicitly referenced and cannot be accessed dynamically
-          # through loops or arrays in GitHub Actions.
           check_secret() {
             local secret_name=$1
             local secret_value=$2
@@ -141,8 +147,8 @@ jobs:
         run: |
           echo "::group::Configuring Firebase Authentication"
           
-          # Use $RUNNER_TEMP for isolated temporary directory
-          SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/firebase-service-account.json"
+          # Use $RUNNER_TEMP for isolated temporary directory with centralized filename
+          SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
           
           # Method 1: Service Account JSON (preferred for CI/CD)
           if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}" ]; then
@@ -184,8 +190,8 @@ jobs:
         if: always()
         run: |
           # Remove service account credentials file if it exists
-          # Path is deterministic based on RUNNER_TEMP
-          SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/firebase-service-account.json"
+          # Using centralized filename from env
+          SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
           if [ -f "$SERVICE_ACCOUNT_PATH" ]; then
             rm -f "$SERVICE_ACCOUNT_PATH"
             echo "✓ Cleaned up service account credentials"
