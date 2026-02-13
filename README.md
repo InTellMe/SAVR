@@ -209,7 +209,68 @@ SAVR/
 - HTTPS-only Cloud Functions
 - No API keys or secrets in client code
 
-## 🧪 Development
+## 🔑 Environment Variables & Secrets
+
+SAVR requires various environment variables and secrets for operation and deployment. See detailed setup guides:
+
+### For CI/CD Deployment (GitHub Actions)
+- **[GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md)** - Complete guide for configuring GitHub Actions secrets
+- Required: 12 GitHub secrets for automated deployments (10 for web, 2 additional for mobile)
+- Includes: Firebase tokens, API keys, Expo tokens, and Google Play credentials
+
+### For Local Development
+
+**Web Application** (`.env.local`):
+```bash
+# Copy from example and fill in your values
+cp .env.example .env.local
+```
+
+Required variables (from `.env.example`):
+- **Firebase**: 6 config values (API key, auth domain, project ID, storage bucket, sender ID, app ID)
+- **OpenAI**: API key for GPT-4 and Vision
+- **Google Cloud Vision**: API key (optional fallback)
+- **Stripe**: Publishable key, secret key, webhook secret, and 4 price IDs
+- **App**: Base URL
+
+**Mobile Application** (`mobile/.env`):
+```bash
+# Copy from example and fill in your values
+cp mobile/.env.example mobile/.env
+```
+
+Required variables (from `mobile/.env.example`):
+- **Firebase**: Same 6 config values as web (using `EXPO_PUBLIC_*` prefix)
+- **Google OAuth**: 3 client IDs (Web, iOS, Android)
+
+**Firebase Functions**:
+Configure via Firebase CLI or inherit from root `.env`:
+```bash
+firebase functions:config:set openai.api_key="your_key"
+```
+
+### Environment Variable Categories
+
+| Category | Count | Examples | Sensitive |
+|----------|-------|----------|-----------|
+| Firebase Config | 6 | API_KEY, AUTH_DOMAIN, PROJECT_ID, etc. | ❌ Public |
+| Firebase Deploy | 2 | FIREBASE_TOKEN, FIREBASE_PROJECT_ID | ✅ Private |
+| OpenAI | 1 | OPENAI_API_KEY | ✅ Private |
+| Google Cloud | 1 | GOOGLE_CLOUD_VISION_API_KEY | ✅ Private |
+| Stripe Config | 3 | Publishable/Secret keys, Webhook secret | ⚠️ Mixed |
+| Stripe Prices | 4 | Price IDs for 4 subscription tiers | ❌ Public |
+| Mobile Build | 2 | EXPO_TOKEN, GOOGLE_PLAY_SERVICE_ACCOUNT_KEY | ✅ Private |
+| Google OAuth | 3 | Client IDs for Web/iOS/Android | ❌ Public |
+| App Config | 1 | NEXT_PUBLIC_APP_URL | ❌ Public |
+
+**Security Notes**:
+- ✅ Private = Keep secret, never commit to code
+- ❌ Public = Safe to expose in client-side code
+- ⚠️ Mixed = Publishable key is public, secret key is private
+
+For detailed setup instructions, see [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md).
+
+---
 
 ### Build the project
 
@@ -231,6 +292,12 @@ firebase emulators:start
 ```
 
 ## 🌐 Deployment
+
+### Prerequisites
+
+Before deploying, ensure all required secrets are configured:
+- **For automated CI/CD**: See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for GitHub Actions secrets setup
+- **For manual deployment**: Ensure Firebase CLI is authenticated and environment variables are set
 
 ### Web Application
 
@@ -264,6 +331,7 @@ The mobile app uses [EAS Build](https://docs.expo.dev/build/introduction/) for b
 - [Google Play Developer account](https://play.google.com/console/) ($25 one-time fee)
 - Google Play service account JSON key for automated submissions
 - Firebase project configured with Android app (SHA-1 certificate fingerprint)
+- **GitHub Secrets configured**: See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for mobile-specific secrets (EXPO_TOKEN, GOOGLE_PLAY_SERVICE_ACCOUNT_KEY)
 
 #### One-time Setup
 
@@ -337,7 +405,12 @@ The GitHub Actions workflow (`.github/workflows/mobile-build.yml`) automatically
 - Supports manual dispatch for production builds and Play Store submission
 - Runs TypeScript checks before building
 
-Required GitHub secrets: `EXPO_TOKEN`, plus all `NEXT_PUBLIC_FIREBASE_*` secrets.
+**Required GitHub secrets**: 
+- `EXPO_TOKEN` - Expo authentication token
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_KEY` - Google Play API credentials (for submission)
+- All 6 `NEXT_PUBLIC_FIREBASE_*` secrets (API_KEY, AUTH_DOMAIN, PROJECT_ID, STORAGE_BUCKET, MESSAGING_SENDER_ID, APP_ID)
+
+See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for detailed setup instructions.
 
 ## 📊 Tech Stack
 
