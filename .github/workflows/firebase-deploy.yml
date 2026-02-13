@@ -222,12 +222,16 @@ jobs:
           firebase deploy \
             --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
             --only hosting,functions,firestore,storage \
-            --non-interactive \
-            --force
+            --non-interactive
           
           echo "::endgroup::"
           echo "✅ Deployment completed successfully"
-        env:
-          # Pass through authentication from previous step
-          FIREBASE_TOKEN: ${{ env.FIREBASE_TOKEN }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          # Remove service account credentials file if it exists
+          if [ -f /tmp/firebase-service-account.json ]; then
+            rm -f /tmp/firebase-service-account.json
+            echo "✓ Cleaned up service account credentials"
+          fi
