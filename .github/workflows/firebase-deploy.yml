@@ -2,6 +2,8 @@
 # Requires GitHub Secrets: FIREBASE_TOKEN, FIREBASE_PROJECT_ID, and all NEXT_PUBLIC_* vars below.
 
 name: Firebase Deploy
+permissions:
+  contents: read
 
 on:
   push:
