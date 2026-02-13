@@ -56,10 +56,8 @@ This is a monorepo with multiple package-lock.json files (root, web, functions, 
 The `web/next.config.ts` has been updated with explicit turbopack root configuration to silence this warning:
 
 ```typescript
-experimental: {
-  turbopack: {
-    root: path.resolve(__dirname, ".."),
-  },
+turbopack: {
+  root: path.resolve(__dirname, ".."),
 }
 ```
 
