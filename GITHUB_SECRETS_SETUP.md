@@ -156,7 +156,7 @@ For each secret below, in GitHub:
 - **Used by**: `firebase-deploy.yml` workflow
 - **Sensitive**: ✅ Yes - keep private
 - **Required**: ⚠️ Only if NOT using FIREBASE_TOKEN
-- **Note**: Choose either FIREBASE_TOKEN or FIREBASE_SERVICE_ACCOUNT_JSON, not both
+- **Note**: If both are configured, the workflow will prefer FIREBASE_SERVICE_ACCOUNT_JSON
 
 #### Secret 2: FIREBASE_PROJECT_ID
 - **Name**: `FIREBASE_PROJECT_ID`
