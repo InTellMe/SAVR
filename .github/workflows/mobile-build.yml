@@ -2,6 +2,8 @@
 # Requires GitHub Secrets: EXPO_TOKEN, and Firebase config vars.
 
 name: Mobile Build (EAS)
+permissions:
+  contents: read
 
 on:
   push:
