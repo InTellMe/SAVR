@@ -2,7 +2,95 @@
 
 ## Common Issues and Solutions
 
-### 1. "Cannot find module 'balanced-match'" Error During Deployment
+### 1. Firebase Gen1 to Gen2 Function Migration Error
+
+**Error Message:**
+```
+Error: [analyzeImage(us-central1)] Upgrading from 1st Gen to 2nd Gen is not yet supported. 
+See https://firebase.google.com/docs/functions/2nd-gen-upgrade before migrating to 2nd Gen.
+```
+
+**Root Cause:**
+Firebase Cloud Functions does not support automatic in-place upgrades from Gen1 to Gen2. When a function already exists in Firebase as Gen1 and you try to deploy it as Gen2, Firebase rejects the deployment.
+
+**Solution:**
+
+You must manually delete the Gen1 function before deploying the Gen2 version:
+
+1. **Delete the existing Gen1 function(s):**
+   ```bash
+   firebase functions:delete analyzeImage --region us-central1 --force
+   ```
+
+2. **Deploy the new Gen2 function:**
+   ```bash
+   firebase deploy --only functions
+   ```
+
+3. **If multiple functions need migration, delete them all first:**
+   ```bash
+   firebase functions:delete analyzeImage createGroceryList chat stripeWebhook --region us-central1 --force
+   ```
+
+**Important Notes:**
+- ⚠️ **Deleting a function will cause downtime** - Users won't be able to call it until the new version is deployed
+- ⚠️ **Schedule maintenance window** if possible to minimize user impact
+- All functions in this repository are now Gen2 (using `firebase-functions/v2`)
+- The `onUserCreate` trigger uses Gen1 API as auth triggers aren't yet available in Gen2
+
+**Prevention:**
+This is a one-time migration issue. Once all functions are deployed as Gen2, future deployments will work normally.
+
+### 2. Next.js Multiple Lockfiles Warning
+
+**Warning Message:**
+```
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\...\package-lock.json as the root directory.
+```
+
+**Root Cause:**
+This is a monorepo with multiple package-lock.json files (root, web, functions, mobile). Next.js needs to know which is the correct workspace root.
+
+**Solution:**
+The `web/next.config.ts` has been updated with explicit turbopack root configuration to silence this warning:
+
+```typescript
+experimental: {
+  turbopack: {
+    root: path.resolve(__dirname, ".."),
+  },
+}
+```
+
+No action needed - warning is now suppressed.
+
+### 3. MetadataLookupWarning During Deployment
+
+**Warning Message:**
+```
+(node:45436) MetadataLookupWarning: received unexpected error = All promises were rejected code = UNKNOWN
+```
+
+**Root Cause:**
+This is a harmless warning from Firebase Functions deployment when running locally. It occurs because the deployment process tries to fetch metadata from Google Cloud Metadata Service, which is not available in local environments.
+
+**Solution:**
+This warning can be safely ignored. It does not affect deployment success. If you want to suppress it, you can:
+
+1. Add to your deployment command:
+   ```bash
+   NODE_OPTIONS="--no-warnings" npm run deploy
+   ```
+
+2. Or add to functions/package.json scripts:
+   ```json
+   "deploy": "node --no-warnings $(which firebase) deploy --only functions"
+   ```
+
+**Note:** This warning does not appear in CI/CD environments or Cloud Build deployments.
+
+### 4. "Cannot find module 'balanced-match'" Error During Deployment
 
 **Error Message:**
 ```
