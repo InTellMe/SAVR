@@ -23,9 +23,13 @@ Before configuring secrets, ensure you have:
 
 ---
 
-## Step 2: Generate Firebase Token
+## Step 2: Choose Firebase Authentication Method
 
-The `FIREBASE_TOKEN` is required for CI/CD to deploy to Firebase.
+The Firebase Deploy workflow supports two authentication methods. **Choose ONE**:
+
+### Method A: Token-Based Authentication (Recommended for Quick Setup)
+
+The `FIREBASE_TOKEN` provides quick authentication for CI/CD deployments.
 
 ```bash
 # Install Firebase CLI if not already installed
@@ -47,7 +51,24 @@ Waiting for authentication...
 1//0gABCDEFGHIJKLMNOPQRSTUVWXYZ...
 ```
 
-**Copy the token** (the long string starting with `1//0g...`)
+**Copy the token** (the long string starting with `1//0g...`) for later use.
+
+### Method B: Service Account Authentication (Recommended for Production)
+
+Service account JSON provides more secure, granular authentication for production CI/CD.
+
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Select your SAVR project
+3. Click the gear icon (⚙️) → Project Settings → Service Accounts
+4. Click "Generate new private key"
+5. Confirm by clicking "Generate key"
+6. A JSON file will be downloaded to your computer
+7. Open the JSON file with a text editor
+8. **Copy the entire JSON content** (not the file path) - you'll add it as `FIREBASE_SERVICE_ACCOUNT_JSON` secret
+
+**Important**: Keep this JSON file secure and never commit it to version control.
+
+**You only need ONE of these methods** - the workflow will automatically detect which one is available.
 
 ---
 
@@ -122,11 +143,20 @@ For each secret below, in GitHub:
 
 ### 🔥 Firebase Deployment Secrets
 
-#### Secret 1: FIREBASE_TOKEN
+#### Secret 1: FIREBASE_TOKEN (if using Method A from Step 2)
 - **Name**: `FIREBASE_TOKEN`
-- **Value**: Token from Step 2 (the long string starting with `1//0g...`)
+- **Value**: Token from Step 2, Method A (the long string starting with `1//0g...`)
 - **Used by**: `firebase-deploy.yml` workflow
 - **Sensitive**: ✅ Yes - keep private
+- **Required**: ⚠️ Only if NOT using FIREBASE_SERVICE_ACCOUNT_JSON
+
+#### Secret 1B: FIREBASE_SERVICE_ACCOUNT_JSON (if using Method B from Step 2)
+- **Name**: `FIREBASE_SERVICE_ACCOUNT_JSON`
+- **Value**: Complete JSON content from Step 2, Method B (entire service account key file)
+- **Used by**: `firebase-deploy.yml` workflow
+- **Sensitive**: ✅ Yes - keep private
+- **Required**: ⚠️ Only if NOT using FIREBASE_TOKEN
+- **Note**: If both are configured, the workflow will prefer FIREBASE_SERVICE_ACCOUNT_JSON
 
 #### Secret 2: FIREBASE_PROJECT_ID
 - **Name**: `FIREBASE_PROJECT_ID`

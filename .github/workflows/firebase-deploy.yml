@@ -1,5 +1,29 @@
 # Deploy to Firebase (Hosting, Functions, Firestore, Storage) on push to main.
-# Requires GitHub Secrets: FIREBASE_TOKEN, FIREBASE_PROJECT_ID, and all NEXT_PUBLIC_* vars below.
+#
+# Required GitHub Secrets (set in repository Settings → Secrets and variables → Actions):
+# ┌─────────────────────────────────────────────────────────────────────────────────┐
+# │ Firebase Authentication (choose ONE method):                                    │
+# │   Method 1 (Token): FIREBASE_TOKEN - from `firebase login:ci`                  │
+# │   Method 2 (Service Account): FIREBASE_SERVICE_ACCOUNT_JSON - JSON key content │
+# │ Project Configuration:                                                          │
+# │   FIREBASE_PROJECT_ID - Firebase project identifier                            │
+# │ Next.js Build Variables (public, required for build):                          │
+# │   NEXT_PUBLIC_FIREBASE_API_KEY                                                 │
+# │   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN                                             │
+# │   NEXT_PUBLIC_FIREBASE_PROJECT_ID                                              │
+# │   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET                                          │
+# │   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID                                     │
+# │   NEXT_PUBLIC_FIREBASE_APP_ID                                                  │
+# │   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY                                           │
+# │   NEXT_PUBLIC_APP_URL                                                          │
+# └─────────────────────────────────────────────────────────────────────────────────┘
+#
+# Security: This workflow only runs on direct pushes to main (not PRs or forks).
+# Secrets are NOT available to workflows triggered from forked repositories.
+#
+# Note: Secrets must be explicitly referenced and cannot be accessed dynamically
+# through loops or arrays in GitHub Actions. Each secret requires a direct reference
+# like ${{ secrets.SECRET_NAME }} at workflow parse time.
 
 name: Firebase Deploy
 permissions:
@@ -9,12 +33,89 @@ on:
   push:
     branches: [main]
 
+env:
+  # Centralized path for service account credentials
+  SERVICE_ACCOUNT_FILE: firebase-service-account.json
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate Required Secrets
+        run: |
+          echo "::group::Validating Firebase Deployment Secrets"
+          
+          # Initialize error tracking
+          MISSING_SECRETS=()
+          
+          # Check Firebase project ID
+          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            MISSING_SECRETS+=("FIREBASE_PROJECT_ID")
+          else
+            echo "✓ FIREBASE_PROJECT_ID is set"
+          fi
+          
+          # Check Firebase authentication (at least one method required)
+          HAS_TOKEN=false
+          HAS_SERVICE_ACCOUNT=false
+          
+          if [ -n "${{ secrets.FIREBASE_TOKEN }}" ]; then
+            echo "✓ FIREBASE_TOKEN is set (token-based auth)"
+            HAS_TOKEN=true
+          fi
+          
+          if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}" ]; then
+            echo "✓ FIREBASE_SERVICE_ACCOUNT_JSON is set (service account auth)"
+            HAS_SERVICE_ACCOUNT=true
+          fi
+          
+          if [ "$HAS_TOKEN" = false ] && [ "$HAS_SERVICE_ACCOUNT" = false ]; then
+            MISSING_SECRETS+=("FIREBASE_TOKEN or FIREBASE_SERVICE_ACCOUNT_JSON (at least one required)")
+          fi
+          
+          # Check Next.js public environment variables
+          check_secret() {
+            local secret_name=$1
+            local secret_value=$2
+            if [ -z "$secret_value" ]; then
+              MISSING_SECRETS+=("$secret_name")
+            else
+              echo "✓ $secret_name is set"
+            fi
+          }
+          
+          check_secret "NEXT_PUBLIC_FIREBASE_API_KEY" "${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}"
+          check_secret "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN" "${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}"
+          check_secret "NEXT_PUBLIC_FIREBASE_PROJECT_ID" "${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
+          check_secret "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET" "${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}"
+          check_secret "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID" "${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}"
+          check_secret "NEXT_PUBLIC_FIREBASE_APP_ID" "${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}"
+          check_secret "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}"
+          check_secret "NEXT_PUBLIC_APP_URL" "${{ secrets.NEXT_PUBLIC_APP_URL }}"
+          
+          echo "::endgroup::"
+          
+          # Report results
+          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
+            echo "::error::❌ Deployment cannot proceed - missing required secrets"
+            echo ""
+            echo "Missing secrets:"
+            for SECRET in "${MISSING_SECRETS[@]}"; do
+              echo "  - $SECRET"
+            done
+            echo ""
+            echo "Please configure these secrets in:"
+            echo "  GitHub Repository → Settings → Secrets and variables → Actions"
+            echo ""
+            echo "For detailed setup instructions, see:"
+            echo "  https://github.com/InTellMe/SAVR/blob/main/GITHUB_SECRETS_SETUP.md"
+            exit 1
+          else
+            echo "✅ All required secrets are configured"
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -42,9 +143,56 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Setup Firebase Authentication
+        run: |
+          echo "::group::Configuring Firebase Authentication"
+          
+          # Use $RUNNER_TEMP for isolated temporary directory with centralized filename
+          SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
+          
+          # Method 1: Service Account JSON (preferred for CI/CD)
+          if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}" ]; then
+            echo "Using service account authentication"
+            echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}' > "$SERVICE_ACCOUNT_PATH"
+            chmod 600 "$SERVICE_ACCOUNT_PATH"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
+            echo "SERVICE_ACCOUNT_PATH=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
+            echo "✓ Service account credentials configured"
+          
+          # Method 2: Firebase Token (fallback)
+          elif [ -n "${{ secrets.FIREBASE_TOKEN }}" ]; then
+            echo "Using token-based authentication"
+            echo "FIREBASE_TOKEN=${{ secrets.FIREBASE_TOKEN }}" >> $GITHUB_ENV
+            echo "✓ Firebase token configured"
+          
+          else
+            echo "::error::No Firebase authentication method configured"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
+
       - name: Deploy to Firebase
         run: |
-          firebase use ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive
-          firebase deploy --only hosting,functions,firestore,storage --non-interactive
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          echo "::group::Deploying to Firebase"
+          
+          # Use --project flag instead of 'firebase use' for robust CI deployment
+          # This avoids relying on local .firebaserc state
+          firebase deploy \
+            --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
+            --only hosting,functions,firestore,storage \
+            --non-interactive
+          
+          echo "::endgroup::"
+          echo "✅ Deployment completed successfully"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          # Remove service account credentials file if it exists
+          # Using centralized filename from env
+          SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
+          if [ -f "$SERVICE_ACCOUNT_PATH" ]; then
+            rm -f "$SERVICE_ACCOUNT_PATH"
+            echo "✓ Cleaned up service account credentials"
+          fi

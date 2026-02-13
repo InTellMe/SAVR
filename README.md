@@ -1,8 +1,8 @@
 # SAVR by InTellMe
 
-> **⚠️ DEPLOYMENT NOTICE**: GitHub Actions automatic deployment is currently not configured. See [ACTION_REQUIRED.md](ACTION_REQUIRED.md) for immediate action needed to enable automated deployments.
-
 SAVR is an AI-powered food management platform that helps you manage your pantry inventory, generate recipes, plan meals, and create grocery lists. Built as a Firebase-hosted React/Next.js web application focusing on a web-based MVP where users upload photos of their pantry and fridge to manage inventory.
+
+> **📋 GitHub Actions Setup**: Automated deployment requires GitHub Secrets configuration. See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for required secrets and setup instructions.
 
 ## 🌟 Features
 
@@ -215,8 +215,14 @@ SAVR requires various environment variables and secrets for operation and deploy
 
 ### For CI/CD Deployment (GitHub Actions)
 - **[GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md)** - Complete guide for configuring GitHub Actions secrets
-- Required: 12 GitHub secrets for automated deployments (10 for web, 2 additional for mobile)
-- Includes: Firebase tokens, API keys, Expo tokens, and Google Play credentials
+- Required: 10 GitHub secrets for web deployment, 2 additional for mobile
+- **Firebase Authentication**: Choose one method:
+  - **Token-based** (recommended for simplicity): `FIREBASE_TOKEN` from `firebase login:ci`
+  - **Service Account** (recommended for production): `FIREBASE_SERVICE_ACCOUNT_JSON` with JSON key content
+- **Required secrets for web deployment**:
+  - `FIREBASE_PROJECT_ID` - Firebase project identifier
+  - `FIREBASE_TOKEN` or `FIREBASE_SERVICE_ACCOUNT_JSON` - Authentication
+  - 8 `NEXT_PUBLIC_*` variables - Firebase config and Stripe publishable key
 
 ### For Local Development
 

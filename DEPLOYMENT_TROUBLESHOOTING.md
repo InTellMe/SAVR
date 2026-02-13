@@ -2,7 +2,81 @@
 
 ## Common Issues and Solutions
 
-### 1. Firebase Gen1 to Gen2 Function Migration Error
+### 1. GitHub Actions Firebase Authentication Failure
+
+**Error Messages:**
+```
+Error: Failed to authenticate, have you run firebase login?
+```
+or
+```
+⚠ Firebase env vars missing during build — using dummy config for prerender.
+```
+
+**Root Cause:**
+GitHub Actions secrets are not being properly injected into the workflow environment. This can happen due to:
+- Secrets not configured in GitHub repository settings
+- Workflow triggered from a forked repository (secrets unavailable for security)
+- Incorrect secret names or references in workflow file
+- Missing required authentication credentials
+
+**Solution:**
+
+1. **Verify all secrets are configured in GitHub:**
+   - Navigate to: `Repository → Settings → Secrets and variables → Actions`
+   - Ensure ALL required secrets are present (see [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md))
+
+2. **Check Firebase authentication method:**
+   
+   The workflow supports TWO authentication methods (choose ONE):
+   
+   **Method A: Token-based authentication**
+   ```bash
+   # Generate token locally
+   firebase login:ci
+   
+   # Add to GitHub Secrets:
+   # Name: FIREBASE_TOKEN
+   # Value: [paste the 1//0g... token]
+   ```
+   
+   **Method B: Service account authentication (recommended for production)**
+   ```bash
+   # In Firebase Console:
+   # Project Settings → Service Accounts → Generate new private key
+   
+   # Add to GitHub Secrets:
+   # Name: FIREBASE_SERVICE_ACCOUNT_JSON
+   # Value: [paste entire JSON file content]
+   ```
+
+3. **Required secrets checklist:**
+   - ✅ `FIREBASE_PROJECT_ID` - Your Firebase project ID
+   - ✅ `FIREBASE_TOKEN` OR `FIREBASE_SERVICE_ACCOUNT_JSON` - At least one required
+   - ✅ `NEXT_PUBLIC_FIREBASE_API_KEY`
+   - ✅ `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - ✅ `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+   - ✅ `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - ✅ `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - ✅ `NEXT_PUBLIC_FIREBASE_APP_ID`
+   - ✅ `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+   - ✅ `NEXT_PUBLIC_APP_URL`
+
+4. **Verify workflow run context:**
+   - The workflow will automatically validate secrets and fail fast with clear error messages
+   - Check the "Validate Required Secrets" step output in GitHub Actions logs
+   - Ensure the workflow is triggered from a direct push to `main`, not from a fork/PR
+
+**Important Notes:**
+- GitHub Actions secrets are **NOT** available to workflows triggered from forked repositories
+- The workflow includes built-in validation that checks all secrets before attempting deployment
+- Secret values are never printed in logs for security
+- Missing secrets will cause the workflow to fail early with helpful error messages
+
+**Prevention:**
+Follow the complete setup guide in [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) to configure all required secrets before the first deployment.
+
+### 2. Firebase Gen1 to Gen2 Function Migration Error
 
 **Error Message:**
 ```
@@ -41,7 +115,7 @@ You must manually delete the Gen1 function before deploying the Gen2 version:
 **Prevention:**
 This is a one-time migration issue. Once all functions are deployed as Gen2, future deployments will work normally.
 
-### 2. Next.js Multiple Lockfiles Warning
+### 3. Next.js Multiple Lockfiles Warning
 
 **Warning Message:**
 ```
@@ -63,7 +137,7 @@ turbopack: {
 
 No action needed - warning is now suppressed.
 
-### 3. MetadataLookupWarning During Deployment
+### 4. MetadataLookupWarning During Deployment
 
 **Warning Message:**
 ```
@@ -88,7 +162,7 @@ This warning can be safely ignored. It does not affect deployment success. If yo
 
 **Note:** This warning does not appear in CI/CD environments or Cloud Build deployments.
 
-### 4. "Cannot find module 'balanced-match'" Error During Deployment
+### 5. "Cannot find module 'balanced-match'" Error During Deployment
 
 **Error Message:**
 ```
@@ -139,7 +213,7 @@ The `functions/node_modules` directory is missing or incomplete. This can happen
    npm run deploy
    ```
 
-### 2. Web Build Fails or Missing Static Files
+### 6. Web Build Fails or Missing Static Files
 
 **Error Message:**
 ```
@@ -170,7 +244,7 @@ The web application's dependencies are not installed or the build hasn't been ru
    ls -la web/out
    ```
 
-### 3. Functions Predeploy Lint Fails with TypeScript Errors
+### 7. Functions Predeploy Lint Fails with TypeScript Errors
 
 **Root Cause:**
 TypeScript compilation issues or ESLint configuration problems.
@@ -190,7 +264,7 @@ TypeScript compilation issues or ESLint configuration problems.
    npm run lint
    ```
 
-### 4. Firebase Deploy Permission Denied
+### 8. Firebase Deploy Permission Denied
 
 **Root Cause:**
 Not logged into Firebase CLI or wrong project selected.
@@ -208,7 +282,7 @@ Not logged into Firebase CLI or wrong project selected.
    firebase use <project-id>
    ```
 
-### 5. Environment Variables Not Found
+### 9. Environment Variables Not Found
 
 **Root Cause:**
 Environment variables are not configured for Firebase Functions or the web application.
