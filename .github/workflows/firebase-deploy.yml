@@ -69,8 +69,8 @@ jobs:
           fi
           
           # Check Next.js public environment variables
-          # Note: GitHub Actions doesn't support dynamic secret access in shell scripts,
-          # so we check each secret individually
+          # Note: Secrets must be explicitly referenced and cannot be accessed dynamically
+          # through loops or arrays in GitHub Actions.
           check_secret() {
             local secret_name=$1
             local secret_value=$2
@@ -184,7 +184,9 @@ jobs:
         if: always()
         run: |
           # Remove service account credentials file if it exists
-          if [ -n "${{ env.SERVICE_ACCOUNT_PATH }}" ] && [ -f "${{ env.SERVICE_ACCOUNT_PATH }}" ]; then
-            rm -f "${{ env.SERVICE_ACCOUNT_PATH }}"
+          # Path is deterministic based on RUNNER_TEMP
+          SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/firebase-service-account.json"
+          if [ -f "$SERVICE_ACCOUNT_PATH" ]; then
+            rm -f "$SERVICE_ACCOUNT_PATH"
             echo "✓ Cleaned up service account credentials"
           fi
