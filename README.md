@@ -299,6 +299,17 @@ Before deploying, ensure all required secrets are configured:
 - **For automated CI/CD**: See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for GitHub Actions secrets setup
 - **For manual deployment**: Ensure Firebase CLI is authenticated and environment variables are set
 
+### ⚠️ Important: Gen1 to Gen2 Migration
+
+If you encounter deployment errors about "Upgrading from 1st Gen to 2nd Gen is not yet supported", see [FIREBASE_FUNCTIONS_MIGRATION.md](FIREBASE_FUNCTIONS_MIGRATION.md) for the complete migration guide.
+
+**Quick fix:**
+```bash
+npm run deploy:migrate-gen2
+```
+
+This will delete old Gen1 functions and deploy the new Gen2 versions.
+
 ### Web Application
 
 ```bash
@@ -316,6 +327,15 @@ npm run build
 cd ..
 firebase deploy --only functions
 ```
+
+### All-in-One Deployment
+
+Deploy everything (hosting, storage, firestore rules, functions):
+```bash
+npm run deploy
+```
+
+For troubleshooting, see [DEPLOYMENT_TROUBLESHOOTING.md](DEPLOYMENT_TROUBLESHOOTING.md).
 
 ### Custom Domain
 

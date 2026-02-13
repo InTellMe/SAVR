@@ -6,6 +6,7 @@
     "deploy": "npm run build --prefix web && firebase deploy --only hosting,storage,firestore && firebase deploy --only functions",
     "deploy:hosting": "npm run build --prefix web && firebase deploy --only hosting",
     "deploy:functions": "firebase deploy --only functions",
+    "deploy:migrate-gen2": "firebase functions:delete analyzeImage createGroceryList chat stripeWebhook --region us-central1 --force && firebase deploy --only functions",
     "deploy:delete-functions": "firebase functions:delete analyzeImage createRecipe createMealPlan createGroceryList chat createStripeCheckout stripeWebhook createStripePortal uploadLabelingImage getImageAnnotations saveAnnotation triggerSegmentation exportDataset --region us-central1 --force"
   },
   "repository": {
