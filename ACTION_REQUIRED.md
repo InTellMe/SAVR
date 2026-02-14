@@ -40,7 +40,7 @@ Copy this checklist and check off as you add each secret:
 
 ### Application Secrets (Web App)
 - [ ] `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Get from: Stripe Dashboard → API Keys
-- [ ] `NEXT_PUBLIC_APP_URL` - Set to: `https://www.SAVR.cam` (or your domain)
+- [ ] `NEXT_PUBLIC_APP_URL` - Set to: `https://savr.cam` (or your domain)
 
 ### Mobile Build Secrets (Optional - only if deploying mobile app)
 - [ ] `EXPO_TOKEN` - Get from: https://expo.dev/accounts/[account]/settings/access-tokens
@@ -72,7 +72,7 @@ firebase login:ci
 3. Copy "Publishable key" (pk_live_... or pk_test_...)
 
 ### App URL
-- Use your production domain: `https://www.SAVR.cam`
+- Use your production domain: `https://savr.cam`
 
 ---
 

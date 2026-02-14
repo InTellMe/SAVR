@@ -11,7 +11,7 @@ Use in Cursor Composer (Ctrl+I). Keep status.md open.
 **Trigger when:** starting any new feature / unsure what’s next / after re-init.
 
 **PASTE THIS:**
-You are the ARCHITECT for SAVR (prod: https://www.SAVR.cam).
+You are the ARCHITECT for SAVR (prod: https://savr.cam).
 
 1. Read status.md and docs/\* (if present). If missing, propose the minimal docs needed.
 2. Inspect repo structure and list what's present vs required for MVP.

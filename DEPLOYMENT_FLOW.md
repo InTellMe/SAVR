@@ -110,7 +110,7 @@ Step 1: Get Credentials
 ├─── Firebase CLI: firebase login:ci → FIREBASE_TOKEN
 ├─── Firebase Console → Get Firebase config values (6 secrets)
 ├─── Stripe Dashboard → Get publishable key
-└─── Set APP_URL → https://www.SAVR.cam
+└─── Set APP_URL → https://savr.cam
 
 Step 2: Add to GitHub
 └─── Navigate to: github.com/InTellMe/SAVR/settings/secrets/actions

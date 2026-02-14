@@ -37,7 +37,7 @@ SAVR is an AI-powered food management platform that helps you manage your pantry
 - **Framework**: Next.js 16 with TypeScript
 - **Styling**: Tailwind CSS 4
 - **Backend**: Firebase (Auth, Firestore, Cloud Functions, Storage)
-- **Hosting**: Firebase Hosting at www.SAVR.cam
+- **Hosting**: Firebase Hosting at savr.cam
 - **Key Feature**: Photo upload for pantry/fridge inventory management
 
 ### Mobile Application (`/mobile`)
@@ -345,7 +345,7 @@ For troubleshooting, see [DEPLOYMENT_TROUBLESHOOTING.md](DEPLOYMENT_TROUBLESHOOT
 
 ### Custom Domain
 
-Configure `www.SAVR.cam` in Firebase Hosting settings.
+Configure `savr.cam` in Firebase Hosting settings with www redirect.
 
 ### Mobile App - Google Play Store Deployment
 
@@ -458,7 +458,7 @@ Proprietary - © 2026 InTellMe. All rights reserved.
 
 ## 🔗 Links
 
-- **Production**: https://www.SAVR.cam
+- **Production**: https://savr.cam
 - **InTellMe**: https://intellmeai.com
 - **Documentation**: See `/web/docs` and `/mobile/docs`
 

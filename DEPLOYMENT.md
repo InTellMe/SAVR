@@ -6,7 +6,7 @@ This guide covers deploying the SAVR application to production.
 
 - Firebase project created and configured
 - Firebase CLI installed: `npm install -g firebase-tools`
-- Domain configured: www.SAVR.cam
+- Domain configured: savr.cam (with www redirect)
 - API keys obtained:
   - OpenAI API key
   - Google Cloud Vision API (optional, for fallback)
@@ -28,7 +28,7 @@ This guide covers deploying the SAVR application to production.
 1. Go to Authentication → Sign-in methods
 2. Enable Email/Password
 3. Enable Google
-4. Add authorized domains: `www.SAVR.cam`, `SAVR.cam`
+4. Add authorized domains: `savr.cam`, `www.savr.cam`
 
 **Firestore:**
 
@@ -102,7 +102,7 @@ NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_secret
 
 # App
-NEXT_PUBLIC_APP_URL=https://www.SAVR.cam
+NEXT_PUBLIC_APP_URL=https://savr.cam
 ```
 
 ### 2.2 Cloud Functions
@@ -118,7 +118,7 @@ Cloud Functions read `process.env`. Set these **once** in Google Cloud (the depl
 | `OPENAI_API_KEY`        | OpenAI API                                      |
 | `STRIPE_SECRET_KEY`     | Stripe API                                      |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook verification                     |
-| `NEXT_PUBLIC_APP_URL`   | Redirect/base URL (e.g. `https://www.SAVR.cam`) |
+| `NEXT_PUBLIC_APP_URL`   | Redirect/base URL (e.g. `https://savr.cam`) |
 
 **Optional (have defaults in code):** `OPENAI_MODEL_*`, `OPENAI_MODEL_VISION_*`, etc. (see `functions/src/services/ai.ts`).
 
@@ -207,14 +207,14 @@ A workflow in `.github/workflows/firebase-deploy.yml` deploys Hosting, Functions
 
 **Note:** Cloud Functions environment variables are **not** set by the workflow. Configure them once in Google Cloud Console (see Step 2.2).
 
-## Step 7: Configure Custom Domain (www.SAVR.cam)
+## Step 7: Configure Custom Domain (savr.cam)
 
 ### 7.1 Add custom domain in Firebase
 
 1. Go to Firebase Console → Hosting
 2. Click "Add custom domain" (or "Connect domain")
-3. Enter: `www.SAVR.cam`
-4. If offered, add root `SAVR.cam` as well (redirect to www recommended)
+3. Enter: `savr.cam` (primary domain)
+4. Add `www.savr.cam` as well (automatically redirects to primary)
 
 ### 7.2 DNS records
 
@@ -282,7 +282,7 @@ Firebase provisions SSL automatically. Propagation can take from a few minutes u
 
 ### 9.1 Test Web Application
 
-1. Visit `https://www.SAVR.cam`
+1. Visit `https://savr.cam` (or `https://www.savr.cam` - should redirect)
 2. Sign up with a test account
 3. Upload a test image
 4. Generate a recipe
@@ -436,7 +436,7 @@ firebase deploy --only functions:analyzeImage
 
 ### Domain Not Working
 
-1. Check DNS propagation: `dig www.SAVR.cam`
+1. Check DNS propagation: `dig savr.cam` or `dig www.savr.cam`
 2. Verify in Firebase Console
 3. Wait up to 24 hours for SSL certificate
 
