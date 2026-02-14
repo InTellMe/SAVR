@@ -80,6 +80,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
+          set -euo pipefail
           echo "::group::Configuring Firebase Authentication"
 
           # Method 1: Firebase Token (preferred - authenticates as project user,
@@ -95,6 +96,11 @@ jobs:
             SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
             printf '%s\n' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$SERVICE_ACCOUNT_PATH"
             chmod 600 "$SERVICE_ACCOUNT_PATH"
+            # Validate service account file was written successfully
+            if [ ! -s "$SERVICE_ACCOUNT_PATH" ]; then
+              echo "::error::Service account file is empty or does not exist"
+              exit 1
+            fi
             echo "GOOGLE_APPLICATION_CREDENTIALS=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
             echo "SERVICE_ACCOUNT_PATH=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
             echo "✓ Service account credentials configured"
@@ -103,6 +109,52 @@ jobs:
             echo "::error::No Firebase authentication configured."
             echo "Set FIREBASE_TOKEN or FIREBASE_SERVICE_ACCOUNT_JSON in GitHub Secrets."
             exit 1
+          fi
+
+          echo "::endgroup::"
+
+      - name: Delete Deprecated Functions
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          echo "::group::Deleting deprecated Firebase functions"
+
+          # CI-safe deletion: Firebase deploy aborts in non-interactive mode when
+          # functions exist remotely but not in source. Delete explicitly with --force.
+          DELETE_ARGS=(
+            functions:delete
+            createStripeCheckout
+            --region us-central1
+            --force
+            --non-interactive
+          )
+
+          if [ -n "${FIREBASE_PROJECT_ID:-}" ]; then
+            DELETE_ARGS+=(--project "$FIREBASE_PROJECT_ID")
+            echo "Using project: $FIREBASE_PROJECT_ID"
+          fi
+
+          # Token auth: pass via --token flag
+          if [ -n "${FIREBASE_TOKEN:-}" ]; then
+            echo "✓ Using token-based authentication"
+            DELETE_ARGS+=(--token "$FIREBASE_TOKEN")
+          elif [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
+            echo "✓ Using service account authentication"
+          fi
+
+          # Delete function, continue if it doesn't exist (exit code 1)
+          echo "Executing: firebase functions:delete createStripeCheckout --region us-central1 --force --non-interactive"
+          if firebase "${DELETE_ARGS[@]}"; then
+            echo "✓ Function deleted successfully"
+          else
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 1 ]; then
+              echo "⚠ Function does not exist or already deleted (non-fatal)"
+            else
+              echo "::error::Function deletion failed with exit code $EXIT_CODE"
+              exit $EXIT_CODE
+            fi
           fi
 
           echo "::endgroup::"
