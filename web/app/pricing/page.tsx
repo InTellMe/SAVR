@@ -34,7 +34,7 @@ export default function PricingPage() {
   useEffect(() => {
     if (!user || hasActiveSub) return;
 
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout | undefined;
     
     // Use MutationObserver to efficiently detect when stripe-pricing-table is added
     const observer = new MutationObserver(() => {
@@ -42,7 +42,7 @@ export default function PricingPage() {
       if (table) {
         setStripeTableLoaded(true);
         observer.disconnect();
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
       }
     });
 
