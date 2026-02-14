@@ -13,6 +13,7 @@ export default function PricingPage() {
   const router = useRouter();
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
+  const [stripeTableLoaded, setStripeTableLoaded] = useState(false);
 
   const tier = userData?.subscriptionTier;
   const status = userData?.subscriptionStatus;
@@ -28,6 +29,47 @@ export default function PricingPage() {
       }
     }
   }, [user, router]);
+
+  // Monitor for Stripe pricing table loading using MutationObserver
+  useEffect(() => {
+    if (!user || hasActiveSub) return;
+
+    let timeoutId: NodeJS.Timeout | undefined;
+    
+    // Use MutationObserver to efficiently detect when stripe-pricing-table is added
+    const observer = new MutationObserver(() => {
+      const table = document.querySelector('stripe-pricing-table');
+      if (table) {
+        setStripeTableLoaded(true);
+        observer.disconnect();
+        if (timeoutId) clearTimeout(timeoutId);
+      }
+    });
+
+    // Start observing the document for child additions
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Check immediately in case table is already present
+    const table = document.querySelector('stripe-pricing-table');
+    if (table) {
+      setStripeTableLoaded(true);
+      observer.disconnect();
+    } else {
+      // Set timeout to show error if table doesn't load within 10 seconds
+      timeoutId = setTimeout(() => {
+        const tableCheck = document.querySelector('stripe-pricing-table');
+        if (!tableCheck) {
+          setError('Unable to load pricing table. Please check your internet connection and refresh the page.');
+        }
+        observer.disconnect();
+      }, 10000);
+    }
+
+    return () => {
+      observer.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [user, hasActiveSub]);
 
   async function handleManageBilling() {
     if (!user) {
@@ -59,6 +101,17 @@ export default function PricingPage() {
 
   const pricingTableId = process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID || '';
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+
+  // Validate Stripe configuration
+  const stripeConfigured = pricingTableId && publishableKey;
+  
+  // Helper to generate missing env vars message
+  const getMissingEnvVars = () => {
+    const missing = [];
+    if (!pricingTableId) missing.push('NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID');
+    if (!publishableKey) missing.push('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+    return missing.join(', ');
+  };
 
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>
@@ -146,7 +199,37 @@ export default function PricingPage() {
                 </button>
               </div>
             )}
-            {user && (
+            {user && !stripeConfigured && (
+              <div className="max-w-2xl mx-auto mb-8 px-6 py-8 rounded-xl text-center" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
+                  <svg className="w-8 h-8" fill="none" stroke="#f87171" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Configuration Error</h3>
+                <p className="text-[#f87171] mb-4">
+                  The pricing table cannot be displayed because Stripe is not configured.
+                </p>
+                <p className="text-sm text-[#9ca3c2] mb-6">
+                  Missing environment variables: {getMissingEnvVars()}
+                </p>
+                <div className="text-left bg-black/30 rounded-lg p-4 text-xs font-mono text-[#9ca3c2]">
+                  <p className="mb-2">For administrators:</p>
+                  <p>1. Set GitHub Secrets in repository settings</p>
+                  <p>2. Redeploy the application</p>
+                  <p>3. See MANUAL_STEPS_REQUIRED.md for details</p>
+                </div>
+              </div>
+            )}
+            {user && stripeConfigured && !stripeTableLoaded && (
+              <div className="max-w-2xl mx-auto mb-8 text-center">
+                <div className="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-xl" style={{ background: 'rgba(0, 212, 255, 0.06)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
+                  <div className="w-5 h-5 border-2 border-[#00d4ff] border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[#00d4ff] font-medium">Loading pricing options...</span>
+                </div>
+              </div>
+            )}
+            {user && stripeConfigured && (
               <script
                 dangerouslySetInnerHTML={{
                   __html: `
