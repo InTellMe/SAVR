@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { isPaidTier } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 
-const APP_URL = 'https://www.SAVR.cam';
+const APP_URL = 'https://savr.cam';
 
 export default function ProfileScreen() {
   const { user, userData, signOut } = useAuth();

@@ -156,7 +156,7 @@ Jobs: 0 (none executed)
 4. Should see: Multiple jobs executed (not 0)
 
 ### Step 2: Verify Production Site
-1. Visit production URL (e.g., https://www.SAVR.cam)
+1. Visit production URL (e.g., https://savr.cam)
 2. Navigate to `/faq` - Should load new FAQ page
 3. Check pricing page - Should show "Start 5-Day Free Trial" button
 4. Test subscription flow - Should include 5-day trial period

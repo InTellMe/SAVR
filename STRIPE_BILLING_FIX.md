@@ -79,7 +79,7 @@ const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
 if (!appBaseUrl) {
   console.warn('NEXT_PUBLIC_APP_URL not set, using fallback URL for billing portal return');
 }
-const baseUrl = appBaseUrl || 'https://www.SAVR.cam';
+const baseUrl = appBaseUrl || 'https://savr.cam';
 const resolvedReturnUrl = returnUrl || `${baseUrl}/settings`;
 ```
 
@@ -134,7 +134,7 @@ This configuration applies to **both** the direct link and the integrated portal
 After deployment, verify both fixes work:
 
 ### Test Pricing Table
-1. Log into SAVR at https://www.SAVR.cam
+1. Log into SAVR at https://savr.cam
 2. Navigate to `/pricing`
 3. If you **don't have** an active subscription:
    - ✅ You should see the Stripe Pricing Table
@@ -171,7 +171,7 @@ Ensure these secrets are set in GitHub Actions:
 
 **Required for Billing Portal:**
 - ✅ `STRIPE_SECRET_KEY` - Your Stripe secret key (set as Firebase Function secret)
-- ✅ `NEXT_PUBLIC_APP_URL` - Your production URL (https://www.SAVR.cam)
+- ✅ `NEXT_PUBLIC_APP_URL` - Your production URL (https://savr.cam)
 
 To set Firebase Function secrets:
 ```bash

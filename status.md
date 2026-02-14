@@ -6,7 +6,7 @@ Environment & Deployment Setup
 
 ## Production URL:
 
-https://www.SAVR.cam
+https://savr.cam
 
 ## Stack:
 
@@ -32,7 +32,7 @@ https://www.SAVR.cam
 
 ## Next Step:
 
-Deploy web app + Cloud Functions to a new Firebase project and wire environment variables for SAVR production (https://www.SAVR.cam), then run end-to-end smoke tests for auth, inventory, recipes, meal plans, grocery lists, chat, and Stripe subscription flows.
+Deploy web app + Cloud Functions to a new Firebase project and wire environment variables for SAVR production (https://savr.cam), then run end-to-end smoke tests for auth, inventory, recipes, meal plans, grocery lists, chat, and Stripe subscription flows.
 
 ## Risks:
 

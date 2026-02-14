@@ -84,7 +84,7 @@ These secrets are **required at build time** for the Next.js static export:
 | Secret Name | Purpose | Where to Find |
 |------------|---------|---------------|
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe public key | Stripe Dashboard → Developers → API Keys |
-| `NEXT_PUBLIC_APP_URL` | Production URL | `https://www.SAVR.cam` or your domain |
+| `NEXT_PUBLIC_APP_URL` | Production URL | `https://savr.cam` or your domain |
 
 ---
 

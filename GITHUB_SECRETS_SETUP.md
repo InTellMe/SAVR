@@ -226,7 +226,7 @@ These Firebase config values are **public** and will be visible in browser JavaS
 
 #### Secret 11: NEXT_PUBLIC_APP_URL
 - **Name**: `NEXT_PUBLIC_APP_URL`
-- **Value**: Your production URL (e.g., `https://www.SAVR.cam`)
+- **Value**: Your production URL (e.g., `https://savr.cam`)
 - **Used by**: `firebase-deploy.yml` workflow
 - **Sensitive**: ❌ No - public config
 
@@ -407,7 +407,7 @@ Use this checklist to verify setup:
 | **NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID** | Both workflows | Firebase Web Config | ❌ No | `123456789012` |
 | **NEXT_PUBLIC_FIREBASE_APP_ID** | Both workflows | Firebase Web Config | ❌ No | `1:123:web:abc` |
 | **NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** | firebase-deploy.yml | Stripe Dashboard | ❌ No | `pk_live_...` or `pk_test_...` |
-| **NEXT_PUBLIC_APP_URL** | firebase-deploy.yml | Your Domain | ❌ No | `https://www.SAVR.cam` |
+| **NEXT_PUBLIC_APP_URL** | firebase-deploy.yml | Your Domain | ❌ No | `https://savr.cam` |
 
 **Total: 12 GitHub Secrets Required**
 
@@ -453,7 +453,7 @@ Or add to your local `.env` file (based on `.env.example`):
 | **STRIPE_SECRET_KEY** | ✅ Yes | ✅ Yes | Stripe secret key for payments | `sk_live_...` or `sk_test_...` |
 | **STRIPE_WEBHOOK_SECRET** | ✅ Yes | ✅ Yes | Stripe webhook signing secret | `whsec_...` |
 | **NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID** | ✅ Yes | ❌ No | Stripe Pricing Table ID for subscription UI | `prctbl_...` |
-| **NEXT_PUBLIC_APP_URL** | ✅ Yes | ❌ No | Base URL for Stripe redirects | `https://www.SAVR.cam` |
+| **NEXT_PUBLIC_APP_URL** | ✅ Yes | ❌ No | Base URL for Stripe redirects | `https://savr.cam` |
 | **All NEXT_PUBLIC_FIREBASE_*** | ✅ Yes | ❌ No | Firebase config (inherited from build) | See above |
 
 **Note**: The NEXT_PUBLIC_* variables are also needed at build time (via GitHub secrets) and are automatically included in the deployed application.

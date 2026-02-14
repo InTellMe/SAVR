@@ -448,7 +448,7 @@ This is a proprietary SaaS product by InTellMe. Internal team only.
 ## 📞 Support & Contact
 
 - **Repository**: https://github.com/InTellMe/SAVR
-- **Production URL**: https://www.SAVR.cam (pending deployment)
+- **Production URL**: https://savr.cam (pending deployment)
 - **Company**: InTellMe
 - **Principles**: Integrity, Transparency, Independence, Progress
 
