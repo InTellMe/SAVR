@@ -83,6 +83,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   // Prefer client_reference_id from Pricing Table, while keeping metadata fallback.
   const claimedUserId = session.client_reference_id || session.metadata?.userId;
 
+  // Reject webhook if no user ID is provided
+  if (!claimedUserId) {
+    console.error('No user ID found in checkout session - rejecting webhook');
+    return;
+  }
+
   // SECURITY: Validate that the checkout session's customer email matches the user's email
   // This prevents account takeover where a malicious user could modify client_reference_id
   // to point to a different user's account before checkout
