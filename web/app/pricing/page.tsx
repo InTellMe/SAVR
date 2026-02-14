@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
@@ -13,7 +13,7 @@ export default function PricingPage() {
   const router = useRouter();
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
-  const [stripeTableLoaded, setStripeTableLoaded] = useState(false);
+  const pricingTableRef = useRef<HTMLDivElement>(null);
 
   const tier = userData?.subscriptionTier;
   const status = userData?.subscriptionStatus;
@@ -30,46 +30,32 @@ export default function PricingPage() {
     }
   }, [user, router]);
 
-  // Monitor for Stripe pricing table loading using MutationObserver
+  // Get Stripe configuration from environment variables
+  const pricingTableId = process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID || '';
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+  const stripeConfigured = pricingTableId && publishableKey;
+
+  // Inject Stripe pricing table when ready - Official Stripe integration method
   useEffect(() => {
-    if (!user || hasActiveSub) return;
-
-    let timeoutId: NodeJS.Timeout | undefined;
-    
-    // Use MutationObserver to efficiently detect when stripe-pricing-table is added
-    const observer = new MutationObserver(() => {
-      const table = document.querySelector('stripe-pricing-table');
-      if (table) {
-        setStripeTableLoaded(true);
-        observer.disconnect();
-        if (timeoutId) clearTimeout(timeoutId);
-      }
-    });
-
-    // Start observing the document for child additions
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // Check immediately in case table is already present
-    const table = document.querySelector('stripe-pricing-table');
-    if (table) {
-      setStripeTableLoaded(true);
-      observer.disconnect();
-    } else {
-      // Set timeout to show error if table doesn't load within 10 seconds
-      timeoutId = setTimeout(() => {
-        const tableCheck = document.querySelector('stripe-pricing-table');
-        if (!tableCheck) {
-          setError('Unable to load pricing table. Please check your internet connection and refresh the page.');
-        }
-        observer.disconnect();
-      }, 10000);
+    if (!user || hasActiveSub || !stripeConfigured || !pricingTableRef.current) {
+      return;
     }
 
-    return () => {
-      observer.disconnect();
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [user, hasActiveSub]);
+    // Check if pricing table already exists to avoid duplicates
+    const existingTable = pricingTableRef.current.querySelector('stripe-pricing-table');
+    if (existingTable) {
+      return; // Table already injected
+    }
+
+    // Create stripe-pricing-table element
+    const table = document.createElement('stripe-pricing-table');
+    table.setAttribute('pricing-table-id', pricingTableId);
+    table.setAttribute('publishable-key', publishableKey);
+    table.setAttribute('client-reference-id', user.uid);
+
+    // Append to container
+    pricingTableRef.current.appendChild(table);
+  }, [user, hasActiveSub, stripeConfigured, pricingTableId, publishableKey]);
 
   async function handleManageBilling() {
     if (!user) {
@@ -99,12 +85,6 @@ export default function PricingPage() {
     }
   }
 
-  const pricingTableId = process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID || '';
-  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
-
-  // Validate Stripe configuration
-  const stripeConfigured = pricingTableId && publishableKey;
-  
   // Helper to generate missing env vars message
   const getMissingEnvVars = () => {
     const missing = [];
@@ -117,7 +97,7 @@ export default function PricingPage() {
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
 
-      {/* Load Stripe Pricing Table script */}
+      {/* Load Stripe Pricing Table script - Stripe's official integration */}
       <Script
         async
         src="https://js.stripe.com/v3/pricing-table.js"
@@ -221,29 +201,8 @@ export default function PricingPage() {
                 </div>
               </div>
             )}
-            {user && stripeConfigured && !stripeTableLoaded && (
-              <div className="max-w-2xl mx-auto mb-8 text-center">
-                <div className="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-xl" style={{ background: 'rgba(0, 212, 255, 0.06)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
-                  <div className="w-5 h-5 border-2 border-[#00d4ff] border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-[#00d4ff] font-medium">Loading pricing options...</span>
-                </div>
-              </div>
-            )}
             {user && stripeConfigured && (
-              <script
-                dangerouslySetInnerHTML={{
-                  __html: `
-                    (function() {
-                      const userId = ${JSON.stringify(user.uid)};
-                      const table = document.createElement('stripe-pricing-table');
-                      table.setAttribute('pricing-table-id', ${JSON.stringify(pricingTableId)});
-                      table.setAttribute('publishable-key', ${JSON.stringify(publishableKey)});
-                      table.setAttribute('client-reference-id', userId);
-                      document.currentScript.parentNode.insertBefore(table, document.currentScript);
-                    })();
-                  `,
-                }}
-              />
+              <div ref={pricingTableRef} className="w-full" />
             )}
           </div>
         )}
