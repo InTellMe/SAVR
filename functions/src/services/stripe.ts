@@ -139,6 +139,15 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       ? session.customer
       : (session.customer as Stripe.Customer | null)?.id ?? null;
 
+  // CRITICAL: Stripe customer ID is required for billing portal access
+  if (!stripeCustomerId) {
+    console.error(
+      `No Stripe customer ID in checkout session ${session.id} for user ${claimedUserId}. ` +
+      `Customer will not be able to access billing portal. Rejecting webhook.`
+    );
+    return;
+  }
+
   let userId = claimedUserId;
 
   // Never trust client-provided user IDs alone; verify against server-trusted customer identity.
@@ -209,7 +218,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     });
   }
 
-  console.log(`Successfully processed checkout for user ${userId} with email ${userEmail}`);
+  console.log(
+    `Successfully processed checkout for user ${userId} with email ${userEmail}. ` +
+    `Stripe customer ID: ${stripeCustomerId}, Subscription tier: ${tier}`
+  );
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
@@ -218,14 +230,20 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
   const internalStatus = mapStripeStatus(subscription.status);
 
   let resolvedUserId = userId;
+  
+  // Extract customer ID from subscription
+  const customerId =
+    typeof subscription.customer === 'string'
+      ? subscription.customer
+      : (subscription.customer as Stripe.Customer)?.id;
+
+  if (!customerId) {
+    console.error('No customer ID in subscription update event');
+    return;
+  }
 
   if (!resolvedUserId) {
     // Try to find user by customer ID
-    const customerId =
-      typeof subscription.customer === 'string'
-        ? subscription.customer
-        : (subscription.customer as Stripe.Customer)?.id;
-
     const usersSnapshot = await db
       .collection('users')
       .where('stripeCustomerId', '==', customerId)
@@ -233,7 +251,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
       .get();
 
     if (usersSnapshot.empty) {
-      console.error('No user found for subscription update');
+      console.error(`No user found for subscription update with customer ID ${customerId}`);
       return;
     }
 
@@ -245,9 +263,11 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
   const priceId = subscription.items?.data?.[0]?.price?.id;
   const tier = priceId ? await getTierFromPrice(priceId) : 'basic';
 
+  // Update user subscription including customer ID (in case it was missing)
   await updateUserSubscription(resolvedUserId, {
     subscriptionTier: tier,
     subscriptionStatus: internalStatus,
+    stripeCustomerId: customerId,
   });
 
   await upsertUserSubscriptionRecord(resolvedUserId, {
@@ -255,17 +275,32 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
     subscriptionId: subscription.id,
     status: internalStatus,
   });
+  
+  console.log(
+    `Successfully processed subscription update for user ${resolvedUserId}. ` +
+    `Stripe customer ID: ${customerId}, Status: ${internalStatus}, Tier: ${tier}`
+  );
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+  const customerId =
+    typeof subscription.customer === 'string'
+      ? subscription.customer
+      : (subscription.customer as Stripe.Customer)?.id;
+      
+  if (!customerId) {
+    console.error('No customer ID in subscription deletion event');
+    return;
+  }
+  
   const usersSnapshot = await db
     .collection('users')
-    .where('stripeCustomerId', '==', subscription.customer)
+    .where('stripeCustomerId', '==', customerId)
     .limit(1)
     .get();
   
   if (usersSnapshot.empty) {
-    console.error('No user found for subscription deletion');
+    console.error(`No user found for subscription deletion with customer ID ${customerId}`);
     return;
   }
 
@@ -283,17 +318,32 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
     status: 'cancelled',
     endDate: new Date(),
   });
+  
+  console.log(
+    `Successfully processed subscription deletion for user ${userId}. ` +
+    `Stripe customer ID: ${customerId}`
+  );
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+  const customerId =
+    typeof invoice.customer === 'string'
+      ? invoice.customer
+      : (invoice.customer as Stripe.Customer | Stripe.DeletedCustomer)?.id;
+      
+  if (!customerId) {
+    console.error('No customer ID in payment failure event');
+    return;
+  }
+  
   const usersSnapshot = await db
     .collection('users')
-    .where('stripeCustomerId', '==', invoice.customer)
+    .where('stripeCustomerId', '==', customerId)
     .limit(1)
     .get();
   
   if (usersSnapshot.empty) {
-    console.error('No user found for payment failure');
+    console.error(`No user found for payment failure with customer ID ${customerId}`);
     return;
   }
 
@@ -321,6 +371,11 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     subscriptionId: subscriptionId ?? undefined,
     status: 'past_due',
   });
+  
+  console.log(
+    `Successfully processed payment failure for user ${userId}. ` +
+    `Stripe customer ID: ${customerId}`
+  );
 }
 
 function mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
