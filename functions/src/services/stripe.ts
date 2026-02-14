@@ -86,9 +86,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   // SECURITY: Validate that the checkout session's customer email matches the user's email
   // This prevents account takeover where a malicious user could modify client_reference_id
   // to point to a different user's account before checkout
-  const userDoc = await db.collection('users').doc(userId).get();
+  const userDoc = await db.collection('users').doc(claimedUserId).get();
   if (!userDoc.exists) {
-    console.error(`User ${userId} not found in Firestore - rejecting checkout webhook`);
+    console.error(`User ${claimedUserId} not found in Firestore - rejecting checkout webhook`);
     return;
   }
 
@@ -96,7 +96,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   const userEmail = userData?.email;
 
   if (!userEmail) {
-    console.error(`User ${userId} has no email in Firestore - rejecting checkout webhook`);
+    console.error(`User ${claimedUserId} has no email in Firestore - rejecting checkout webhook`);
     return;
   }
 
