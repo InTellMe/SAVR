@@ -92,7 +92,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   // This prevents account takeover where a malicious user could modify client_reference_id
   // to point to a different user's account before checkout
   const userDoc = await db.collection('users').doc(userId).get();
-  
   if (!userDoc.exists) {
     console.error(`User ${userId} not found in Firestore - rejecting checkout webhook`);
     return;
@@ -108,7 +107,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
   // Get the customer email from the Stripe session
   let sessionEmail: string | null = null;
-  
   if (session.customer_details?.email) {
     sessionEmail = session.customer_details.email;
   } else if (session.customer) {
