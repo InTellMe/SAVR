@@ -20,7 +20,7 @@ export default function PricingPage() {
   const isBasic = hasActiveSub && (tier === 'basic' || tier === 'free');
   const isPro = hasActiveSub && (tier === 'pro' || tier === 'plus' || tier === 'premium');
 
-  async function handleStripeSubscribe(priceId: string) {
+  async function handleSelectPlan(priceId: string) {
     if (!user) {
       router.push('/sign-in');
       return;
@@ -28,18 +28,31 @@ export default function PricingPage() {
     setLoading(true);
     setError('');
     try {
-      const createStripeCheckout = httpsCallable(functions, 'createStripeCheckout');
-      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-      const result = await createStripeCheckout({
-        priceId,
-        successUrl: `${appBaseUrl}/dashboard?stripeSuccess=true`,
-        cancelUrl: `${appBaseUrl}/pricing?stripeCancelled=true`,
-      });
-      const data = result.data as { url: string };
-      window.location.href = data.url;
+      if (hasActiveSub) {
+        // User already has an active subscription — change plan in-place (no duplicate)
+        const changeStripeSubscription = httpsCallable(functions, 'changeStripeSubscription');
+        await changeStripeSubscription({ newPriceId: priceId });
+        router.push('/dashboard?stripeSuccess=true');
+      } else {
+        // New subscriber — create checkout session with 5-day trial
+        const createStripeCheckout = httpsCallable(functions, 'createStripeCheckout');
+        const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        const result = await createStripeCheckout({
+          priceId,
+          successUrl: `${appBaseUrl}/dashboard?stripeSuccess=true`,
+          cancelUrl: `${appBaseUrl}/pricing?stripeCancelled=true`,
+        });
+        const data = result.data as { url: string };
+        window.location.href = data.url;
+      }
     } catch (err) {
-      console.error('Stripe checkout error:', err);
-      setError('Failed to start checkout. Please try again.');
+      console.error('Subscription error:', err);
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('already on this plan')) {
+        setError('You are already on this plan.');
+      } else {
+        setError('Failed to process subscription. Please try again.');
+      }
       setLoading(false);
     }
   }
@@ -210,7 +223,7 @@ export default function PricingPage() {
               </div>
 
               <button
-                onClick={() => handleStripeSubscribe(billingCycle === 'monthly' ? plan.monthlyPriceId : plan.yearlyPriceId)}
+                onClick={() => handleSelectPlan(billingCycle === 'monthly' ? plan.monthlyPriceId : plan.yearlyPriceId)}
                 disabled={plan.isCurrent || loading}
                 className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-200 mb-2 ${
                   plan.isCurrent
@@ -223,11 +236,22 @@ export default function PricingPage() {
                     : { background: 'rgba(255, 255, 255, 0.06)', color: '#e8eaf6', border: '1px solid rgba(255, 255, 255, 0.1)' }
                 }
               >
-                {loading ? 'Processing...' : plan.isCurrent ? 'Current Plan' : 'Start 5-Day Free Trial'}
+                {loading
+                  ? 'Processing...'
+                  : plan.isCurrent
+                    ? 'Current Plan'
+                    : hasActiveSub
+                      ? `Switch to ${plan.name}`
+                      : 'Start 5-Day Free Trial'}
               </button>
-              {!plan.isCurrent && (
+              {!plan.isCurrent && !hasActiveSub && (
                 <p className="text-xs text-center mb-6" style={{ color: '#6b7294' }}>
                   No charge for 5 days. Cancel anytime.
+                </p>
+              )}
+              {!plan.isCurrent && hasActiveSub && (
+                <p className="text-xs text-center mb-6" style={{ color: '#6b7294' }}>
+                  Prorated billing. Changes take effect immediately.
                 </p>
               )}
               {plan.isCurrent && <div className="mb-6" />}

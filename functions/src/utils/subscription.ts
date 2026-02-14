@@ -142,17 +142,18 @@ export async function updateUserSubscription(
     subscriptionStatus?: SubscriptionStatus;
     stripeCustomerId?: string | null;
     paypalSubscriptionId?: string | null;
+    trialEndsAt?: Date | null;
   }
 ): Promise<void> {
   const updateData: Record<string, unknown> = {
     updatedAt: new Date(),
   };
 
-  if (updates.subscriptionTier) {
+  if (updates.subscriptionTier !== undefined) {
     updateData.subscriptionTier = updates.subscriptionTier;
   }
 
-  if (updates.subscriptionStatus) {
+  if (updates.subscriptionStatus !== undefined) {
     updateData.subscriptionStatus = updates.subscriptionStatus;
   }
 
@@ -162,6 +163,10 @@ export async function updateUserSubscription(
 
   if (Object.prototype.hasOwnProperty.call(updates, 'paypalSubscriptionId')) {
     updateData.paypalSubscriptionId = updates.paypalSubscriptionId ?? null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'trialEndsAt')) {
+    updateData.trialEndsAt = updates.trialEndsAt ?? null;
   }
 
   await db.collection('users').doc(userId).update(updateData);

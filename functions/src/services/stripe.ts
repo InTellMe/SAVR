@@ -12,6 +12,13 @@ const STRIPE_PRICE_ID_BASIC_YEARLY = process.env.STRIPE_PRICE_ID_BASIC_YEARLY ||
 const STRIPE_PRICE_ID_PRO_MONTHLY = process.env.STRIPE_PRICE_ID_PRO_MONTHLY || '';
 const STRIPE_PRICE_ID_PRO_YEARLY = process.env.STRIPE_PRICE_ID_PRO_YEARLY || '';
 
+const ALL_KNOWN_PRICE_IDS = new Set([
+  STRIPE_PRICE_ID_BASIC_MONTHLY,
+  STRIPE_PRICE_ID_BASIC_YEARLY,
+  STRIPE_PRICE_ID_PRO_MONTHLY,
+  STRIPE_PRICE_ID_PRO_YEARLY,
+].filter(Boolean));
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build', {
   apiVersion: '2026-01-28.clover',
 });
@@ -25,20 +32,38 @@ export async function createCheckoutSession(
   // Get or create Stripe customer
   const userDoc = await db.collection('users').doc(userId).get();
   const userData = userDoc.data();
-  
+
   let customerId = userData?.stripeCustomerId;
-  
+
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: userData?.email,
       metadata: { userId },
     });
     customerId = customer.id;
-    
+
     // Save customer ID
     await db.collection('users').doc(userId).update({
       stripeCustomerId: customerId,
     });
+  }
+
+  // Check for an existing active subscription on this customer.
+  // If one exists, the user should use changeSubscription() instead to avoid duplicates.
+  const existingSubs = await stripe.subscriptions.list({
+    customer: customerId,
+    status: 'active',
+    limit: 1,
+  });
+  const trialingSubs = await stripe.subscriptions.list({
+    customer: customerId,
+    status: 'trialing',
+    limit: 1,
+  });
+  if (existingSubs.data.length > 0 || trialingSubs.data.length > 0) {
+    throw new Error(
+      'You already have an active subscription. Please use the upgrade/downgrade option or manage your subscription from Settings.'
+    );
   }
 
   const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
@@ -71,6 +96,84 @@ export async function createCheckoutSession(
   });
 
   return session.url || '';
+}
+
+/**
+ * Change an existing subscription to a different price/plan.
+ * Uses Stripe's proration to handle billing fairly.
+ * This prevents duplicate subscriptions when upgrading or downgrading.
+ */
+export async function changeSubscription(
+  userId: string,
+  newPriceId: string
+): Promise<{ subscriptionId: string; tier: SubscriptionTierName }> {
+  const userDoc = await db.collection('users').doc(userId).get();
+  const userData = userDoc.data();
+
+  if (!userData?.stripeCustomerId) {
+    throw new Error('No Stripe customer found. Please subscribe first.');
+  }
+
+  // Find the user's current active or trialing subscription
+  const activeSubs = await stripe.subscriptions.list({
+    customer: userData.stripeCustomerId,
+    status: 'active',
+    limit: 5,
+  });
+  const trialSubs = await stripe.subscriptions.list({
+    customer: userData.stripeCustomerId,
+    status: 'trialing',
+    limit: 5,
+  });
+  const allSubs = [...activeSubs.data, ...trialSubs.data];
+
+  // Find the subscription that matches one of our known price IDs
+  let currentSub: Stripe.Subscription | null = null;
+  for (const sub of allSubs) {
+    const subPriceId = sub.items.data[0]?.price?.id;
+    if (subPriceId && ALL_KNOWN_PRICE_IDS.has(subPriceId)) {
+      currentSub = sub;
+      break;
+    }
+  }
+
+  if (!currentSub) {
+    throw new Error('No active subscription found to change.');
+  }
+
+  const currentPriceId = currentSub.items.data[0]?.price?.id;
+  if (currentPriceId === newPriceId) {
+    throw new Error('You are already on this plan.');
+  }
+
+  const newTier = tierFromPriceId(newPriceId);
+
+  // Update the subscription in-place: swap the price on the existing subscription item.
+  // Stripe automatically prorates the charge.
+  const updated = await stripe.subscriptions.update(currentSub.id, {
+    items: [
+      {
+        id: currentSub.items.data[0].id,
+        price: newPriceId,
+      },
+    ],
+    proration_behavior: 'create_prorations',
+    metadata: { userId },
+  });
+
+  // Immediately update Firestore so the user sees the change
+  await updateUserSubscription(userId, {
+    subscriptionTier: newTier,
+    subscriptionStatus: mapStripeStatus(updated.status),
+  });
+
+  await upsertUserSubscriptionRecord(userId, {
+    provider: 'stripe',
+    subscriptionId: updated.id,
+    status: mapStripeStatus(updated.status),
+  });
+
+  return { subscriptionId: updated.id, tier: newTier };
 }
 
 export async function handleStripeWebhook(
@@ -118,7 +221,7 @@ function tierFromPriceId(priceId: string | undefined): SubscriptionTierName {
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
   const userId = session.metadata?.userId;
-  
+
   if (!userId) {
     console.error('No userId in checkout session metadata');
     return;
@@ -129,18 +232,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       ? session.customer
       : (session.customer as Stripe.Customer | null)?.id ?? null;
 
-  let tier: SubscriptionTierName = 'pro';
-  if (session.subscription) {
-    const sub =
-      typeof session.subscription === 'string'
-        ? await stripe.subscriptions.retrieve(session.subscription)
-        : session.subscription;
-    const priceId = (sub as Stripe.Subscription).items?.data?.[0]?.price?.id;
-    tier = tierFromPriceId(priceId);
-  }
-
-  // Determine actual subscription status (may be 'trialing' for free trial signups)
-  let internalStatus: 'active' | 'trialing' = 'active';
+  // Retrieve the subscription once and derive tier + status from it
+  let tier: SubscriptionTierName = 'basic';
   let trialEnd: Date | null = null;
 
   if (session.subscription) {
@@ -148,27 +241,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       typeof session.subscription === 'string'
         ? await stripe.subscriptions.retrieve(session.subscription)
         : (session.subscription as Stripe.Subscription);
-    if (sub.status === 'trialing') {
-      internalStatus = 'active'; // grant full access during trial
-      if (sub.trial_end) {
-        trialEnd = new Date(sub.trial_end * 1000);
-      }
+
+    const priceId = sub.items?.data?.[0]?.price?.id;
+    tier = tierFromPriceId(priceId);
+
+    // Grant full access during trial (treat 'trialing' as 'active')
+    if (sub.status === 'trialing' && sub.trial_end) {
+      trialEnd = new Date(sub.trial_end * 1000);
     }
   }
 
-  const updatePayload: Record<string, unknown> = {
+  await updateUserSubscription(userId, {
     subscriptionTier: tier,
-    subscriptionStatus: internalStatus,
+    subscriptionStatus: 'active',
     stripeCustomerId,
-  };
-  if (trialEnd) {
-    updatePayload.trialEndsAt = trialEnd;
-  }
-
-  await updateUserSubscription(userId, updatePayload as {
-    subscriptionTier: typeof tier;
-    subscriptionStatus: typeof internalStatus;
-    stripeCustomerId: typeof stripeCustomerId;
+    ...(trialEnd ? { trialEndsAt: trialEnd } : {}),
   });
 
   if (session.subscription) {
@@ -188,16 +275,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
   const userId = subscription.metadata?.userId;
-  
+
   const internalStatus = mapStripeStatus(subscription.status);
 
   let resolvedUserId = userId;
 
   if (!resolvedUserId) {
     // Try to find user by customer ID
+    const customerId =
+      typeof subscription.customer === 'string'
+        ? subscription.customer
+        : (subscription.customer as Stripe.Customer)?.id;
+
     const usersSnapshot = await db
       .collection('users')
-      .where('stripeCustomerId', '==', subscription.customer)
+      .where('stripeCustomerId', '==', customerId)
       .limit(1)
       .get();
 
@@ -210,7 +302,13 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
     resolvedUserId = userDoc.id;
   }
 
+  // Determine the tier from the current price on the subscription.
+  // This is CRITICAL for upgrades/downgrades — without it, the tier never changes.
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  const tier = tierFromPriceId(priceId);
+
   await updateUserSubscription(resolvedUserId, {
+    subscriptionTier: tier,
     subscriptionStatus: internalStatus,
   });
 

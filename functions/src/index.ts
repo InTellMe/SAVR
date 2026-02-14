@@ -9,6 +9,8 @@ import {
 import {
   handleStripeWebhook,
   createCheckoutSession,
+  createPortalSession,
+  changeSubscription,
 } from './services/stripe';
 import { checkUsageLimit } from './utils/subscription';
 import { checkAndIncrement } from './utils/rateLimit';
@@ -278,6 +280,62 @@ export const stripeWebhook = onRequest(
       const errorMessage = error instanceof Error ? error.message : 'Webhook error';
       console.error('Webhook error:', error);
       res.status(400).send(`Webhook Error: ${errorMessage}`);
+    }
+  }
+);
+
+// Stripe Billing Portal — lets users manage subscription, change plan, update payment, cancel
+export const createStripePortal = onCall(
+  {
+    secrets: ['STRIPE_SECRET_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { returnUrl } = request.data as { returnUrl?: string };
+    const userId = request.auth.uid;
+
+    try {
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
+      const resolvedReturnUrl = returnUrl || `${appBaseUrl}/settings`;
+      const portalUrl = await createPortalSession(userId, resolvedReturnUrl);
+      return { success: true, url: portalUrl };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create billing portal';
+      console.error('Stripe portal error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Change Subscription — upgrade or downgrade an existing subscription without creating duplicates
+export const changeStripeSubscription = onCall(
+  {
+    secrets: ['STRIPE_SECRET_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { newPriceId } = request.data as { newPriceId: string };
+    if (!newPriceId || typeof newPriceId !== 'string') {
+      throw new HttpsError('invalid-argument', 'newPriceId is required');
+    }
+
+    const userId = request.auth.uid;
+
+    try {
+      const result = await changeSubscription(userId, newPriceId);
+      return { success: true, subscriptionId: result.subscriptionId, tier: result.tier };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to change subscription';
+      console.error('Subscription change error:', error);
+      throw new HttpsError('internal', errorMessage);
     }
   }
 );
