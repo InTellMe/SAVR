@@ -121,7 +121,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   // Verify emails match (case-insensitive)
   if (sessionEmail.toLowerCase() !== userEmail.toLowerCase()) {
     console.error(
-      `Email mismatch for user ${userId}: Firestore email '${userEmail}' does not match ` +
+      `Email mismatch for user ${claimedUserId}: Firestore email '${userEmail}' does not match ` +
       `Stripe session email '${sessionEmail}'. Possible account takeover attempt - rejecting webhook.`
     );
     return;
