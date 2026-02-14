@@ -3,8 +3,17 @@
 # Required GitHub Secrets (set in repository Settings → Secrets and variables → Actions):
 # ┌─────────────────────────────────────────────────────────────────────────────────┐
 # │ Firebase Authentication (choose ONE method):                                    │
-# │   Method 1 (Token): FIREBASE_TOKEN - from `firebase login:ci`                  │
-# │   Method 2 (Service Account): FIREBASE_SERVICE_ACCOUNT_JSON - JSON key content │
+# │   Method 1 (Service Account - Recommended): FIREBASE_SERVICE_ACCOUNT_JSON      │
+# │             - JSON key content from Firebase Console service account           │
+# │             - Uses GOOGLE_APPLICATION_CREDENTIALS environment variable         │
+# │   Method 2 (Token - Legacy): FIREBASE_TOKEN                                    │
+# │             - Token from `firebase login:ci` command                           │
+# │             - Passed via both FIREBASE_TOKEN env var AND --token flag          │
+# │                                                                                 │
+# │ Note: The workflow supports both methods and will use whichever is configured. │
+# │ Token authentication uses BOTH environment variable AND --token flag for       │
+# │ maximum compatibility (three authentication paths total).                      │
+# │                                                                                 │
 # │ Project Configuration:                                                          │
 # │   FIREBASE_PROJECT_ID - Firebase project identifier                            │
 # │ Next.js Build Variables (public, required for build):                          │
@@ -176,28 +185,35 @@ jobs:
         run: |
           echo "::group::Deploying to Firebase"
           
-          # Verify authentication is properly configured
+          # Verify authentication is properly configured and build deployment command
           echo "Verifying Firebase authentication..."
+          DEPLOY_ARGS=(
+            --project "${{ secrets.FIREBASE_PROJECT_ID }}"
+            --only hosting,functions,firestore,storage
+            --non-interactive
+          )
+          
           if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
             echo "✓ Using service account authentication (GOOGLE_APPLICATION_CREDENTIALS)"
             if [ ! -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
               echo "::error::Service account file not found at: $GOOGLE_APPLICATION_CREDENTIALS"
               exit 1
             fi
+            # Service account auth works via GOOGLE_APPLICATION_CREDENTIALS env var
+            # No additional flag needed
           elif [ -n "$FIREBASE_TOKEN" ]; then
             echo "✓ Using token-based authentication (FIREBASE_TOKEN)"
+            # Explicitly pass token via --token flag for highest priority
+            DEPLOY_ARGS+=(--token "$FIREBASE_TOKEN")
           else
             echo "::error::No Firebase authentication method found in environment"
             echo "Expected GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_TOKEN to be set"
             exit 1
           fi
           
-          # Use --project flag instead of 'firebase use' for robust CI deployment
-          # This avoids relying on local .firebaserc state
-          firebase deploy \
-            --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
-            --only hosting,functions,firestore,storage \
-            --non-interactive
+          # Execute deployment with appropriate authentication method
+          echo "Executing: firebase deploy ${DEPLOY_ARGS[*]}"
+          firebase deploy "${DEPLOY_ARGS[@]}"
           
           echo "::endgroup::"
           echo "✅ Deployment completed successfully"
