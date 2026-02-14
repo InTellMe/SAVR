@@ -41,8 +41,11 @@ export default function PricingPage() {
       return;
     }
 
-    // Clear container
-    pricingTableRef.current.innerHTML = '';
+    // Check if pricing table already exists to avoid duplicates
+    const existingTable = pricingTableRef.current.querySelector('stripe-pricing-table');
+    if (existingTable) {
+      return; // Table already injected
+    }
 
     // Create stripe-pricing-table element
     const table = document.createElement('stripe-pricing-table');
