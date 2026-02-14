@@ -80,18 +80,42 @@ export async function handleStripeWebhook(
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
-  // Get userId from client_reference_id (set by Pricing Table)
-  const userId = session.client_reference_id;
-
-  if (!userId) {
-    console.error('No userId (client_reference_id) in checkout session');
-    return;
-  }
+  // Prefer client_reference_id from Pricing Table, while keeping metadata fallback.
+  const claimedUserId = session.client_reference_id || session.metadata?.userId;
 
   const stripeCustomerId =
     typeof session.customer === 'string'
       ? session.customer
       : (session.customer as Stripe.Customer | null)?.id ?? null;
+
+  let userId = claimedUserId;
+
+  // Never trust client-provided user IDs alone; verify against server-trusted customer identity.
+  if (stripeCustomerId) {
+    const usersSnapshot = await db
+      .collection('users')
+      .where('stripeCustomerId', '==', stripeCustomerId)
+      .limit(1)
+      .get();
+
+    if (!usersSnapshot.empty) {
+      const customerUserId = usersSnapshot.docs[0].id;
+
+      if (userId && userId !== customerUserId) {
+        console.error(
+          `Checkout user mismatch for customer ${stripeCustomerId}: claimed ${userId}, mapped ${customerUserId}`
+        );
+        return;
+      }
+
+      userId = customerUserId;
+    }
+  }
+
+  if (!userId) {
+    console.error('No trusted userId in checkout session');
+    return;
+  }
 
   let tier: SubscriptionTierName = 'basic';
   let trialEnd: Date | null = null;
