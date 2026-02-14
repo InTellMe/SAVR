@@ -230,7 +230,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
   const internalStatus = mapStripeStatus(subscription.status);
 
   let resolvedUserId = userId;
-  
+
   // Extract customer ID from subscription
   const customerId =
     typeof subscription.customer === 'string'
@@ -275,7 +275,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
     subscriptionId: subscription.id,
     status: internalStatus,
   });
-  
+
   console.log(
     `Successfully processed subscription update for user ${resolvedUserId}. ` +
     `Stripe customer ID: ${customerId}, Status: ${internalStatus}, Tier: ${tier}`
@@ -287,12 +287,12 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
     typeof subscription.customer === 'string'
       ? subscription.customer
       : (subscription.customer as Stripe.Customer)?.id;
-      
+
   if (!customerId) {
     console.error('No customer ID in subscription deletion event');
     return;
   }
-  
+
   const usersSnapshot = await db
     .collection('users')
     .where('stripeCustomerId', '==', customerId)
@@ -318,7 +318,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
     status: 'cancelled',
     endDate: new Date(),
   });
-  
+
   console.log(
     `Successfully processed subscription deletion for user ${userId}. ` +
     `Stripe customer ID: ${customerId}`
@@ -330,12 +330,12 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     typeof invoice.customer === 'string'
       ? invoice.customer
       : (invoice.customer as Stripe.Customer | Stripe.DeletedCustomer)?.id;
-      
+
   if (!customerId) {
     console.error('No customer ID in payment failure event');
     return;
   }
-  
+
   const usersSnapshot = await db
     .collection('users')
     .where('stripeCustomerId', '==', customerId)
@@ -371,7 +371,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     subscriptionId: subscriptionId ?? undefined,
     status: 'past_due',
   });
-  
+
   console.log(
     `Successfully processed payment failure for user ${userId}. ` +
     `Stripe customer ID: ${customerId}`
