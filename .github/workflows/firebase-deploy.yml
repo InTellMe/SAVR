@@ -176,6 +176,22 @@ jobs:
         run: |
           echo "::group::Deploying to Firebase"
           
+          # Verify authentication is properly configured
+          echo "Verifying Firebase authentication..."
+          if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+            echo "✓ Using service account authentication (GOOGLE_APPLICATION_CREDENTIALS)"
+            if [ ! -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+              echo "::error::Service account file not found at: $GOOGLE_APPLICATION_CREDENTIALS"
+              exit 1
+            fi
+          elif [ -n "$FIREBASE_TOKEN" ]; then
+            echo "✓ Using token-based authentication (FIREBASE_TOKEN)"
+          else
+            echo "::error::No Firebase authentication method found in environment"
+            echo "Expected GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_TOKEN to be set"
+            exit 1
+          fi
+          
           # Use --project flag instead of 'firebase use' for robust CI deployment
           # This avoids relying on local .firebaserc state
           firebase deploy \
