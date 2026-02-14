@@ -80,6 +80,9 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Setup Firebase Authentication
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           echo "::group::Configuring Firebase Authentication"
           
@@ -87,18 +90,18 @@ jobs:
           SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
           
           # Method 1: Service Account JSON (preferred for CI/CD)
-          if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}" ]; then
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
             echo "Using service account authentication"
-            echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}' > "$SERVICE_ACCOUNT_PATH"
+            echo "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$SERVICE_ACCOUNT_PATH"
             chmod 600 "$SERVICE_ACCOUNT_PATH"
             echo "GOOGLE_APPLICATION_CREDENTIALS=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
             echo "SERVICE_ACCOUNT_PATH=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
             echo "✓ Service account credentials configured"
           
           # Method 2: Firebase Token (fallback)
-          elif [ -n "${{ secrets.FIREBASE_TOKEN }}" ]; then
+          elif [ -n "$FIREBASE_TOKEN" ]; then
             echo "Using token-based authentication"
-            echo "FIREBASE_TOKEN=${{ secrets.FIREBASE_TOKEN }}" >> $GITHUB_ENV
+            echo "FIREBASE_TOKEN=$FIREBASE_TOKEN" >> $GITHUB_ENV
             echo "✓ Firebase token configured"
           
           else
@@ -110,6 +113,8 @@ jobs:
           echo "::endgroup::"
 
       - name: Deploy to Firebase
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
           echo "::group::Deploying to Firebase"
           
@@ -120,9 +125,9 @@ jobs:
           )
           
           # Add project ID if available
-          if [ -n "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
-            DEPLOY_ARGS+=(--project "${{ secrets.FIREBASE_PROJECT_ID }}")
-            echo "Using project: ${{ secrets.FIREBASE_PROJECT_ID }}"
+          if [ -n "$FIREBASE_PROJECT_ID" ]; then
+            DEPLOY_ARGS+=(--project "$FIREBASE_PROJECT_ID")
+            echo "Using project: $FIREBASE_PROJECT_ID"
           else
             echo "::warning::FIREBASE_PROJECT_ID not set, using default Firebase project from firebase.json"
           fi
