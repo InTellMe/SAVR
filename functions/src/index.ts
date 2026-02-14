@@ -268,7 +268,7 @@ export const createStripePortal = onCall(
     const userId = request.auth.uid;
 
     try {
-      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.SAVR.cam';
       const resolvedReturnUrl = returnUrl || `${appBaseUrl}/settings`;
       const portalUrl = await createPortalSession(userId, resolvedReturnUrl);
       return { success: true, url: portalUrl };
