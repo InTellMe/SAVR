@@ -11,7 +11,7 @@ import {
   signInWithPopup,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 export type SubscriptionTierName = 'basic' | 'pro';
@@ -22,10 +22,15 @@ interface UserData {
   displayName?: string | null;
   subscriptionTier: SubscriptionTierName | 'free' | 'plus' | 'premium'; // legacy: free/plus/premium from Firestore
   subscriptionStatus?: string;
+  stripeCustomerId?: string;
+}
+
+export function isProTier(tier: UserData['subscriptionTier'] | undefined): boolean {
+  return tier === 'pro' || tier === 'plus' || tier === 'premium';
 }
 
 export function isPaidTier(tier: UserData['subscriptionTier'] | undefined): boolean {
-  // All tiers are now paid (basic and pro)
+  // All tiers are now paid (basic and pro) — this checks if user has ANY tier set
   return tier === 'basic' || tier === 'pro' || tier === 'plus' || tier === 'premium' || tier === 'free';
 }
 
@@ -59,23 +64,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
+    let unsubscribeSnapshot: (() => void) | null = null;
 
-      if (user) {
-        // Fetch user data from Firestore
-        const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      // Clean up previous Firestore listener when user changes
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+
+      if (firebaseUser) {
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+
+        // Ensure the user document exists (first sign-up)
         try {
           const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            setUserData(userDoc.data() as UserData);
-          } else {
-            // Initialize user document with pending status — user must complete Stripe onboarding.
-            // Uses 'basic' tier and 'pending' status to match Firestore security rules.
+          if (!userDoc.exists()) {
             const newUserData: UserData = {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
               subscriptionTier: 'basic',
               subscriptionStatus: 'pending',
             };
@@ -84,27 +94,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               createdAt: new Date(),
               updatedAt: new Date(),
             });
-            setUserData(newUserData);
           }
         } catch (error) {
-          console.error('Failed to fetch or create user document:', error);
-          // Use in-memory fallback so UI can still redirect to pricing
-          setUserData({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            subscriptionTier: 'basic',
-            subscriptionStatus: 'pending',
-          });
+          console.error('Failed to ensure user document exists:', error);
         }
+
+        // Listen for real-time updates so webhook changes (subscription activation,
+        // upgrades, cancellations) are reflected immediately without a page refresh.
+        unsubscribeSnapshot = onSnapshot(
+          userDocRef,
+          (snapshot) => {
+            if (snapshot.exists()) {
+              setUserData(snapshot.data() as UserData);
+            } else {
+              setUserData({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                subscriptionTier: 'basic',
+                subscriptionStatus: 'pending',
+              });
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Firestore snapshot error:', error);
+            setUserData({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              subscriptionTier: 'basic',
+              subscriptionStatus: 'pending',
+            });
+            setLoading(false);
+          }
+        );
       } else {
         setUserData(null);
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

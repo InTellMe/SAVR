@@ -212,9 +212,19 @@ These Firebase config values are **public** and will be visible in browser JavaS
 - **Used by**: `firebase-deploy.yml` workflow
 - **Sensitive**: ❌ No - public config (Stripe publishable keys are designed to be public)
 
+#### Secret 10: NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID
+- **Name**: `NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID`
+- **Value**: Stripe Pricing Table ID (starts with `prctbl_...`)
+- **How to get**:
+  1. Go to [Stripe Dashboard → Products → Pricing Tables](https://dashboard.stripe.com/products/pricing-tables)
+  2. Create or select your pricing table
+  3. Copy the Pricing Table ID from the embed code
+- **Used by**: `firebase-deploy.yml` workflow
+- **Sensitive**: ❌ No - public config
+
 ### 🌐 Application Configuration
 
-#### Secret 10: NEXT_PUBLIC_APP_URL
+#### Secret 11: NEXT_PUBLIC_APP_URL
 - **Name**: `NEXT_PUBLIC_APP_URL`
 - **Value**: Your production URL (e.g., `https://www.SAVR.cam`)
 - **Used by**: `firebase-deploy.yml` workflow
@@ -222,13 +232,13 @@ These Firebase config values are **public** and will be visible in browser JavaS
 
 ### 📱 Mobile Build & Submission Secrets
 
-#### Secret 11: EXPO_TOKEN
+#### Secret 12: EXPO_TOKEN
 - **Name**: `EXPO_TOKEN`
 - **Value**: Expo access token from Step 5
 - **Used by**: `mobile-build.yml` workflow
 - **Sensitive**: ✅ Yes - keep private
 
-#### Secret 12: GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
+#### Secret 13: GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
 - **Name**: `GOOGLE_PLAY_SERVICE_ACCOUNT_KEY`
 - **Value**: Complete JSON contents of the Google Play service account key file from Step 6
 - **Used by**: `mobile-build.yml` workflow (exported as `GOOGLE_SERVICE_ACCOUNT_KEY` in submission step)
@@ -238,9 +248,9 @@ These Firebase config values are **public** and will be visible in browser JavaS
 
 ## Step 8: Verify All Secrets Are Added
 
-After adding all secrets, you should see **12 secrets** listed in GitHub:
+After adding all secrets, you should see **13 secrets** listed in GitHub:
 
-### Firebase Deployment (10 secrets)
+### Firebase Deployment (11 secrets)
 - ✅ FIREBASE_TOKEN
 - ✅ FIREBASE_PROJECT_ID
 - ✅ NEXT_PUBLIC_FIREBASE_API_KEY
@@ -250,6 +260,7 @@ After adding all secrets, you should see **12 secrets** listed in GitHub:
 - ✅ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 - ✅ NEXT_PUBLIC_FIREBASE_APP_ID
 - ✅ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+- ✅ NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID
 - ✅ NEXT_PUBLIC_APP_URL
 
 ### Mobile Build & Submission (2 additional secrets)
@@ -441,10 +452,7 @@ Or add to your local `.env` file (based on `.env.example`):
 | **GOOGLE_CLOUD_VISION_API_KEY** | ❌ Optional | ✅ Yes | Google Vision API fallback | `AIza...` |
 | **STRIPE_SECRET_KEY** | ✅ Yes | ✅ Yes | Stripe secret key for payments | `sk_live_...` or `sk_test_...` |
 | **STRIPE_WEBHOOK_SECRET** | ✅ Yes | ✅ Yes | Stripe webhook signing secret | `whsec_...` |
-| **STRIPE_PRICE_ID_BASIC_MONTHLY** | ✅ Yes | ❌ No | Stripe price ID for Basic Monthly tier | `price_...` |
-| **STRIPE_PRICE_ID_BASIC_YEARLY** | ✅ Yes | ❌ No | Stripe price ID for Basic Yearly tier | `price_...` |
-| **STRIPE_PRICE_ID_PRO_MONTHLY** | ✅ Yes | ❌ No | Stripe price ID for Pro Monthly tier | `price_...` |
-| **STRIPE_PRICE_ID_PRO_YEARLY** | ✅ Yes | ❌ No | Stripe price ID for Pro Yearly tier | `price_...` |
+| **NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID** | ✅ Yes | ❌ No | Stripe Pricing Table ID for subscription UI | `prctbl_...` |
 | **NEXT_PUBLIC_APP_URL** | ✅ Yes | ❌ No | Base URL for Stripe redirects | `https://www.SAVR.cam` |
 | **All NEXT_PUBLIC_FIREBASE_*** | ✅ Yes | ❌ No | Firebase config (inherited from build) | See above |
 

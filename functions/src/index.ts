@@ -8,7 +8,7 @@ import {
 } from './services/ai';
 import {
   handleStripeWebhook,
-  createCheckoutSession,
+  createPortalSession,
 } from './services/stripe';
 import { checkUsageLimit } from './utils/subscription';
 import { checkAndIncrement } from './utils/rateLimit';
@@ -228,35 +228,6 @@ export const chat = onCall(
 
 
 
-// Stripe Checkout Session Creation
-export const createStripeCheckout = onCall(
-  {
-    secrets: ['STRIPE_SECRET_KEY'],
-    cors: true,
-  },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'User must be authenticated');
-    }
-
-    const { priceId, successUrl, cancelUrl } = request.data as {
-      priceId: string;
-      successUrl: string;
-      cancelUrl: string;
-    };
-    const userId = request.auth.uid;
-
-    try {
-      const sessionUrl = await createCheckoutSession(userId, priceId, successUrl, cancelUrl);
-      return { success: true, url: sessionUrl };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create checkout session';
-      console.error('Stripe checkout error:', error);
-      throw new HttpsError('internal', errorMessage);
-    }
-  }
-);
-
 // Stripe Webhook Handler
 export const stripeWebhook = onRequest(
   {
@@ -278,6 +249,33 @@ export const stripeWebhook = onRequest(
       const errorMessage = error instanceof Error ? error.message : 'Webhook error';
       console.error('Webhook error:', error);
       res.status(400).send(`Webhook Error: ${errorMessage}`);
+    }
+  }
+);
+
+// Stripe Billing Portal — lets users manage subscription, change plan, update payment, cancel
+export const createStripePortal = onCall(
+  {
+    secrets: ['STRIPE_SECRET_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { returnUrl } = request.data as { returnUrl?: string };
+    const userId = request.auth.uid;
+
+    try {
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
+      const resolvedReturnUrl = returnUrl || `${appBaseUrl}/settings`;
+      const portalUrl = await createPortalSession(userId, resolvedReturnUrl);
+      return { success: true, url: portalUrl };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create billing portal';
+      console.error('Stripe portal error:', error);
+      throw new HttpsError('internal', errorMessage);
     }
   }
 );

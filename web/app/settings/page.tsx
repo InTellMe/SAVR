@@ -2,7 +2,7 @@
 
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
-import { useAuth, isPaidTier } from '@/contexts/AuthContext';
+import { useAuth, isProTier } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
@@ -24,7 +24,7 @@ function SettingsContent() {
   const tier = userData?.subscriptionTier;
   const tierLabel = 
     tier === 'pro' || tier === 'plus' || tier === 'premium' ? 'Pro' : 'Basic';
-  const hasPaidTier = isPaidTier(userData?.subscriptionTier);
+  const hasPro = isProTier(userData?.subscriptionTier);
 
   async function handleManageSubscription() {
     if (!user) return;
@@ -98,12 +98,14 @@ function SettingsContent() {
         <section className="mb-6 rounded-lg glass-card p-6 shadow">
           <h2 className="text-xl font-semibold text-white mb-4">Subscription</h2>
 
-          {hasPaidTier ? (
-            <>
-              <p className="mb-4 text-sm text-[#9ca3c2]">
-                You&apos;re on the <span className="font-semibold text-[#00d4ff]">{tierLabel}</span> plan
-                with access to unlimited recipes, meal plans, AI chat, and more.
-              </p>
+          <p className="mb-4 text-sm text-[#9ca3c2]">
+            You&apos;re on the <span className="font-semibold text-[#00d4ff]">{tierLabel}</span> plan.{' '}
+            {hasPro
+              ? 'You have access to unlimited recipes, meal plans, AI chat, and more.'
+              : 'Upgrade to Pro to unlock unlimited recipes, AI chat, and more.'}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {userData?.stripeCustomerId && (
               <button
                 type="button"
                 onClick={handleManageSubscription}
@@ -112,21 +114,16 @@ function SettingsContent() {
               >
                 {loadingPortal ? 'Opening portal...' : 'Manage billing'}
               </button>
-            </>
-          ) : (
-            <>
-              <p className="mb-4 text-sm text-[#9ca3c2]">
-                You&apos;re on the <span className="font-semibold">Basic</span> plan. Upgrade to Plus or
-                Premium to unlock unlimited recipes, AI chat, and more.
-              </p>
+            )}
+            {!hasPro && (
               <Link
                 href="/pricing"
-                className="inline-block rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold px-5 py-2 text-sm hover:shadow-[0_0_30px_rgba(0,212,255,0.4)]"
+                className="inline-block rounded-lg bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white font-semibold px-5 py-2 text-sm hover:shadow-[0_0_30px_rgba(168,85,247,0.4)]"
               >
-                View plans
+                Upgrade to Pro
               </Link>
-            </>
-          )}
+            )}
+          </div>
         </section>
 
         {/* Preferences link */}
