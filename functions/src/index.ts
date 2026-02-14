@@ -272,7 +272,8 @@ export const createStripePortal = onCall(
       if (!appBaseUrl) {
         console.warn('NEXT_PUBLIC_APP_URL not set, using fallback URL for billing portal return');
       }
-      const resolvedReturnUrl = returnUrl || `${appBaseUrl || 'https://www.SAVR.cam'}/settings`;
+      const baseUrl = appBaseUrl || 'https://www.SAVR.cam';
+      const resolvedReturnUrl = returnUrl || `${baseUrl}/settings`;
       const portalUrl = await createPortalSession(userId, resolvedReturnUrl);
       return { success: true, url: portalUrl };
     } catch (error: unknown) {

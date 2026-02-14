@@ -90,7 +90,7 @@ const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.SAVR.cam';
 
 ## About Stripe's Low-Code Integration
 
-The link mentioned in the issue (`https://billing.stripe.com/p/login/8x27sM6DjbHH6L7cuBdQQ00`) is part of Stripe's **Customer Portal Low-Code Integration**. Here's what you should know:
+The link mentioned in the issue is part of Stripe's **Customer Portal Low-Code Integration**. Here's what you should know:
 
 ### What It Is
 - A **standalone billing portal** hosted by Stripe
@@ -145,7 +145,8 @@ After deployment, verify both fixes work:
 7. ✅ After managing billing, clicking "Back" should return you to SAVR
 
 ### Test Direct Stripe Portal Link
-1. Open: `https://billing.stripe.com/p/login/8x27sM6DjbHH6L7cuBdQQ00`
+1. Open your Stripe portal link: `https://billing.stripe.com/p/login/[your-portal-id]`
+   - Get your portal link from [Stripe Dashboard → Settings → Billing → Customer Portal](https://dashboard.stripe.com/settings/billing/portal)
 2. Enter a customer email address (must have a Stripe subscription)
 3. Check email for the magic link from Stripe
 4. Click the magic link
