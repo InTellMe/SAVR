@@ -92,7 +92,7 @@ jobs:
           # Method 1: Service Account JSON (preferred for CI/CD)
           if [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
             echo "Using service account authentication"
-            echo "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$SERVICE_ACCOUNT_PATH"
+            printf '%s\n' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$SERVICE_ACCOUNT_PATH"
             chmod 600 "$SERVICE_ACCOUNT_PATH"
             echo "GOOGLE_APPLICATION_CREDENTIALS=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
             echo "SERVICE_ACCOUNT_PATH=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
