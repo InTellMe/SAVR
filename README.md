@@ -1,5 +1,7 @@
 # SAVR by InTellMe
 
+> **🚨 DEPLOYMENT BLOCKED**: If Firebase deployment is failing, GitHub Secrets are NOT configured. This is a **configuration issue**, not a code issue. See [DEPLOYMENT_BLOCKED_README.md](DEPLOYMENT_BLOCKED_README.md) for immediate fix instructions.
+
 SAVR is an AI-powered food management platform that helps you manage your pantry inventory, generate recipes, plan meals, and create grocery lists. Built as a Firebase-hosted React/Next.js web application focusing on a web-based MVP where users upload photos of their pantry and fridge to manage inventory.
 
 > **📋 GitHub Actions Setup**: Automated deployment requires GitHub Secrets configuration. See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for required secrets and setup instructions.
