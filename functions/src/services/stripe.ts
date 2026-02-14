@@ -7,173 +7,40 @@ import {
   upsertUserSubscriptionRecord,
 } from '../utils/subscription';
 
-const STRIPE_PRICE_ID_BASIC_MONTHLY = process.env.STRIPE_PRICE_ID_BASIC_MONTHLY || '';
-const STRIPE_PRICE_ID_BASIC_YEARLY = process.env.STRIPE_PRICE_ID_BASIC_YEARLY || '';
-const STRIPE_PRICE_ID_PRO_MONTHLY = process.env.STRIPE_PRICE_ID_PRO_MONTHLY || '';
-const STRIPE_PRICE_ID_PRO_YEARLY = process.env.STRIPE_PRICE_ID_PRO_YEARLY || '';
-
-const ALL_KNOWN_PRICE_IDS = new Set([
-  STRIPE_PRICE_ID_BASIC_MONTHLY,
-  STRIPE_PRICE_ID_BASIC_YEARLY,
-  STRIPE_PRICE_ID_PRO_MONTHLY,
-  STRIPE_PRICE_ID_PRO_YEARLY,
-].filter(Boolean));
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build', {
   apiVersion: '2026-01-28.clover',
 });
 
-export async function createCheckoutSession(
-  userId: string,
-  priceId: string,
-  successUrl?: string,
-  cancelUrl?: string
-): Promise<string> {
-  // Get or create Stripe customer
-  const userDoc = await db.collection('users').doc(userId).get();
-  const userData = userDoc.data();
-
-  let customerId = userData?.stripeCustomerId;
-
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: userData?.email,
-      metadata: { userId },
-    });
-    customerId = customer.id;
-
-    // Save customer ID
-    await db.collection('users').doc(userId).update({
-      stripeCustomerId: customerId,
-    });
-  }
-
-  // Check for an existing active subscription on this customer.
-  // If one exists, the user should use changeSubscription() instead to avoid duplicates.
-  const existingSubs = await stripe.subscriptions.list({
-    customer: customerId,
-    status: 'active',
-    limit: 1,
-  });
-  const trialingSubs = await stripe.subscriptions.list({
-    customer: customerId,
-    status: 'trialing',
-    limit: 1,
-  });
-  if (existingSubs.data.length > 0 || trialingSubs.data.length > 0) {
-    throw new Error(
-      'You already have an active subscription. Please use the upgrade/downgrade option or manage your subscription from Settings.'
-    );
-  }
-
-  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
-
-  const resolvedSuccessUrl =
-    successUrl || `${appBaseUrl}/dashboard?stripeSuccess=true`;
-  const resolvedCancelUrl =
-    cancelUrl || `${appBaseUrl}/pricing?stripeCancelled=true`;
-
-  // Create checkout session with 5-day free trial
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: 'subscription',
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
-    subscription_data: {
-      trial_period_days: 5,
-      metadata: { userId },
-    },
-    allow_promotion_codes: true,
-    payment_method_collection: 'if_required',
-    success_url: resolvedSuccessUrl,
-    cancel_url: resolvedCancelUrl,
-    metadata: { userId },
-  });
-
-  return session.url || '';
-}
-
 /**
- * Change an existing subscription to a different price/plan.
- * Uses Stripe's proration to handle billing fairly.
- * This prevents duplicate subscriptions when upgrading or downgrading.
+ * Retrieves the subscription tier from a Stripe Price object.
+ * Checks the price's metadata.tier field or nickname for tier information.
  */
-export async function changeSubscription(
-  userId: string,
-  newPriceId: string
-): Promise<{ subscriptionId: string; tier: SubscriptionTierName }> {
-  const userDoc = await db.collection('users').doc(userId).get();
-  const userData = userDoc.data();
-
-  if (!userData?.stripeCustomerId) {
-    throw new Error('No Stripe customer found. Please subscribe first.');
-  }
-
-  // Find the user's current active or trialing subscription
-  const activeSubs = await stripe.subscriptions.list({
-    customer: userData.stripeCustomerId,
-    status: 'active',
-    limit: 5,
-  });
-  const trialSubs = await stripe.subscriptions.list({
-    customer: userData.stripeCustomerId,
-    status: 'trialing',
-    limit: 5,
-  });
-  const allSubs = [...activeSubs.data, ...trialSubs.data];
-
-  // Find the subscription that matches one of our known price IDs
-  let currentSub: Stripe.Subscription | null = null;
-  for (const sub of allSubs) {
-    const subPriceId = sub.items.data[0]?.price?.id;
-    if (subPriceId && ALL_KNOWN_PRICE_IDS.has(subPriceId)) {
-      currentSub = sub;
-      break;
+async function getTierFromPrice(priceId: string): Promise<SubscriptionTierName> {
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+    
+    // Check metadata first (recommended approach)
+    if (price.metadata?.tier) {
+      const tier = price.metadata.tier.toLowerCase();
+      if (tier === 'pro' || tier === 'plus' || tier === 'premium') return 'pro';
+      if (tier === 'basic' || tier === 'free') return 'basic';
     }
+    
+    // Check nickname as fallback
+    if (price.nickname) {
+      const nickname = price.nickname.toLowerCase();
+      if (nickname.includes('pro') || nickname.includes('plus') || nickname.includes('premium')) {
+        return 'pro';
+      }
+    }
+    
+    // Default to basic if no metadata found
+    console.warn(`Price ${priceId} missing metadata.tier field - defaulting to 'basic' tier. Please add metadata.tier='basic' or 'pro' in Stripe Dashboard.`);
+    return 'basic';
+  } catch (error) {
+    console.error('Error retrieving price from Stripe:', error);
+    return 'basic';
   }
-
-  if (!currentSub) {
-    throw new Error('No active subscription found to change.');
-  }
-
-  const currentPriceId = currentSub.items.data[0]?.price?.id;
-  if (currentPriceId === newPriceId) {
-    throw new Error('You are already on this plan.');
-  }
-
-  const newTier = tierFromPriceId(newPriceId);
-
-  // Update the subscription in-place: swap the price on the existing subscription item.
-  // Stripe automatically prorates the charge.
-  const updated = await stripe.subscriptions.update(currentSub.id, {
-    items: [
-      {
-        id: currentSub.items.data[0].id,
-        price: newPriceId,
-      },
-    ],
-    proration_behavior: 'create_prorations',
-    metadata: { userId },
-  });
-
-  // Immediately update Firestore so the user sees the change
-  await updateUserSubscription(userId, {
-    subscriptionTier: newTier,
-    subscriptionStatus: mapStripeStatus(updated.status),
-  });
-
-  await upsertUserSubscriptionRecord(userId, {
-    provider: 'stripe',
-    subscriptionId: updated.id,
-    status: mapStripeStatus(updated.status),
-  });
-
-  return { subscriptionId: updated.id, tier: newTier };
 }
 
 export async function handleStripeWebhook(
@@ -212,27 +79,89 @@ export async function handleStripeWebhook(
   }
 }
 
-function tierFromPriceId(priceId: string | undefined): SubscriptionTierName {
-  if (!priceId) return 'basic';
-  if (priceId === STRIPE_PRICE_ID_PRO_MONTHLY || priceId === STRIPE_PRICE_ID_PRO_YEARLY) return 'pro';
-  if (priceId === STRIPE_PRICE_ID_BASIC_MONTHLY || priceId === STRIPE_PRICE_ID_BASIC_YEARLY) return 'basic';
-  return 'basic'; // default to basic for unknown price IDs
-}
-
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
-  const userId = session.metadata?.userId;
+  // Prefer client_reference_id from Pricing Table, while keeping metadata fallback.
+  const claimedUserId = session.client_reference_id || session.metadata?.userId;
 
-  if (!userId) {
-    console.error('No userId in checkout session metadata');
+  // SECURITY: Validate that the checkout session's customer email matches the user's email
+  // This prevents account takeover where a malicious user could modify client_reference_id
+  // to point to a different user's account before checkout
+  const userDoc = await db.collection('users').doc(userId).get();
+  if (!userDoc.exists) {
+    console.error(`User ${userId} not found in Firestore - rejecting checkout webhook`);
     return;
   }
 
+  const userData = userDoc.data();
+  const userEmail = userData?.email;
+
+  if (!userEmail) {
+    console.error(`User ${userId} has no email in Firestore - rejecting checkout webhook`);
+    return;
+  }
+
+  // Get the customer email from the Stripe session
+  let sessionEmail: string | null = null;
+  if (session.customer_details?.email) {
+    sessionEmail = session.customer_details.email;
+  } else if (session.customer) {
+    // If customer_details.email is not available, retrieve from customer object
+    const customerId = typeof session.customer === 'string' ? session.customer : session.customer.id;
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer && !customer.deleted && customer.email) {
+      sessionEmail = customer.email;
+    }
+  }
+
+  if (!sessionEmail) {
+    console.error(`No email found in checkout session ${session.id} - rejecting webhook`);
+    return;
+  }
+
+  // Verify emails match (case-insensitive)
+  if (sessionEmail.toLowerCase() !== userEmail.toLowerCase()) {
+    console.error(
+      `Email mismatch for user ${userId}: Firestore email '${userEmail}' does not match ` +
+      `Stripe session email '${sessionEmail}'. Possible account takeover attempt - rejecting webhook.`
+    );
+    return;
+  }
+
+  // Email validation passed - proceed with subscription update
   const stripeCustomerId =
     typeof session.customer === 'string'
       ? session.customer
       : (session.customer as Stripe.Customer | null)?.id ?? null;
 
-  // Retrieve the subscription once and derive tier + status from it
+  let userId = claimedUserId;
+
+  // Never trust client-provided user IDs alone; verify against server-trusted customer identity.
+  if (stripeCustomerId) {
+    const usersSnapshot = await db
+      .collection('users')
+      .where('stripeCustomerId', '==', stripeCustomerId)
+      .limit(1)
+      .get();
+
+    if (!usersSnapshot.empty) {
+      const customerUserId = usersSnapshot.docs[0].id;
+
+      if (userId && userId !== customerUserId) {
+        console.error(
+          `Checkout user mismatch for customer ${stripeCustomerId}: claimed ${userId}, mapped ${customerUserId}`
+        );
+        return;
+      }
+
+      userId = customerUserId;
+    }
+  }
+
+  if (!userId) {
+    console.error('No trusted userId in checkout session');
+    return;
+  }
+
   let tier: SubscriptionTierName = 'basic';
   let trialEnd: Date | null = null;
 
@@ -243,7 +172,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
         : (session.subscription as Stripe.Subscription);
 
     const priceId = sub.items?.data?.[0]?.price?.id;
-    tier = tierFromPriceId(priceId);
+    if (priceId) {
+      tier = await getTierFromPrice(priceId);
+    }
 
     // Grant full access during trial (treat 'trialing' as 'active')
     if (sub.status === 'trialing' && sub.trial_end) {
@@ -271,6 +202,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       startDate: new Date(),
     });
   }
+
+  console.log(`Successfully processed checkout for user ${userId} with email ${userEmail}`);
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
@@ -302,10 +235,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
     resolvedUserId = userDoc.id;
   }
 
-  // Determine the tier from the current price on the subscription.
-  // This is CRITICAL for upgrades/downgrades — without it, the tier never changes.
+  // Determine the tier from the current price on the subscription
   const priceId = subscription.items?.data?.[0]?.price?.id;
-  const tier = tierFromPriceId(priceId);
+  const tier = priceId ? await getTierFromPrice(priceId) : 'basic';
 
   await updateUserSubscription(resolvedUserId, {
     subscriptionTier: tier,
@@ -367,9 +299,6 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
   });
 
   // Extract subscription ID safely
-  // Note: Stripe API changed - subscription_details is the new structure
-  // as of Stripe API 2024-11+. Using type assertion until @stripe/stripe-js types are updated.
-  // See: https://stripe.com/docs/api/invoices/object#invoice_object-subscription_details
   interface InvoiceWithSubscriptionDetails extends Stripe.Invoice {
     subscription_details?: {
       subscription?: string;

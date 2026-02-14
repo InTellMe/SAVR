@@ -1,123 +1,75 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
+import Script from 'next/script';
 
 export default function PricingPage() {
   const { user, userData } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const tier = userData?.subscriptionTier;
   const status = userData?.subscriptionStatus;
   const hasActiveSub = status === 'active' || status === 'trialing';
-  const isBasic = hasActiveSub && (tier === 'basic' || tier === 'free');
   const isPro = hasActiveSub && (tier === 'pro' || tier === 'plus' || tier === 'premium');
 
-  async function handleSelectPlan(priceId: string) {
+  // Redirect logged-out users who try to use pricing table
+  useEffect(() => {
+    if (!user) {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('stripeSuccess') === 'true') {
+        router.push('/sign-in?redirect=/dashboard?stripeSuccess=true');
+      }
+    }
+  }, [user, router]);
+
+  async function handleManageBilling() {
     if (!user) {
       router.push('/sign-in');
       return;
     }
-    setLoading(true);
+
+    setLoadingPortal(true);
     setError('');
+
     try {
-      if (hasActiveSub) {
-        // User already has an active subscription — change plan in-place (no duplicate)
-        const changeStripeSubscription = httpsCallable(functions, 'changeStripeSubscription');
-        await changeStripeSubscription({ newPriceId: priceId });
-        router.push('/dashboard?stripeSuccess=true');
-      } else {
-        // New subscriber — create checkout session with 5-day trial
-        const createStripeCheckout = httpsCallable(functions, 'createStripeCheckout');
-        const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-        const result = await createStripeCheckout({
-          priceId,
-          successUrl: `${appBaseUrl}/dashboard?stripeSuccess=true`,
-          cancelUrl: `${appBaseUrl}/pricing?stripeCancelled=true`,
-        });
-        const data = result.data as { url: string };
-        window.location.href = data.url;
+      const createStripePortal = httpsCallable(functions, 'createStripePortal');
+      const result = await createStripePortal({
+        returnUrl: `${window.location.origin}/settings`,
+      });
+
+      const data = result.data as { success: boolean; url: string };
+      if (!data.success) {
+        throw new Error('Portal creation failed');
       }
+
+      window.location.href = data.url;
     } catch (err) {
-      console.error('Subscription error:', err);
-      const message = err instanceof Error ? err.message : '';
-      if (message.includes('already on this plan')) {
-        setError('You are already on this plan.');
-      } else {
-        setError('Failed to process subscription. Please try again.');
-      }
-      setLoading(false);
+      console.error('Error opening billing portal:', err);
+      setError('Failed to open billing portal. Please try again.');
+      setLoadingPortal(false);
     }
   }
 
-  const priceIdBasicMonthly =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_MONTHLY || 'price_basic_monthly';
-  const priceIdBasicYearly =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC_YEARLY || 'price_basic_yearly';
-  const priceIdProMonthly =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY || 'price_pro_monthly';
-  const priceIdProYearly =
-    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY || 'price_pro_yearly';
-
-  const plans = [
-    {
-      name: 'Basic',
-      description: 'Everything you need to get started',
-      monthlyPrice: '$4.99',
-      yearlyPrice: '$49.99',
-      monthlySavings: null,
-      yearlySavings: 'Save $9.89/yr',
-      features: [
-        'Smart inventory (up to 50 items)',
-        '10 AI recipes per month',
-        '2 meal plans per month',
-        '5 pet recipes per month',
-        'Basic grocery lists',
-        'Community support',
-      ],
-      limitations: ['No AI chat assistant'],
-      recommended: false,
-      isCurrent: isBasic,
-      monthlyPriceId: priceIdBasicMonthly,
-      yearlyPriceId: priceIdBasicYearly,
-      accentColor: '#00d4ff',
-    },
-    {
-      name: 'Pro',
-      description: 'For passionate home cooks',
-      monthlyPrice: '$9.99',
-      yearlyPrice: '$99.99',
-      monthlySavings: null,
-      yearlySavings: 'Save $19.89/yr',
-      features: [
-        'Everything in Basic',
-        'Unlimited inventory items',
-        'Unlimited recipes & meal plans',
-        'Unlimited pet recipes',
-        'AI cooking assistant chat',
-        'Ad-free experience',
-        'Priority support',
-        'Cancel anytime',
-      ],
-      limitations: [],
-      recommended: true,
-      isCurrent: isPro,
-      monthlyPriceId: priceIdProMonthly,
-      yearlyPriceId: priceIdProYearly,
-      accentColor: '#a855f7',
-    },
-  ];
+  const pricingTableId = process.env.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID || '';
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
+
+      {/* Load Stripe Pricing Table script */}
+      <Script
+        async
+        src="https://js.stripe.com/v3/pricing-table.js"
+        strategy="afterInteractive"
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20">
         {/* Onboarding banner for new users */}
@@ -140,35 +92,6 @@ export default function PricingPage() {
           <p className="text-lg max-w-xl mx-auto" style={{ color: '#9ca3c2' }}>
             Try any plan free for 5 days. No charge until your trial ends. Coupon codes accepted at checkout.
           </p>
-
-          {/* Billing toggle */}
-          <div className="mt-10 inline-flex items-center rounded-full p-1" style={{ background: 'rgba(10, 10, 10, 0.8)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-                billingCycle === 'monthly'
-                  ? 'text-[#000000]'
-                  : 'text-[#9ca3c2] hover:text-white'
-              }`}
-              style={billingCycle === 'monthly' ? { background: 'linear-gradient(135deg, #00d4ff, #0099cc)' } : {}}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-                billingCycle === 'yearly'
-                  ? 'text-[#000000]'
-                  : 'text-[#9ca3c2] hover:text-white'
-              }`}
-              style={billingCycle === 'yearly' ? { background: 'linear-gradient(135deg, #00d4ff, #0099cc)' } : {}}
-            >
-              Yearly
-              <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={billingCycle === 'yearly' ? { background: 'rgba(0, 0, 0, 0.3)', color: '#000000' } : { background: 'rgba(0, 212, 255, 0.15)', color: '#00d4ff' }}>
-                Save
-              </span>
-            </button>
-          </div>
         </div>
 
         {error && (
@@ -177,106 +100,70 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative rounded-2xl p-8 md:p-10 transition-all duration-300 ${
-                plan.recommended ? 'glow-cyan-strong' : ''
-              }`}
-              style={{
-                background: plan.recommended
-                  ? 'linear-gradient(135deg, rgba(13, 17, 41, 0.9), rgba(19, 24, 54, 0.9))'
-                  : 'rgba(13, 17, 41, 0.7)',
-                border: `1px solid ${plan.recommended ? 'rgba(0, 212, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}`,
-              }}
-            >
-              {plan.recommended && (
-                <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
-                  style={{ background: 'linear-gradient(135deg, #00d4ff, #0099cc)', color: '#000000' }}
-                >
-                  Recommended
-                </div>
-              )}
-
-              <div className="mb-8">
-                <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-sm" style={{ color: '#9ca3c2' }}>{plan.description}</p>
+        {/* Existing Subscriber - Show Billing Portal Access */}
+        {hasActiveSub ? (
+          <div className="max-w-2xl mx-auto">
+            <div className="rounded-2xl p-8 text-center" style={{ background: 'rgba(13, 17, 41, 0.7)', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ background: 'rgba(0, 212, 255, 0.1)' }}>
+                <svg className="w-8 h-8" fill="none" stroke="#00d4ff" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-
-              <div className="mb-8">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-extrabold text-white">
-                    {billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
-                  </span>
-                  <span className="text-sm" style={{ color: '#6b7294' }}>
-                    / {billingCycle === 'monthly' ? 'month' : 'year'}
-                  </span>
-                </div>
-                {billingCycle === 'yearly' && plan.yearlySavings && (
-                  <span className="inline-block mt-2 text-xs font-semibold px-3 py-1 rounded-full" style={{ background: 'rgba(0, 191, 166, 0.12)', color: '#00bfa6' }}>
-                    {plan.yearlySavings}
-                  </span>
-                )}
-              </div>
-
+              <h3 className="text-2xl font-bold text-white mb-2">
+                You&apos;re on the {isPro ? 'Pro' : 'Basic'} plan
+              </h3>
+              <p className="text-[#9ca3c2] mb-6">
+                {isPro 
+                  ? 'You have access to unlimited recipes, meal plans, AI chat, and more.'
+                  : 'Enjoying your subscription. Upgrade to Pro for unlimited access and AI chat.'}
+              </p>
               <button
-                onClick={() => handleSelectPlan(billingCycle === 'monthly' ? plan.monthlyPriceId : plan.yearlyPriceId)}
-                disabled={plan.isCurrent || loading}
-                className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-200 mb-2 ${
-                  plan.isCurrent
-                    ? 'cursor-not-allowed opacity-50'
-                    : ''
-                }`}
-                style={
-                  plan.recommended
-                    ? { background: 'linear-gradient(135deg, #00d4ff, #0099cc)', color: '#000000' }
-                    : { background: 'rgba(255, 255, 255, 0.06)', color: '#e8eaf6', border: '1px solid rgba(255, 255, 255, 0.1)' }
-                }
+                type="button"
+                onClick={handleManageBilling}
+                disabled={loadingPortal}
+                className="inline-block rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold px-8 py-3 text-sm hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] disabled:opacity-50 transition-all duration-200"
               >
-                {loading
-                  ? 'Processing...'
-                  : plan.isCurrent
-                    ? 'Current Plan'
-                    : hasActiveSub
-                      ? `Switch to ${plan.name}`
-                      : 'Start 5-Day Free Trial'}
+                {loadingPortal ? 'Opening portal...' : 'Manage subscription & billing'}
               </button>
-              {!plan.isCurrent && !hasActiveSub && (
-                <p className="text-xs text-center mb-6" style={{ color: '#6b7294' }}>
-                  No charge for 5 days. Cancel anytime.
-                </p>
-              )}
-              {!plan.isCurrent && hasActiveSub && (
-                <p className="text-xs text-center mb-6" style={{ color: '#6b7294' }}>
-                  Prorated billing. Changes take effect immediately.
-                </p>
-              )}
-              {plan.isCurrent && <div className="mb-6" />}
-
-              <div className="space-y-3">
-                {plan.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-start gap-3">
-                    <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke={plan.accentColor} strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    <span className="text-sm" style={{ color: '#c8cbe0' }}>{feature}</span>
-                  </div>
-                ))}
-                {plan.limitations.map((limitation, idx) => (
-                  <div key={idx} className="flex items-start gap-3">
-                    <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="#6b7294" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" />
-                    </svg>
-                    <span className="text-sm" style={{ color: '#6b7294' }}>{limitation}</span>
-                  </div>
-                ))}
-              </div>
+              <p className="text-xs text-[#6b7294] mt-4">
+                Update payment method, view invoices, or change plans
+              </p>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          /* New Subscriber - Show Stripe Pricing Table */
+          <div className="max-w-5xl mx-auto">
+            {!user && (
+              <div className="mb-8 text-center">
+                <p className="text-[#9ca3c2] mb-4">
+                  Sign in to get started with your 5-day free trial
+                </p>
+                <button
+                  onClick={() => router.push('/sign-in')}
+                  className="inline-block rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold px-8 py-3 text-sm hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition-all duration-200"
+                >
+                  Sign in to continue
+                </button>
+              </div>
+            )}
+            {user && (
+              <script
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    (function() {
+                      const userId = ${JSON.stringify(user.uid)};
+                      const table = document.createElement('stripe-pricing-table');
+                      table.setAttribute('pricing-table-id', ${JSON.stringify(pricingTableId)});
+                      table.setAttribute('publishable-key', ${JSON.stringify(publishableKey)});
+                      table.setAttribute('client-reference-id', userId);
+                      document.currentScript.parentNode.insertBefore(table, document.currentScript);
+                    })();
+                  `,
+                }}
+              />
+            )}
+          </div>
+        )}
 
         {/* FAQ Section */}
         <div className="mt-24 max-w-3xl mx-auto">
@@ -295,7 +182,7 @@ export default function PricingPage() {
             />
             <FAQItem
               question="Can I switch plans anytime?"
-              answer="Yes! You can upgrade from Basic to Pro at any time. Subscriptions can be canceled anytime and you'll retain access until the end of your billing period."
+              answer="Yes! You can upgrade or downgrade your subscription through the billing portal. Changes are prorated and take effect immediately. You can cancel anytime and retain access until the end of your billing period."
             />
             <FAQItem
               question="What payment methods do you accept?"
