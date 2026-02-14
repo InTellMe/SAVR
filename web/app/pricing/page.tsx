@@ -30,35 +30,46 @@ export default function PricingPage() {
     }
   }, [user, router]);
 
-  // Monitor for Stripe pricing table loading
+  // Monitor for Stripe pricing table loading using MutationObserver
   useEffect(() => {
     if (!user || hasActiveSub) return;
 
-    const checkStripeTable = () => {
+    let timeoutId: NodeJS.Timeout;
+    
+    // Use MutationObserver to efficiently detect when stripe-pricing-table is added
+    const observer = new MutationObserver(() => {
       const table = document.querySelector('stripe-pricing-table');
       if (table) {
         setStripeTableLoaded(true);
+        observer.disconnect();
+        clearTimeout(timeoutId);
       }
-    };
+    });
 
-    // Check immediately and then periodically
-    const timer = setTimeout(checkStripeTable, 1000);
-    const interval = setInterval(checkStripeTable, 500);
+    // Start observing the document for child additions
+    observer.observe(document.body, { childList: true, subtree: true });
 
-    // Stop checking after 10 seconds
-    const timeout = setTimeout(() => {
-      clearInterval(interval);
-      if (!stripeTableLoaded) {
-        setError('Unable to load pricing table. Please check your internet connection and refresh the page.');
-      }
-    }, 10000);
+    // Check immediately in case table is already present
+    const table = document.querySelector('stripe-pricing-table');
+    if (table) {
+      setStripeTableLoaded(true);
+      observer.disconnect();
+    } else {
+      // Set timeout to show error if table doesn't load within 10 seconds
+      timeoutId = setTimeout(() => {
+        const tableCheck = document.querySelector('stripe-pricing-table');
+        if (!tableCheck) {
+          setError('Unable to load pricing table. Please check your internet connection and refresh the page.');
+        }
+        observer.disconnect();
+      }, 10000);
+    }
 
     return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-      clearTimeout(timeout);
+      observer.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [user, hasActiveSub, stripeTableLoaded]);
+  }, [user, hasActiveSub]);
 
   async function handleManageBilling() {
     if (!user) {
@@ -93,6 +104,14 @@ export default function PricingPage() {
 
   // Validate Stripe configuration
   const stripeConfigured = pricingTableId && publishableKey;
+  
+  // Helper to generate missing env vars message
+  const getMissingEnvVars = () => {
+    const missing = [];
+    if (!pricingTableId) missing.push('NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID');
+    if (!publishableKey) missing.push('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+    return missing.join(', ');
+  };
 
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>
@@ -192,7 +211,7 @@ export default function PricingPage() {
                   The pricing table cannot be displayed because Stripe is not configured.
                 </p>
                 <p className="text-sm text-[#9ca3c2] mb-6">
-                  Missing environment variables: {!pricingTableId && 'NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID'}{!pricingTableId && !publishableKey && ', '}{!publishableKey && 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'}
+                  Missing environment variables: {getMissingEnvVars()}
                 </p>
                 <div className="text-left bg-black/30 rounded-lg p-4 text-xs font-mono text-[#9ca3c2]">
                   <p className="mb-2">For administrators:</p>
