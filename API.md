@@ -345,7 +345,7 @@ console.log(result.data.response);
 
 ## AI Models and Fallback Behavior
 
-Pantry Chef uses OpenAI models with built-in fallback logic for robustness and consistent typed responses:
+SAVR uses OpenAI models with built-in fallback logic for robustness and consistent typed responses:
 
 - **Image analysis (`analyzeImage`)**:
   - Primary: OpenAI vision-capable model (default `gpt-4o`) via Chat Completions with image input.

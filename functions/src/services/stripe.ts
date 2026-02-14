@@ -41,7 +41,7 @@ export async function createCheckoutSession(
     });
   }
 
-  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.SAVR.cam';
 
   const resolvedSuccessUrl =
     successUrl || `${appBaseUrl}/dashboard?stripeSuccess=true`;
