@@ -130,7 +130,7 @@ jobs:
             --non-interactive
           )
 
-          if [ -n "$FIREBASE_PROJECT_ID" ]; then
+          if [ -n "${FIREBASE_PROJECT_ID:-}" ]; then
             DELETE_ARGS+=(--project "$FIREBASE_PROJECT_ID")
             echo "Using project: $FIREBASE_PROJECT_ID"
           fi
@@ -144,7 +144,7 @@ jobs:
           fi
 
           # Delete function, continue if it doesn't exist (exit code 1)
-          echo "Executing: firebase ${DELETE_ARGS[*]}"
+          echo "Executing: firebase functions:delete createStripeCheckout --region us-central1 --force --non-interactive"
           if firebase "${DELETE_ARGS[@]}"; then
             echo "✓ Function deleted successfully"
           else
