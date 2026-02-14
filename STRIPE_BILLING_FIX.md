@@ -72,9 +72,15 @@ Updated the fallback URL in `functions/src/index.ts`:
 ```typescript
 // Before
 const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pantrychef.intellmeai.com';
+const resolvedReturnUrl = returnUrl || `${appBaseUrl}/settings`;
 
 // After
-const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.SAVR.cam';
+const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
+if (!appBaseUrl) {
+  console.warn('NEXT_PUBLIC_APP_URL not set, using fallback URL for billing portal return');
+}
+const baseUrl = appBaseUrl || 'https://www.SAVR.cam';
+const resolvedReturnUrl = returnUrl || `${baseUrl}/settings`;
 ```
 
 ### Impact
