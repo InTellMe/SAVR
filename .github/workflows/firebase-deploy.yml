@@ -3,16 +3,12 @@
 # Required GitHub Secrets (set in repository Settings → Environments → production → Secrets):
 # ┌─────────────────────────────────────────────────────────────────────────────────┐
 # │ Firebase Authentication (choose ONE method):                                    │
-# │   Method 1 (Service Account - Recommended): FIREBASE_SERVICE_ACCOUNT_JSON      │
-# │             - JSON key content from Firebase Console service account           │
-# │             - Uses GOOGLE_APPLICATION_CREDENTIALS environment variable         │
-# │   Method 2 (Token - Legacy): FIREBASE_TOKEN                                    │
+# │   Method 1 (Token - Recommended): FIREBASE_TOKEN                               │
 # │             - Token from `firebase login:ci` command                           │
-# │             - Passed via both FIREBASE_TOKEN env var AND --token flag          │
-# │                                                                                 │
-# │ Note: The workflow supports both methods and will use whichever is configured. │
-# │ Token authentication uses BOTH environment variable AND --token flag for       │
-# │ maximum compatibility (three authentication paths total).                      │
+# │             - Authenticates as project user, avoids actAs permission issues    │
+# │   Method 2 (Service Account): FIREBASE_SERVICE_ACCOUNT_JSON                   │
+# │             - JSON key content from Firebase Console service account           │
+# │             - Requires iam.serviceAccounts.actAs on App Engine default SA     │
 # │                                                                                 │
 # │ Project Configuration:                                                          │
 # │   FIREBASE_PROJECT_ID - Firebase project identifier                            │
@@ -29,10 +25,6 @@
 #
 # Security: This workflow only runs on direct pushes to main (not PRs or forks).
 # Secrets are NOT available to workflows triggered from forked repositories.
-#
-# Note: Secrets must be explicitly referenced and cannot be accessed dynamically
-# through loops or arrays in GitHub Actions. Each secret requires a direct reference
-# like ${{ secrets.SECRET_NAME }} at workflow parse time.
 
 name: Firebase Deploy
 permissions:
@@ -43,7 +35,6 @@ on:
     branches: [main]
 
 env:
-  # Centralized path for service account credentials
   SERVICE_ACCOUNT_FILE: firebase-service-account.json
 
 jobs:
@@ -90,31 +81,30 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           echo "::group::Configuring Firebase Authentication"
-          
-          # Use $RUNNER_TEMP for isolated temporary directory with centralized filename
-          SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
-          
-          # Method 1: Service Account JSON (preferred for CI/CD)
-          if [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
+
+          # Method 1: Firebase Token (preferred - authenticates as project user,
+          # avoids iam.serviceAccounts.actAs requirement for functions deploy)
+          if [ -n "$FIREBASE_TOKEN" ]; then
+            echo "Using token-based authentication"
+            echo "FIREBASE_TOKEN=$FIREBASE_TOKEN" >> $GITHUB_ENV
+            echo "✓ Firebase token configured"
+
+          # Method 2: Service Account JSON (fallback)
+          elif [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
             echo "Using service account authentication"
+            SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
             printf '%s\n' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$SERVICE_ACCOUNT_PATH"
             chmod 600 "$SERVICE_ACCOUNT_PATH"
             echo "GOOGLE_APPLICATION_CREDENTIALS=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
             echo "SERVICE_ACCOUNT_PATH=$SERVICE_ACCOUNT_PATH" >> $GITHUB_ENV
             echo "✓ Service account credentials configured"
-          
-          # Method 2: Firebase Token (fallback)
-          elif [ -n "$FIREBASE_TOKEN" ]; then
-            echo "Using token-based authentication"
-            echo "FIREBASE_TOKEN=$FIREBASE_TOKEN" >> $GITHUB_ENV
-            echo "✓ Firebase token configured"
-          
+
           else
-            echo "::warning::No Firebase authentication secrets configured in GitHub Actions"
-            echo "Firebase CLI will attempt to use other authentication methods"
-            echo "If deployment fails, configure FIREBASE_TOKEN or FIREBASE_SERVICE_ACCOUNT_JSON secrets"
+            echo "::error::No Firebase authentication configured."
+            echo "Set FIREBASE_TOKEN or FIREBASE_SERVICE_ACCOUNT_JSON in GitHub Secrets."
+            exit 1
           fi
-          
+
           echo "::endgroup::"
 
       - name: Deploy to Firebase
@@ -122,50 +112,44 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
           echo "::group::Deploying to Firebase"
-          
-          # Build deployment command
+
           DEPLOY_ARGS=(
             --only hosting,functions,firestore,storage
             --non-interactive
           )
-          
-          # Add project ID if available
+
           if [ -n "$FIREBASE_PROJECT_ID" ]; then
             DEPLOY_ARGS+=(--project "$FIREBASE_PROJECT_ID")
             echo "Using project: $FIREBASE_PROJECT_ID"
           else
-            echo "::warning::FIREBASE_PROJECT_ID not set, using default Firebase project from firebase.json"
+            echo "::warning::FIREBASE_PROJECT_ID not set, using default from firebase.json"
           fi
-          
-          # Configure authentication if available
-          if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-            echo "✓ Using service account authentication (GOOGLE_APPLICATION_CREDENTIALS)"
+
+          # Token auth: pass via --token flag (authenticates as the user who
+          # generated the token, which has actAs permissions for functions deploy)
+          if [ -n "$FIREBASE_TOKEN" ]; then
+            echo "✓ Using token-based authentication"
+            DEPLOY_ARGS+=(--token "$FIREBASE_TOKEN")
+          elif [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+            echo "✓ Using service account authentication"
             if [ ! -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
               echo "::error::Service account file not found at: $GOOGLE_APPLICATION_CREDENTIALS"
               exit 1
             fi
-            # Service account auth works via GOOGLE_APPLICATION_CREDENTIALS env var
-            # No additional flag needed
-          elif [ -n "$FIREBASE_TOKEN" ]; then
-            echo "✓ Using token-based authentication (FIREBASE_TOKEN)"
-            # Explicitly pass token via --token flag for highest priority
-            DEPLOY_ARGS+=(--token "$FIREBASE_TOKEN")
           else
-            echo "::warning::No authentication configured, Firebase CLI will use default credentials"
+            echo "::error::No authentication configured"
+            exit 1
           fi
-          
-          # Execute deployment
+
           echo "Executing: firebase deploy ${DEPLOY_ARGS[*]}"
           firebase deploy "${DEPLOY_ARGS[@]}"
-          
+
           echo "::endgroup::"
           echo "✅ Deployment completed successfully"
 
       - name: Cleanup
         if: always()
         run: |
-          # Remove service account credentials file if it exists
-          # Using centralized filename from env
           SERVICE_ACCOUNT_PATH="$RUNNER_TEMP/${{ env.SERVICE_ACCOUNT_FILE }}"
           if [ -f "$SERVICE_ACCOUNT_PATH" ]; then
             rm -f "$SERVICE_ACCOUNT_PATH"
