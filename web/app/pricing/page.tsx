@@ -147,13 +147,18 @@ export default function PricingPage() {
               </div>
             )}
             {user && (
-              <div
+              <script
                 dangerouslySetInnerHTML={{
-                  __html: `<stripe-pricing-table 
-                    pricing-table-id="${pricingTableId}"
-                    publishable-key="${publishableKey}"
-                    client-reference-id="${user.uid}"
-                  ></stripe-pricing-table>`,
+                  __html: `
+                    (function() {
+                      const userId = ${JSON.stringify(user.uid)};
+                      const table = document.createElement('stripe-pricing-table');
+                      table.setAttribute('pricing-table-id', ${JSON.stringify(pricingTableId)});
+                      table.setAttribute('publishable-key', ${JSON.stringify(publishableKey)});
+                      table.setAttribute('client-reference-id', userId);
+                      document.currentScript.parentNode.insertBefore(table, document.currentScript);
+                    })();
+                  `,
                 }}
               />
             )}

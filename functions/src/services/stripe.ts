@@ -34,7 +34,9 @@ async function getTierFromPrice(priceId: string): Promise<SubscriptionTierName> 
       }
     }
     
-    return 'basic'; // default
+    // Default to basic if no metadata found
+    console.warn(`Price ${priceId} missing metadata.tier field - defaulting to 'basic' tier. Please add metadata.tier='basic' or 'pro' in Stripe Dashboard.`);
+    return 'basic';
   } catch (error) {
     console.error('Error retrieving price from Stripe:', error);
     return 'basic';

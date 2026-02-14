@@ -20,13 +20,13 @@ This guide walks you through setting up Stripe's Pricing Table for SAVR subscrip
 **Product Name**: SAVR Basic
 
 **Monthly Price**:
-- Amount: $5.99
+- Amount: $4.99
 - Billing period: Monthly
 - Trial: 5 days
 - **Metadata**: Add `tier` = `basic`
 
 **Yearly Price**:
-- Amount: $69.99
+- Amount: $49.99
 - Billing period: Yearly
 - Trial: 5 days
 - **Metadata**: Add `tier` = `basic`

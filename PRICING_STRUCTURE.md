@@ -27,8 +27,8 @@ SAVR uses Stripe's **embeddable Pricing Table** for subscription management. Thi
 ### Basic Tier (Paid)
 
 **Cost**: 
-- **Monthly**: $5.99/month
-- **Yearly**: $69.99/year (save ~$2/year)
+- **Monthly**: $4.99/month
+- **Yearly**: $49.99/year (save ~$10/year)
 
 **Features**:
 - Smart inventory (up to 50 items)
