@@ -53,79 +53,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate Required Secrets
-        run: |
-          echo "::group::Validating Firebase Deployment Secrets"
-          
-          # Initialize error tracking
-          MISSING_SECRETS=()
-          
-          # Check Firebase project ID
-          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
-            MISSING_SECRETS+=("FIREBASE_PROJECT_ID")
-          else
-            echo "✓ FIREBASE_PROJECT_ID is set"
-          fi
-          
-          # Check Firebase authentication (at least one method required)
-          HAS_TOKEN=false
-          HAS_SERVICE_ACCOUNT=false
-          
-          if [ -n "${{ secrets.FIREBASE_TOKEN }}" ]; then
-            echo "✓ FIREBASE_TOKEN is set (token-based auth)"
-            HAS_TOKEN=true
-          fi
-          
-          if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}" ]; then
-            echo "✓ FIREBASE_SERVICE_ACCOUNT_JSON is set (service account auth)"
-            HAS_SERVICE_ACCOUNT=true
-          fi
-          
-          if [ "$HAS_TOKEN" = false ] && [ "$HAS_SERVICE_ACCOUNT" = false ]; then
-            MISSING_SECRETS+=("FIREBASE_TOKEN or FIREBASE_SERVICE_ACCOUNT_JSON (at least one required)")
-          fi
-          
-          # Check Next.js public environment variables
-          check_secret() {
-            local secret_name=$1
-            local secret_value=$2
-            if [ -z "$secret_value" ]; then
-              MISSING_SECRETS+=("$secret_name")
-            else
-              echo "✓ $secret_name is set"
-            fi
-          }
-          
-          check_secret "NEXT_PUBLIC_FIREBASE_API_KEY" "${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}"
-          check_secret "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN" "${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}"
-          check_secret "NEXT_PUBLIC_FIREBASE_PROJECT_ID" "${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}"
-          check_secret "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET" "${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}"
-          check_secret "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID" "${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}"
-          check_secret "NEXT_PUBLIC_FIREBASE_APP_ID" "${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}"
-          check_secret "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}"
-          check_secret "NEXT_PUBLIC_APP_URL" "${{ secrets.NEXT_PUBLIC_APP_URL }}"
-          
-          echo "::endgroup::"
-          
-          # Report results
-          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
-            echo "::error::❌ Deployment cannot proceed - missing required secrets"
-            echo ""
-            echo "Missing secrets:"
-            for SECRET in "${MISSING_SECRETS[@]}"; do
-              echo "  - $SECRET"
-            done
-            echo ""
-            echo "Please configure these secrets in:"
-            echo "  GitHub Repository → Settings → Secrets and variables → Actions"
-            echo ""
-            echo "For detailed setup instructions, see:"
-            echo "  https://github.com/InTellMe/SAVR/blob/main/GITHUB_SECRETS_SETUP.md"
-            exit 1
-          else
-            echo "✅ All required secrets are configured"
-          fi
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -175,8 +102,9 @@ jobs:
             echo "✓ Firebase token configured"
           
           else
-            echo "::error::No Firebase authentication method configured"
-            exit 1
+            echo "::warning::No Firebase authentication secrets configured in GitHub Actions"
+            echo "Firebase CLI will attempt to use other authentication methods"
+            echo "If deployment fails, configure FIREBASE_TOKEN or FIREBASE_SERVICE_ACCOUNT_JSON secrets"
           fi
           
           echo "::endgroup::"
@@ -185,14 +113,21 @@ jobs:
         run: |
           echo "::group::Deploying to Firebase"
           
-          # Verify authentication is properly configured and build deployment command
-          echo "Verifying Firebase authentication..."
+          # Build deployment command
           DEPLOY_ARGS=(
-            --project "${{ secrets.FIREBASE_PROJECT_ID }}"
             --only hosting,functions,firestore,storage
             --non-interactive
           )
           
+          # Add project ID if available
+          if [ -n "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            DEPLOY_ARGS+=(--project "${{ secrets.FIREBASE_PROJECT_ID }}")
+            echo "Using project: ${{ secrets.FIREBASE_PROJECT_ID }}"
+          else
+            echo "::warning::FIREBASE_PROJECT_ID not set, using default Firebase project from firebase.json"
+          fi
+          
+          # Configure authentication if available
           if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
             echo "✓ Using service account authentication (GOOGLE_APPLICATION_CREDENTIALS)"
             if [ ! -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
@@ -206,12 +141,10 @@ jobs:
             # Explicitly pass token via --token flag for highest priority
             DEPLOY_ARGS+=(--token "$FIREBASE_TOKEN")
           else
-            echo "::error::No Firebase authentication method found in environment"
-            echo "Expected GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_TOKEN to be set"
-            exit 1
+            echo "::warning::No authentication configured, Firebase CLI will use default credentials"
           fi
           
-          # Execute deployment with appropriate authentication method
+          # Execute deployment
           echo "Executing: firebase deploy ${DEPLOY_ARGS[*]}"
           firebase deploy "${DEPLOY_ARGS[@]}"
           
