@@ -149,6 +149,37 @@ firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
 5. Copy the **Signing secret** (starts with `whsec_...`)
 6. Add it to your environment variables as `STRIPE_WEBHOOK_SECRET`
 
+## Security: Email Validation
+
+The webhook handler includes critical security validation to prevent account takeover attacks:
+
+### What It Does
+
+When a checkout is completed, the backend verifies that the email used at Stripe Checkout matches the email of the Firebase user specified in `client_reference_id`. If emails don't match, the webhook is rejected and the subscription is NOT created.
+
+### Why This Matters
+
+- The `client_reference_id` is set client-side in the pricing table and could theoretically be tampered with by a malicious user
+- Without validation, an attacker could modify the user ID to attach their payment to someone else's account
+- Email validation ensures payments are only applied to the actual purchaser's account
+
+### How It Works
+
+```typescript
+// In handleCheckoutCompleted webhook handler:
+// 1. Extract userId from session.client_reference_id
+// 2. Fetch user document from Firestore
+// 3. Get email from Stripe checkout session (session.customer_details.email)
+// 4. Compare emails (case-insensitive)
+// 5. Reject webhook if mismatch, proceed if match
+```
+
+### User Impact
+
+- Users must complete checkout with the same email they used to create their Firebase account
+- If a user needs to change their email, they should update it in Firebase Auth first, then complete checkout
+- Mismatched emails will result in a failed subscription and the error will be logged in Firebase Functions logs
+
 ## Step 6: Test the Implementation
 
 ### Test in Stripe Test Mode
@@ -249,6 +280,18 @@ Once testing is complete:
 - Check webhook secret matches `STRIPE_WEBHOOK_SECRET`
 - Test webhook in Stripe Dashboard → Webhooks → [Your Endpoint] → "Send test webhook"
 - Check Firebase Functions logs for errors
+
+### Problem: Webhook rejecting with "Email mismatch" error
+
+**Cause**: This is a security feature. The email entered at Stripe Checkout doesn't match the email for the Firebase user account specified in `client_reference_id`.
+
+**Solution**:
+- Ensure users complete checkout with the same email they used to create their account
+- This prevents account takeover attacks where someone could modify the client-reference-id
+- If a legitimate user needs to change their email, have them update it in Firebase Auth first
+- Check Firebase Functions logs to see which emails were compared
+
+**Security Note**: This validation prevents malicious users from modifying the `client_reference_id` (user ID) in the browser to attach payments to other users' accounts.
 
 ## Benefits of This Approach
 

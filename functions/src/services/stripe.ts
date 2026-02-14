@@ -88,6 +88,53 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     return;
   }
 
+  // SECURITY: Validate that the checkout session's customer email matches the user's email
+  // This prevents account takeover where a malicious user could modify client_reference_id
+  // to point to a different user's account before checkout
+  const userDoc = await db.collection('users').doc(userId).get();
+  
+  if (!userDoc.exists) {
+    console.error(`User ${userId} not found in Firestore - rejecting checkout webhook`);
+    return;
+  }
+
+  const userData = userDoc.data();
+  const userEmail = userData?.email;
+
+  if (!userEmail) {
+    console.error(`User ${userId} has no email in Firestore - rejecting checkout webhook`);
+    return;
+  }
+
+  // Get the customer email from the Stripe session
+  let sessionEmail: string | null = null;
+  
+  if (session.customer_details?.email) {
+    sessionEmail = session.customer_details.email;
+  } else if (session.customer) {
+    // If customer_details.email is not available, retrieve from customer object
+    const customerId = typeof session.customer === 'string' ? session.customer : session.customer.id;
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer && !customer.deleted && customer.email) {
+      sessionEmail = customer.email;
+    }
+  }
+
+  if (!sessionEmail) {
+    console.error(`No email found in checkout session ${session.id} - rejecting webhook`);
+    return;
+  }
+
+  // Verify emails match (case-insensitive)
+  if (sessionEmail.toLowerCase() !== userEmail.toLowerCase()) {
+    console.error(
+      `Email mismatch for user ${userId}: Firestore email '${userEmail}' does not match ` +
+      `Stripe session email '${sessionEmail}'. Possible account takeover attempt - rejecting webhook.`
+    );
+    return;
+  }
+
+  // Email validation passed - proceed with subscription update
   const stripeCustomerId =
     typeof session.customer === 'string'
       ? session.customer
@@ -133,6 +180,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       startDate: new Date(),
     });
   }
+
+  console.log(`Successfully processed checkout for user ${userId} with email ${userEmail}`);
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
