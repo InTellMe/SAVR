@@ -170,7 +170,7 @@ export async function updateUserSubscription(
   }
 
   await db.collection('users').doc(userId).update(updateData);
-  
+
   console.log(`Updated user ${userId} subscription:`, updateData);
 }
 
