@@ -7,7 +7,9 @@ export interface User {
   subscriptionTier: SubscriptionTierName;
   subscriptionStatus?: 'active' | 'trialing' | 'cancelled' | 'past_due' | 'pending';
   stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
   paypalSubscriptionId?: string;
+  trialEndsAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

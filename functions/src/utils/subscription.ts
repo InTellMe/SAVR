@@ -141,6 +141,7 @@ export async function updateUserSubscription(
     subscriptionTier?: SubscriptionTierName;
     subscriptionStatus?: SubscriptionStatus;
     stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
     paypalSubscriptionId?: string | null;
     trialEndsAt?: Date | null;
   }
@@ -161,6 +162,10 @@ export async function updateUserSubscription(
     updateData.stripeCustomerId = updates.stripeCustomerId ?? null;
   }
 
+  if (Object.prototype.hasOwnProperty.call(updates, 'stripeSubscriptionId')) {
+    updateData.stripeSubscriptionId = updates.stripeSubscriptionId ?? null;
+  }
+
   if (Object.prototype.hasOwnProperty.call(updates, 'paypalSubscriptionId')) {
     updateData.paypalSubscriptionId = updates.paypalSubscriptionId ?? null;
   }
@@ -169,9 +174,13 @@ export async function updateUserSubscription(
     updateData.trialEndsAt = updates.trialEndsAt ?? null;
   }
 
-  await db.collection('users').doc(userId).update(updateData);
-
-  console.log(`Updated user ${userId} subscription:`, updateData);
+  try {
+    await db.collection('users').doc(userId).update(updateData);
+    console.log(`✅ Successfully updated user ${userId} subscription:`, JSON.stringify(updateData));
+  } catch (error) {
+    console.error(`❌ Failed to update user ${userId} subscription:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -216,6 +225,12 @@ export async function upsertUserSubscriptionRecord(
     }
   }
 
-  await db.collection('subscriptions').doc(userId).set(payload, { merge: true });
+  try {
+    await db.collection('subscriptions').doc(userId).set(payload, { merge: true });
+    console.log(`✅ Successfully updated subscription record for user ${userId}:`, JSON.stringify(payload));
+  } catch (error) {
+    console.error(`❌ Failed to update subscription record for user ${userId}:`, error);
+    throw error;
+  }
 }
 
