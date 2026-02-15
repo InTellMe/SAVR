@@ -466,9 +466,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
     status = mapStripeStatus(sub.status);
     cancelAtPeriodEnd = sub.cancel_at_period_end;
-    // In Stripe v20+, current_period_end is removed; use cancel_at as the billing end indicator
-    if (sub.cancel_at) {
-      currentPeriodEnd = new Date(sub.cancel_at * 1000);
+    // Use current_period_end for the subscription billing cycle end date
+    if (sub.current_period_end) {
+      currentPeriodEnd = new Date(sub.current_period_end * 1000);
     }
 
     if (sub.status === 'trialing' && sub.trial_end) {
@@ -545,8 +545,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
     trialEnd = new Date(subscription.trial_end * 1000);
   }
 
-  const currentPeriodEnd = subscription.cancel_at
-    ? new Date(subscription.cancel_at * 1000)
+  const currentPeriodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000)
     : null;
 
   await updateUserSubscription(userId, {
@@ -671,11 +671,12 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
   const { userId } = user;
   const subscriptionId = getSubscriptionIdFromInvoice(invoice);
 
-  // Store payment info for CS reference
+  // Store payment info for CS reference and clear payment action required flag
   const paymentUpdate: Record<string, unknown> = {
     lastPaymentDate: admin.firestore.FieldValue.serverTimestamp(),
     lastPaymentStatus: 'succeeded',
     lastInvoiceId: invoice.id,
+    paymentActionRequired: false,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   if (invoice.amount_paid) {
@@ -694,7 +695,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
     await updateUserSubscription(userId, {
       subscriptionStatus: internalStatus,
       ...(tier ? { subscriptionTier: tier } : {}),
-      currentPeriodEnd: sub.cancel_at ? new Date(sub.cancel_at * 1000) : null,
+      currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
     });
 
     console.log(`✅ Payment succeeded for user ${userId}, sub ${subscriptionId}, status → ${internalStatus}`);
