@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { db } from '../utils/firebase';
+import { db, admin } from '../utils/firebase';
 import type { SubscriptionTierName } from '../types';
 import {
   SubscriptionStatus,
@@ -11,6 +11,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build'
   apiVersion: '2026-01-28.clover',
 });
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Safely extract the subscription ID from a Stripe Invoice object.
+ * In Stripe API >= 2025-xx / stripe-node v20+, `invoice.subscription`
+ * was removed in favour of `invoice.parent.subscription_details.subscription`.
+ */
+function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
+  const sub = invoice.parent?.subscription_details?.subscription;
+  if (!sub) return null;
+  return typeof sub === 'string' ? sub : sub.id;
+}
+
 /**
  * Retrieves the subscription tier from a Stripe Price object.
  * Checks the price's metadata.tier field or nickname for tier information.
@@ -18,14 +33,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'dummy_key_for_build'
 async function getTierFromPrice(priceId: string): Promise<SubscriptionTierName> {
   try {
     const price = await stripe.prices.retrieve(priceId);
-    
+
     // Check metadata first (recommended approach)
     if (price.metadata?.tier) {
       const tier = price.metadata.tier.toLowerCase();
       if (tier === 'pro' || tier === 'plus' || tier === 'premium') return 'pro';
       if (tier === 'basic' || tier === 'free') return 'basic';
     }
-    
+
     // Check nickname as fallback
     if (price.nickname) {
       const nickname = price.nickname.toLowerCase();
@@ -33,8 +48,7 @@ async function getTierFromPrice(priceId: string): Promise<SubscriptionTierName> 
         return 'pro';
       }
     }
-    
-    // Default to basic if no metadata found
+
     console.warn(`Price ${priceId} missing metadata.tier field - defaulting to 'basic' tier. Please add metadata.tier='basic' or 'pro' in Stripe Dashboard.`);
     return 'basic';
   } catch (error) {
@@ -43,12 +57,48 @@ async function getTierFromPrice(priceId: string): Promise<SubscriptionTierName> 
   }
 }
 
+/** Resolve a Stripe customer ID from various object shapes. */
+function resolveCustomerId(
+  customer: string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined
+): string | null {
+  if (!customer) return null;
+  return typeof customer === 'string' ? customer : customer.id;
+}
+
+/** Look up the SAVR user by their stored Stripe customer ID. */
+async function findUserByCustomerId(customerId: string): Promise<{ userId: string; data: FirebaseFirestore.DocumentData } | null> {
+  const snap = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
+  if (snap.empty) return null;
+  return { userId: snap.docs[0].id, data: snap.docs[0].data() };
+}
+
+/** Log a Stripe webhook event to the `stripeEvents` collection for audit/CS. */
+async function logStripeEvent(event: Stripe.Event, extra?: Record<string, unknown>): Promise<void> {
+  try {
+    await db.collection('stripeEvents').add({
+      eventId: event.id,
+      type: event.type,
+      livemode: event.livemode,
+      created: new Date(event.created * 1000),
+      receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...extra,
+    });
+  } catch (err) {
+    // Non-critical — don't let logging failure break the webhook.
+    console.error('Failed to log Stripe event:', err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Webhook router
+// ---------------------------------------------------------------------------
+
 export async function handleStripeWebhook(
   rawBody: string,
   signature: string
 ): Promise<void> {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  
+
   if (!webhookSecret) {
     throw new Error('Stripe webhook secret not configured');
   }
@@ -57,12 +107,55 @@ export async function handleStripeWebhook(
 
   console.log(`🔔 Received Stripe webhook: ${event.type} (event ID: ${event.id})`);
 
+  // Log every event for audit / customer-service lookups
+  await logStripeEvent(event);
+
   switch (event.type) {
+    // ------ Checkout ------
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       await handleCheckoutCompleted(session);
       break;
     }
+    case 'checkout.session.expired': {
+      const session = event.data.object as Stripe.Checkout.Session;
+      console.log(`⏰ Checkout session expired: ${session.id}`);
+      break;
+    }
+    case 'checkout.session.async_payment_succeeded': {
+      const session = event.data.object as Stripe.Checkout.Session;
+      console.log(`✅ Async payment succeeded for checkout session ${session.id}`);
+      // Treat the same as checkout.session.completed for delayed payment methods
+      await handleCheckoutCompleted(session);
+      break;
+    }
+    case 'checkout.session.async_payment_failed': {
+      const session = event.data.object as Stripe.Checkout.Session;
+      console.log(`❌ Async payment failed for checkout session ${session.id}`);
+      break;
+    }
+
+    // ------ Customer lifecycle ------
+    case 'customer.created': {
+      const customer = event.data.object as Stripe.Customer;
+      console.log(`👤 Stripe customer created: ${customer.id} (${customer.email})`);
+      await handleCustomerCreated(customer);
+      break;
+    }
+    case 'customer.updated': {
+      const customer = event.data.object as Stripe.Customer;
+      console.log(`👤 Stripe customer updated: ${customer.id} (${customer.email})`);
+      await handleCustomerUpdated(customer);
+      break;
+    }
+    case 'customer.deleted': {
+      const customer = event.data.object as unknown as Stripe.DeletedCustomer;
+      console.log(`👤 Stripe customer deleted: ${customer.id}`);
+      await handleCustomerDeleted(customer);
+      break;
+    }
+
+    // ------ Subscription lifecycle ------
     case 'customer.subscription.created': {
       const subscription = event.data.object as Stripe.Subscription;
       console.log(`📝 Subscription created: ${subscription.id} (status: ${subscription.status})`);
@@ -79,13 +172,49 @@ export async function handleStripeWebhook(
       await handleSubscriptionDeleted(subscription);
       break;
     }
-    case 'customer.subscription.trial_will_end': {
+    case 'customer.subscription.paused': {
       const subscription = event.data.object as Stripe.Subscription;
-      console.log(`⏰ Trial will end soon for subscription ${subscription.id} (ends: ${new Date(subscription.trial_end! * 1000).toISOString()})`);
-      // Note: No action needed here, just logging for visibility
-      // Stripe will automatically attempt to charge when trial ends
+      console.log(`⏸️ Subscription paused: ${subscription.id}`);
+      await handleSubscriptionPaused(subscription);
       break;
     }
+    case 'customer.subscription.resumed': {
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log(`▶️ Subscription resumed: ${subscription.id}`);
+      await handleSubscriptionUpdated(subscription);
+      break;
+    }
+    case 'customer.subscription.trial_will_end': {
+      const subscription = event.data.object as Stripe.Subscription;
+      await handleTrialWillEnd(subscription);
+      break;
+    }
+    case 'customer.subscription.pending_update_applied': {
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log(`✅ Pending subscription update applied: ${subscription.id}`);
+      await handleSubscriptionUpdated(subscription);
+      break;
+    }
+    case 'customer.subscription.pending_update_expired': {
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log(`⏰ Pending subscription update expired: ${subscription.id}`);
+      break;
+    }
+
+    // ------ Invoice events ------
+    case 'invoice.created': {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log(`📄 Invoice created: ${invoice.id} (status: ${invoice.status})`);
+      await logInvoiceEvent(invoice, 'created');
+      break;
+    }
+    case 'invoice.finalized': {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log(`📄 Invoice finalized: ${invoice.id}`);
+      await logInvoiceEvent(invoice, 'finalized');
+      break;
+    }
+    case 'invoice.paid':
     case 'invoice.payment_succeeded': {
       const invoice = event.data.object as Stripe.Invoice;
       await handlePaymentSucceeded(invoice);
@@ -96,10 +225,140 @@ export async function handleStripeWebhook(
       await handlePaymentFailed(invoice);
       break;
     }
+    case 'invoice.payment_action_required': {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log(`⚠️ Invoice ${invoice.id} requires payment action`);
+      await handlePaymentActionRequired(invoice);
+      break;
+    }
+    case 'invoice.upcoming': {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log(`📅 Upcoming invoice for customer ${resolveCustomerId(invoice.customer)}`);
+      break;
+    }
+    case 'invoice.marked_uncollectible': {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log(`❌ Invoice ${invoice.id} marked uncollectible`);
+      await handleInvoiceUncollectible(invoice);
+      break;
+    }
+    case 'invoice.voided': {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log(`🗑️ Invoice ${invoice.id} voided`);
+      break;
+    }
+
+    // ------ Payment Intent events ------
+    case 'payment_intent.succeeded': {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      console.log(`💳 Payment intent succeeded: ${pi.id} ($${(pi.amount / 100).toFixed(2)})`);
+      break;
+    }
+    case 'payment_intent.payment_failed': {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      console.log(`❌ Payment intent failed: ${pi.id}`);
+      break;
+    }
+    case 'payment_intent.canceled': {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      console.log(`🚫 Payment intent canceled: ${pi.id}`);
+      break;
+    }
+    case 'payment_intent.requires_action': {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      console.log(`⚠️ Payment intent requires action: ${pi.id}`);
+      break;
+    }
+
+    // ------ Customer discount events ------
+    case 'customer.discount.created':
+    case 'customer.discount.updated':
+    case 'customer.discount.deleted': {
+      console.log(`🏷️ Customer discount event: ${event.type}`);
+      break;
+    }
+
+    // ------ Subscription schedule events ------
+    case 'subscription_schedule.created':
+    case 'subscription_schedule.updated':
+    case 'subscription_schedule.released':
+    case 'subscription_schedule.canceled':
+    case 'subscription_schedule.completed':
+    case 'subscription_schedule.aborted':
+    case 'subscription_schedule.expiring': {
+      console.log(`📋 Subscription schedule event: ${event.type}`);
+      break;
+    }
+
     default:
       console.log(`ℹ️  Unhandled event type: ${event.type}`);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Customer handlers
+// ---------------------------------------------------------------------------
+
+async function handleCustomerCreated(customer: Stripe.Customer): Promise<void> {
+  if (!customer.email) return;
+
+  // Try to link this Stripe customer to an existing SAVR user by email
+  const usersSnap = await db.collection('users').where('email', '==', customer.email).limit(1).get();
+  if (usersSnap.empty) {
+    console.log(`ℹ️  No SAVR user found for email ${customer.email}, Stripe customer ${customer.id} will be linked on checkout.`);
+    return;
+  }
+
+  const userDoc = usersSnap.docs[0];
+  const existing = userDoc.data();
+
+  // Only set if not already linked to a different customer
+  if (existing.stripeCustomerId && existing.stripeCustomerId !== customer.id) {
+    console.warn(`⚠️  User ${userDoc.id} already linked to Stripe customer ${existing.stripeCustomerId}, skipping link to ${customer.id}`);
+    return;
+  }
+
+  await db.collection('users').doc(userDoc.id).update({
+    stripeCustomerId: customer.id,
+    stripeEmail: customer.email,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  console.log(`✅ Linked Stripe customer ${customer.id} to SAVR user ${userDoc.id}`);
+}
+
+async function handleCustomerUpdated(customer: Stripe.Customer): Promise<void> {
+  const user = await findUserByCustomerId(customer.id);
+  if (!user) return;
+
+  // Sync useful customer-level fields for CS visibility
+  const updates: Record<string, unknown> = {
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  if (customer.email) updates.stripeEmail = customer.email;
+  if (customer.name) updates.stripeName = customer.name;
+
+  await db.collection('users').doc(user.userId).update(updates);
+  console.log(`✅ Synced Stripe customer update to user ${user.userId}`);
+}
+
+async function handleCustomerDeleted(customer: Stripe.DeletedCustomer): Promise<void> {
+  const user = await findUserByCustomerId(customer.id);
+  if (!user) return;
+
+  // Customer deleted in Stripe — downgrade and clear IDs
+  await updateUserSubscription(user.userId, {
+    subscriptionTier: 'basic',
+    subscriptionStatus: 'cancelled',
+    stripeCustomerId: null,
+    stripeSubscriptionId: null,
+  });
+  console.log(`✅ Cleared Stripe data for deleted customer ${customer.id}, user ${user.userId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Checkout handlers
+// ---------------------------------------------------------------------------
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
   console.log(`🔔 Processing checkout.session.completed webhook for session ${session.id}`);
@@ -107,7 +366,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   // Prefer client_reference_id from Pricing Table, while keeping metadata fallback.
   const claimedUserId = session.client_reference_id || session.metadata?.userId;
 
-  // Reject webhook if no user ID is provided
   if (!claimedUserId) {
     console.error('❌ No user ID found in checkout session - rejecting webhook');
     return;
@@ -116,15 +374,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   console.log(`✅ Checkout session ${session.id} has claimed user ID: ${claimedUserId}`);
 
   // SECURITY: Validate that the checkout session's customer email matches the user's email
-  // This prevents account takeover where a malicious user could modify client_reference_id
-  // to point to a different user's account before checkout
   const userDoc = await db.collection('users').doc(claimedUserId).get();
   if (!userDoc.exists) {
     console.error(`❌ User ${claimedUserId} not found in Firestore - rejecting checkout webhook`);
     return;
   }
-
-  console.log(`✅ User document found for ${claimedUserId}`);
 
   const userData = userDoc.data();
   const userEmail = userData?.email;
@@ -134,18 +388,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     return;
   }
 
-  console.log(`✅ User email from Firestore: ${userEmail}`);
-
   // Get the customer email from the Stripe session
   let sessionEmail: string | null = null;
   if (session.customer_details?.email) {
     sessionEmail = session.customer_details.email;
   } else if (session.customer) {
-    // If customer_details.email is not available, retrieve from customer object
-    const customerId = typeof session.customer === 'string' ? session.customer : session.customer.id;
-    const customer = await stripe.customers.retrieve(customerId);
-    if (customer && !customer.deleted && customer.email) {
-      sessionEmail = customer.email;
+    const custId = resolveCustomerId(session.customer);
+    if (custId) {
+      const cust = await stripe.customers.retrieve(custId);
+      if (cust && !cust.deleted && cust.email) {
+        sessionEmail = cust.email;
+      }
     }
   }
 
@@ -153,8 +406,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     console.error(`❌ No email found in checkout session ${session.id} - rejecting webhook`);
     return;
   }
-
-  console.log(`✅ Session email from Stripe: ${sessionEmail}`);
 
   // Verify emails match (case-insensitive)
   if (sessionEmail.toLowerCase() !== userEmail.toLowerCase()) {
@@ -167,45 +418,24 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
   console.log(`✅ Email validation passed`);
 
-  // Email validation passed - proceed with subscription update
-  const stripeCustomerId =
-    typeof session.customer === 'string'
-      ? session.customer
-      : (session.customer as Stripe.Customer | null)?.id ?? null;
+  const stripeCustomerId = resolveCustomerId(session.customer);
 
-  // CRITICAL: Stripe customer ID is required for billing portal access
   if (!stripeCustomerId) {
-    console.error(
-      `❌ No Stripe customer ID in checkout session ${session.id} for user ${claimedUserId}. ` +
-      `Customer will not be able to access billing portal. Rejecting webhook.`
-    );
+    console.error(`❌ No Stripe customer ID in checkout session ${session.id} - rejecting webhook`);
     return;
   }
 
-  console.log(`✅ Stripe customer ID: ${stripeCustomerId}`);
-
   let userId = claimedUserId;
 
-  // Never trust client-provided user IDs alone; verify against server-trusted customer identity.
+  // Verify against server-trusted customer identity
   if (stripeCustomerId) {
-    const usersSnapshot = await db
-      .collection('users')
-      .where('stripeCustomerId', '==', stripeCustomerId)
-      .limit(1)
-      .get();
-
-    if (!usersSnapshot.empty) {
-      const customerUserId = usersSnapshot.docs[0].id;
-
-      if (userId && userId !== customerUserId) {
-        console.error(
-          `❌ Checkout user mismatch for customer ${stripeCustomerId}: claimed ${userId}, mapped ${customerUserId}`
-        );
+    const existingUser = await findUserByCustomerId(stripeCustomerId);
+    if (existingUser) {
+      if (userId !== existingUser.userId) {
+        console.error(`❌ Checkout user mismatch: claimed ${userId}, mapped ${existingUser.userId}`);
         return;
       }
-
-      userId = customerUserId;
-      console.log(`✅ User ID verified against customer ID: ${userId}`);
+      userId = existingUser.userId;
     }
   }
 
@@ -218,6 +448,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   let trialEnd: Date | null = null;
   let status: SubscriptionStatus = 'active';
   let subscriptionId: string | null = null;
+  let currentPeriodEnd: Date | null = null;
+  let cancelAtPeriodEnd = false;
 
   if (session.subscription) {
     const sub =
@@ -226,295 +458,360 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
         : (session.subscription as Stripe.Subscription);
 
     subscriptionId = sub.id;
-    console.log(`✅ Subscription ID: ${subscriptionId}`);
 
     const priceId = sub.items?.data?.[0]?.price?.id;
     if (priceId) {
       tier = await getTierFromPrice(priceId);
-      console.log(`✅ Subscription tier: ${tier}`);
     }
 
-    // Preserve the subscription status from Stripe (trialing or active)
     status = mapStripeStatus(sub.status);
-    console.log(`✅ Subscription status: ${sub.status} → ${status}`);
-    
-    // Store trial end date if in trial
+    cancelAtPeriodEnd = sub.cancel_at_period_end;
+    // Use current_period_end for the subscription billing cycle end date
+    if (sub.current_period_end) {
+      currentPeriodEnd = new Date(sub.current_period_end * 1000);
+    }
+
     if (sub.status === 'trialing' && sub.trial_end) {
       trialEnd = new Date(sub.trial_end * 1000);
-      console.log(`✅ Trial ends at: ${trialEnd.toISOString()}`);
     }
+
+    console.log(`✅ Sub ${subscriptionId}, tier=${tier}, status=${sub.status}->${status}, cancel_at_period_end=${cancelAtPeriodEnd}`);
   } else {
     console.warn(`⚠️  No subscription found in checkout session ${session.id}`);
   }
 
-  console.log(`🔄 Updating user document for ${userId}...`);
+  // Persist enriched data for customer service
   await updateUserSubscription(userId, {
     subscriptionTier: tier,
     subscriptionStatus: status,
     stripeCustomerId,
     stripeSubscriptionId: subscriptionId,
     ...(trialEnd ? { trialEndsAt: trialEnd } : {}),
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    stripeEmail: sessionEmail,
+    lastPaymentDate: new Date(),
   });
 
   if (subscriptionId) {
-    console.log(`🔄 Updating subscription record for ${userId}...`);
     await upsertUserSubscriptionRecord(userId, {
       provider: 'stripe',
       subscriptionId,
-      status: status,
+      status,
       startDate: new Date(),
+      currentPeriodEnd,
+      cancelAtPeriodEnd,
+      tier,
     });
   }
 
   console.log(
-    `✅ Successfully processed checkout for user ${userId} with email ${userEmail}. ` +
-    `Stripe customer ID: ${stripeCustomerId}, Subscription ID: ${subscriptionId}, Tier: ${tier}, Status: ${status}`
+    `✅ Checkout processed for user ${userId}, email ${userEmail}. ` +
+    `Customer: ${stripeCustomerId}, Sub: ${subscriptionId}, Tier: ${tier}, Status: ${status}`
   );
 }
 
+// ---------------------------------------------------------------------------
+// Subscription handlers
+// ---------------------------------------------------------------------------
+
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
-  console.log(`🔔 Processing subscription.updated for subscription ${subscription.id}, status ${subscription.status}`);
-  
-  const userId = subscription.metadata?.userId;
+  console.log(`🔔 Processing subscription update for ${subscription.id}, status ${subscription.status}`);
 
-  const internalStatus = mapStripeStatus(subscription.status);
-
-  let resolvedUserId = userId;
-
-  // Extract customer ID from subscription
-  const customerId =
-    typeof subscription.customer === 'string'
-      ? subscription.customer
-      : (subscription.customer as Stripe.Customer)?.id;
-
+  const customerId = resolveCustomerId(subscription.customer);
   if (!customerId) {
-    console.error(`❌ No customer ID in subscription update event for subscription ${subscription.id}`);
+    console.error(`❌ No customer ID in subscription event for ${subscription.id}`);
     return;
   }
 
-  console.log(`✅ Customer ID: ${customerId}`);
+  const resolvedUser =
+    (subscription.metadata?.userId
+      ? { userId: subscription.metadata.userId }
+      : null) || await findUserByCustomerId(customerId);
 
-  if (!resolvedUserId) {
-    // Try to find user by customer ID
-    console.log(`🔍 Looking up user by customer ID ${customerId}...`);
-    const usersSnapshot = await db
-      .collection('users')
-      .where('stripeCustomerId', '==', customerId)
-      .limit(1)
-      .get();
-
-    if (usersSnapshot.empty) {
-      console.error(`❌ No user found for subscription update with customer ID ${customerId}`);
-      return;
-    }
-
-    const userDoc = usersSnapshot.docs[0];
-    resolvedUserId = userDoc.id;
-    console.log(`✅ Found user ${resolvedUserId} for customer ${customerId}`);
+  if (!resolvedUser) {
+    console.error(`❌ No user found for subscription ${subscription.id}, customer ${customerId}`);
+    return;
   }
 
-  // Determine the tier from the current price on the subscription
+  const { userId } = resolvedUser;
+  const internalStatus = mapStripeStatus(subscription.status);
+
   const priceId = subscription.items?.data?.[0]?.price?.id;
   const tier = priceId ? await getTierFromPrice(priceId) : 'basic';
 
-  console.log(`✅ Subscription tier: ${tier}, status: ${subscription.status} → ${internalStatus}`);
-
-  // Store trial end date if in trial
   let trialEnd: Date | null = null;
   if (subscription.status === 'trialing' && subscription.trial_end) {
     trialEnd = new Date(subscription.trial_end * 1000);
-    console.log(`✅ Trial ends at: ${trialEnd.toISOString()}`);
   }
 
-  // Update user subscription including customer ID and subscription ID
-  console.log(`🔄 Updating user document for ${resolvedUserId}...`);
-  await updateUserSubscription(resolvedUserId, {
+  const currentPeriodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000)
+    : null;
+
+  await updateUserSubscription(userId, {
     subscriptionTier: tier,
     subscriptionStatus: internalStatus,
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscription.id,
     ...(trialEnd ? { trialEndsAt: trialEnd } : {}),
-  });
-
-  console.log(`🔄 Updating subscription record for ${resolvedUserId}...`);
-  await upsertUserSubscriptionRecord(resolvedUserId, {
-    provider: 'stripe',
-    subscriptionId: subscription.id,
-    status: internalStatus,
-  });
-
-  console.log(
-    `✅ Successfully processed subscription update for user ${resolvedUserId}. ` +
-    `Stripe customer ID: ${customerId}, Subscription ID: ${subscription.id}, Status: ${internalStatus}, Tier: ${tier}`
-  );
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-  console.log(`🔔 Processing subscription deletion for subscription ${subscription.id}`);
-  
-  const customerId =
-    typeof subscription.customer === 'string'
-      ? subscription.customer
-      : (subscription.customer as Stripe.Customer)?.id;
-
-  if (!customerId) {
-    console.error('❌ No customer ID in subscription deletion event');
-    return;
-  }
-
-  console.log(`✅ Customer ID: ${customerId}`);
-
-  const usersSnapshot = await db
-    .collection('users')
-    .where('stripeCustomerId', '==', customerId)
-    .limit(1)
-    .get();
-  
-  if (usersSnapshot.empty) {
-    console.error(`❌ No user found for subscription deletion with customer ID ${customerId}`);
-    return;
-  }
-
-  const userDoc = usersSnapshot.docs[0];
-  const userId = userDoc.id;
-
-  console.log(`✅ Found user ${userId} for customer ${customerId}`);
-  console.log(`🔄 Marking subscription as cancelled...`);
-
-  await updateUserSubscription(userId, {
-    subscriptionTier: 'basic',
-    subscriptionStatus: 'cancelled',
+    currentPeriodEnd,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
   });
 
   await upsertUserSubscriptionRecord(userId, {
     provider: 'stripe',
     subscriptionId: subscription.id,
-    status: 'cancelled',
-    endDate: new Date(),
+    status: internalStatus,
+    currentPeriodEnd,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    tier,
   });
 
-  console.log(
-    `✅ Successfully processed subscription deletion for user ${userId}. ` +
-    `Stripe customer ID: ${customerId}, Subscription ID: ${subscription.id}`
-  );
+  console.log(`✅ Subscription update for user ${userId}: tier=${tier}, status=${internalStatus}, cancel_at_period_end=${subscription.cancel_at_period_end}`);
 }
+
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+  console.log(`🔔 Processing subscription deletion for ${subscription.id}`);
+
+  const customerId = resolveCustomerId(subscription.customer);
+  if (!customerId) {
+    console.error('❌ No customer ID in subscription deletion event');
+    return;
+  }
+
+  const user = await findUserByCustomerId(customerId);
+  if (!user) {
+    console.error(`❌ No user found for subscription deletion, customer ${customerId}`);
+    return;
+  }
+
+  await updateUserSubscription(user.userId, {
+    subscriptionTier: 'basic',
+    subscriptionStatus: 'cancelled',
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: null,
+  });
+
+  await upsertUserSubscriptionRecord(user.userId, {
+    provider: 'stripe',
+    subscriptionId: subscription.id,
+    status: 'cancelled',
+    endDate: new Date(),
+    tier: 'basic',
+  });
+
+  console.log(`✅ Subscription deleted for user ${user.userId}, downgraded to basic`);
+}
+
+async function handleSubscriptionPaused(subscription: Stripe.Subscription): Promise<void> {
+  const customerId = resolveCustomerId(subscription.customer);
+  if (!customerId) return;
+
+  const user = await findUserByCustomerId(customerId);
+  if (!user) return;
+
+  // Paused subs should not grant Pro access
+  await updateUserSubscription(user.userId, {
+    subscriptionTier: 'basic',
+    subscriptionStatus: 'paused',
+  });
+
+  await upsertUserSubscriptionRecord(user.userId, {
+    provider: 'stripe',
+    subscriptionId: subscription.id,
+    status: 'paused',
+  });
+
+  console.log(`✅ Subscription paused for user ${user.userId}, downgraded to basic`);
+}
+
+async function handleTrialWillEnd(subscription: Stripe.Subscription): Promise<void> {
+  const trialEnd = subscription.trial_end
+    ? new Date(subscription.trial_end * 1000)
+    : null;
+
+  console.log(`⏰ Trial ending soon for subscription ${subscription.id} (ends: ${trialEnd?.toISOString()})`);
+
+  const customerId = resolveCustomerId(subscription.customer);
+  if (!customerId) return;
+
+  const user = await findUserByCustomerId(customerId);
+  if (!user) return;
+
+  // Store the trial end notification for the frontend to optionally display
+  await db.collection('users').doc(user.userId).update({
+    trialEndingNotified: true,
+    trialEndsAt: trialEnd,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log(`✅ Trial-ending notification stored for user ${user.userId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Invoice / Payment handlers
+// ---------------------------------------------------------------------------
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
   console.log(`🔔 Processing payment succeeded for invoice ${invoice.id}`);
-  
-  const customerId =
-    typeof invoice.customer === 'string'
-      ? invoice.customer
-      : (invoice.customer as Stripe.Customer | Stripe.DeletedCustomer)?.id;
 
+  const customerId = resolveCustomerId(invoice.customer);
   if (!customerId) {
     console.error('❌ No customer ID in payment success event');
     return;
   }
 
-  console.log(`✅ Customer ID: ${customerId}`);
-
-  const usersSnapshot = await db
-    .collection('users')
-    .where('stripeCustomerId', '==', customerId)
-    .limit(1)
-    .get();
-  
-  if (usersSnapshot.empty) {
-    console.error(`❌ No user found for payment success with customer ID ${customerId}`);
+  const user = await findUserByCustomerId(customerId);
+  if (!user) {
+    console.error(`❌ No user found for payment success, customer ${customerId}`);
     return;
   }
 
-  const userDoc = usersSnapshot.docs[0];
-  const userId = userDoc.id;
+  const { userId } = user;
+  const subscriptionId = getSubscriptionIdFromInvoice(invoice);
 
-  console.log(`✅ Found user ${userId} for customer ${customerId}`);
+  // Store payment info for CS reference and clear payment action required flag
+  const paymentUpdate: Record<string, unknown> = {
+    lastPaymentDate: admin.firestore.FieldValue.serverTimestamp(),
+    lastPaymentStatus: 'succeeded',
+    lastInvoiceId: invoice.id,
+    paymentActionRequired: false,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (invoice.amount_paid) {
+    paymentUpdate.lastPaymentAmount = invoice.amount_paid;
+    paymentUpdate.lastPaymentCurrency = invoice.currency;
+  }
+  await db.collection('users').doc(userId).update(paymentUpdate);
 
-  // If this is the first payment after a trial, the subscription should already be 'active'
-  // This event is primarily for logging and confirmation
-  const subscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
-  
   if (subscriptionId) {
-    console.log(`💰 First payment succeeded for subscription ${subscriptionId}`);
-    // Fetch the subscription to get its current status
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    const internalStatus = mapStripeStatus(subscription.status);
-    
-    console.log(`🔄 Updating user status after successful payment...`);
+    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+    const internalStatus = mapStripeStatus(sub.status);
+    const tier = sub.items?.data?.[0]?.price?.id
+      ? await getTierFromPrice(sub.items.data[0].price.id)
+      : undefined;
+
     await updateUserSubscription(userId, {
       subscriptionStatus: internalStatus,
+      ...(tier ? { subscriptionTier: tier } : {}),
+      currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
     });
-    
-    console.log(`✅ Successfully processed payment success for user ${userId}`);
+
+    console.log(`✅ Payment succeeded for user ${userId}, sub ${subscriptionId}, status → ${internalStatus}`);
   } else {
-    console.log(`ℹ️  Payment succeeded but no subscription attached to invoice ${invoice.id}`);
+    console.log(`ℹ️  Payment succeeded but no subscription on invoice ${invoice.id}`);
   }
+
+  // Log to invoiceHistory subcollection for complete payment trail
+  await logInvoiceEvent(invoice, 'payment_succeeded');
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
   console.log(`🔔 Processing payment failed for invoice ${invoice.id}`);
-  
-  const customerId =
-    typeof invoice.customer === 'string'
-      ? invoice.customer
-      : (invoice.customer as Stripe.Customer | Stripe.DeletedCustomer)?.id;
 
+  const customerId = resolveCustomerId(invoice.customer);
   if (!customerId) {
     console.error('❌ No customer ID in payment failure event');
     return;
   }
 
-  console.log(`✅ Customer ID: ${customerId}`);
-
-  const usersSnapshot = await db
-    .collection('users')
-    .where('stripeCustomerId', '==', customerId)
-    .limit(1)
-    .get();
-  
-  if (usersSnapshot.empty) {
-    console.error(`❌ No user found for payment failure with customer ID ${customerId}`);
+  const user = await findUserByCustomerId(customerId);
+  if (!user) {
+    console.error(`❌ No user found for payment failure, customer ${customerId}`);
     return;
   }
 
-  const userDoc = usersSnapshot.docs[0];
-  const userId = userDoc.id;
+  const { userId } = user;
 
-  console.log(`✅ Found user ${userId} for customer ${customerId}`);
-  console.log(`🔄 Marking subscription as past_due...`);
+  // Record failure details for CS
+  await db.collection('users').doc(userId).update({
+    lastPaymentStatus: 'failed',
+    lastPaymentFailedAt: admin.firestore.FieldValue.serverTimestamp(),
+    lastInvoiceId: invoice.id,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
 
   await updateUserSubscription(userId, {
     subscriptionStatus: 'past_due',
   });
 
-  // Extract subscription ID safely
-  interface InvoiceWithSubscriptionDetails extends Stripe.Invoice {
-    subscription_details?: {
-      subscription?: string;
-    };
-  }
-  const invoiceWithDetails = invoice as InvoiceWithSubscriptionDetails;
-  const subscriptionId =
-    typeof invoice.subscription === 'string'
-      ? invoice.subscription
-      : (typeof invoiceWithDetails.subscription_details?.subscription === 'string'
-          ? invoiceWithDetails.subscription_details.subscription
-          : null);
+  const subscriptionId = getSubscriptionIdFromInvoice(invoice);
 
   if (subscriptionId) {
-    console.log(`🔄 Updating subscription record with past_due status...`);
     await upsertUserSubscriptionRecord(userId, {
       provider: 'stripe',
-      subscriptionId: subscriptionId,
+      subscriptionId,
       status: 'past_due',
     });
   }
 
-  console.log(
-    `✅ Successfully processed payment failure for user ${userId}. ` +
-    `Stripe customer ID: ${customerId}, Subscription ID: ${subscriptionId || 'N/A'}`
-  );
+  await logInvoiceEvent(invoice, 'payment_failed');
+
+  console.log(`✅ Payment failure recorded for user ${userId}, sub ${subscriptionId || 'N/A'}`);
 }
+
+async function handlePaymentActionRequired(invoice: Stripe.Invoice): Promise<void> {
+  const customerId = resolveCustomerId(invoice.customer);
+  if (!customerId) return;
+
+  const user = await findUserByCustomerId(customerId);
+  if (!user) return;
+
+  await db.collection('users').doc(user.userId).update({
+    paymentActionRequired: true,
+    lastInvoiceId: invoice.id,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log(`⚠️ Payment action required stored for user ${user.userId}`);
+}
+
+async function handleInvoiceUncollectible(invoice: Stripe.Invoice): Promise<void> {
+  const customerId = resolveCustomerId(invoice.customer);
+  if (!customerId) return;
+
+  const user = await findUserByCustomerId(customerId);
+  if (!user) return;
+
+  // Downgrade since we can't collect payment
+  await updateUserSubscription(user.userId, {
+    subscriptionTier: 'basic',
+    subscriptionStatus: 'past_due',
+  });
+
+  console.log(`❌ Invoice uncollectible for user ${user.userId}, downgraded to basic`);
+}
+
+/** Persist invoice events to a subcollection for payment history. */
+async function logInvoiceEvent(invoice: Stripe.Invoice, action: string): Promise<void> {
+  const customerId = resolveCustomerId(invoice.customer);
+  if (!customerId) return;
+
+  const user = await findUserByCustomerId(customerId);
+  if (!user) return;
+
+  try {
+    await db.collection('users').doc(user.userId).collection('invoiceHistory').add({
+      invoiceId: invoice.id,
+      action,
+      status: invoice.status,
+      amountDue: invoice.amount_due,
+      amountPaid: invoice.amount_paid,
+      currency: invoice.currency,
+      subscriptionId: getSubscriptionIdFromInvoice(invoice),
+      hostedInvoiceUrl: invoice.hosted_invoice_url,
+      invoicePdf: invoice.invoice_pdf,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('Failed to log invoice event:', err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Status mapping
+// ---------------------------------------------------------------------------
 
 function mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
   switch (status) {
@@ -524,6 +821,8 @@ function mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus
       return 'trialing';
     case 'canceled':
       return 'cancelled';
+    case 'paused':
+      return 'paused';
     case 'past_due':
     case 'unpaid':
     case 'incomplete':
@@ -534,13 +833,17 @@ function mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus
   }
 }
 
+// ---------------------------------------------------------------------------
+// Billing portal
+// ---------------------------------------------------------------------------
+
 export async function createPortalSession(
   userId: string,
   returnUrl: string
 ): Promise<string> {
   const userDoc = await db.collection('users').doc(userId).get();
   const userData = userDoc.data();
-  
+
   if (!userData?.stripeCustomerId) {
     throw new Error('No Stripe customer ID found');
   }

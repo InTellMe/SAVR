@@ -99,6 +99,24 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
+    // Invoice history subcollection - users can read their own; written by Cloud Functions
+    match /users/{userId}/invoiceHistory/{invoiceId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    // Stripe webhook event log - admin/CS only; no client access
+    match /stripeEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Data consent records - users can read and update their own consent
+    match /dataConsent/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId;
+    }
+
     // Labeled training data - only backend services (admin SDK) may access
     match /labeled_data/{rowId} {
       allow read, write: if false;

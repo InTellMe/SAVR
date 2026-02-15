@@ -24,7 +24,14 @@ interface UserData {
   subscriptionStatus?: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  stripeEmail?: string;
   trialEndsAt?: Date | { seconds: number; nanoseconds: number }; // Firestore Timestamp or Date
+  trialEndingNotified?: boolean;
+  currentPeriodEnd?: Date | { seconds: number; nanoseconds: number };
+  cancelAtPeriodEnd?: boolean;
+  lastPaymentStatus?: string;
+  lastPaymentDate?: Date | { seconds: number; nanoseconds: number };
+  paymentActionRequired?: boolean;
 }
 
 export function isProTier(tier: UserData['subscriptionTier'] | undefined): boolean {

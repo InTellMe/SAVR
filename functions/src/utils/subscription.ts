@@ -1,7 +1,7 @@
 import { db } from '../utils/firebase';
 import { TIER_LIMITS, type SubscriptionTierName } from '../types';
 
-export type SubscriptionStatus = 'active' | 'trialing' | 'cancelled' | 'past_due' | 'pending';
+export type SubscriptionStatus = 'active' | 'trialing' | 'cancelled' | 'past_due' | 'pending' | 'paused';
 
 /**
  * Returns the effective subscription tier for a user, taking both
@@ -144,6 +144,10 @@ export async function updateUserSubscription(
     stripeSubscriptionId?: string | null;
     paypalSubscriptionId?: string | null;
     trialEndsAt?: Date | null;
+    currentPeriodEnd?: Date | null;
+    cancelAtPeriodEnd?: boolean;
+    stripeEmail?: string | null;
+    lastPaymentDate?: Date | null;
   }
 ): Promise<void> {
   const updateData: Record<string, unknown> = {
@@ -174,6 +178,22 @@ export async function updateUserSubscription(
     updateData.trialEndsAt = updates.trialEndsAt ?? null;
   }
 
+  if (Object.prototype.hasOwnProperty.call(updates, 'currentPeriodEnd')) {
+    updateData.currentPeriodEnd = updates.currentPeriodEnd ?? null;
+  }
+
+  if (updates.cancelAtPeriodEnd !== undefined) {
+    updateData.cancelAtPeriodEnd = updates.cancelAtPeriodEnd;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'stripeEmail')) {
+    updateData.stripeEmail = updates.stripeEmail ?? null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'lastPaymentDate')) {
+    updateData.lastPaymentDate = updates.lastPaymentDate ?? null;
+  }
+
   try {
     await db.collection('users').doc(userId).update(updateData);
     console.log(`✅ Successfully updated user ${userId} subscription:`, JSON.stringify(updateData));
@@ -195,6 +215,9 @@ export async function upsertUserSubscriptionRecord(
     status?: SubscriptionStatus;
     startDate?: Date | null;
     endDate?: Date | null;
+    currentPeriodEnd?: Date | null;
+    cancelAtPeriodEnd?: boolean;
+    tier?: SubscriptionTierName;
   }
 ): Promise<void> {
   const now = new Date();
@@ -215,6 +238,18 @@ export async function upsertUserSubscriptionRecord(
 
   if (Object.prototype.hasOwnProperty.call(data, 'endDate')) {
     payload.endDate = data.endDate ?? null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(data, 'currentPeriodEnd')) {
+    payload.currentPeriodEnd = data.currentPeriodEnd ?? null;
+  }
+
+  if (data.cancelAtPeriodEnd !== undefined) {
+    payload.cancelAtPeriodEnd = data.cancelAtPeriodEnd;
+  }
+
+  if (data.tier) {
+    payload.tier = data.tier;
   }
 
   if (data.subscriptionId) {

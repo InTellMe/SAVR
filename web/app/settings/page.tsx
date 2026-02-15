@@ -5,8 +5,9 @@ import Navbar from '@/components/Navbar';
 import { useAuth, isProTier } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
-import { useState } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db, functions } from '@/lib/firebase';
+import { useState, useEffect } from 'react';
 
 export default function SettingsPage() {
   return (
@@ -20,6 +21,51 @@ function SettingsContent() {
   const { user, userData, logout } = useAuth();
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
+  const [consentLoading, setConsentLoading] = useState(true);
+  const [consent, setConsent] = useState<{
+    imageTraining: boolean;
+    interactionAnalytics: boolean;
+    consentDate?: string;
+  }>({ imageTraining: false, interactionAnalytics: false });
+
+  useEffect(() => {
+    async function loadConsent() {
+      if (!user) return;
+      try {
+        const snap = await getDoc(doc(db, 'dataConsent', user.uid));
+        if (snap.exists()) {
+          const data = snap.data();
+          setConsent({
+            imageTraining: data.imageTraining ?? false,
+            interactionAnalytics: data.interactionAnalytics ?? false,
+            consentDate: data.updatedAt?.toDate?.()?.toLocaleDateString() ?? data.updatedAt,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load consent:', err);
+      } finally {
+        setConsentLoading(false);
+      }
+    }
+    loadConsent();
+  }, [user]);
+
+  async function handleConsentChange(field: 'imageTraining' | 'interactionAnalytics', value: boolean) {
+    if (!user) return;
+    const updated = { ...consent, [field]: value };
+    setConsent(updated);
+    try {
+      await setDoc(doc(db, 'dataConsent', user.uid), {
+        userId: user.uid,
+        imageTraining: updated.imageTraining,
+        interactionAnalytics: updated.interactionAnalytics,
+        updatedAt: new Date(),
+      }, { merge: true });
+    } catch (err) {
+      console.error('Failed to save consent:', err);
+      setConsent({ ...consent, [field]: !value }); // revert on failure
+    }
+  }
 
   const tier = userData?.subscriptionTier;
   const tierLabel = 
@@ -82,6 +128,11 @@ function SettingsContent() {
             <p>
               <span className="font-medium">Email:</span> {user?.email}
             </p>
+            {userData?.stripeEmail && userData.stripeEmail !== user?.email && (
+              <p>
+                <span className="font-medium">Billing email:</span> {userData.stripeEmail}
+              </p>
+            )}
             <p>
               <span className="font-medium">Subscription tier:</span> {tierLabel}
             </p>
@@ -89,6 +140,21 @@ function SettingsContent() {
               <p>
                 <span className="font-medium">Subscription status:</span>{' '}
                 <span className="capitalize">{userData.subscriptionStatus}</span>
+              </p>
+            )}
+            {userData?.cancelAtPeriodEnd && (
+              <p className="text-amber-400">
+                Your subscription will cancel at the end of the current billing period.
+              </p>
+            )}
+            {userData?.paymentActionRequired && (
+              <p className="text-red-400">
+                Payment action required. Please update your payment method in the billing portal.
+              </p>
+            )}
+            {userData?.lastPaymentStatus === 'failed' && (
+              <p className="text-red-400">
+                Your last payment failed. Please update your payment method to maintain access.
               </p>
             )}
           </div>
@@ -138,6 +204,55 @@ function SettingsContent() {
           >
             Manage preferences
           </Link>
+        </section>
+
+        {/* Data & Privacy section */}
+        <section className="mb-6 rounded-lg glass-card p-6 shadow">
+          <h2 className="text-xl font-semibold text-white mb-2">Data &amp; Privacy</h2>
+          <p className="mb-4 text-sm text-[#9ca3c2]">
+            Help improve SAVR by allowing us to use your anonymized data for training. You can change these settings at any time. See our{' '}
+            <Link href="/privacy" className="text-[#00d4ff] hover:underline">Privacy Policy</Link> for details.
+          </p>
+
+          {consentLoading ? (
+            <p className="text-sm text-[#9ca3c2]">Loading preferences...</p>
+          ) : (
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consent.imageTraining}
+                  onChange={(e) => handleConsentChange('imageTraining', e.target.checked)}
+                  className="mt-1 accent-[#00d4ff] w-4 h-4"
+                />
+                <div>
+                  <p className="text-sm font-medium text-white">Image &amp; inventory data</p>
+                  <p className="text-xs text-[#9ca3c2]">
+                    Allow SAVR to use your uploaded pantry images and ingredient data (anonymized) to improve food recognition accuracy for all users.
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consent.interactionAnalytics}
+                  onChange={(e) => handleConsentChange('interactionAnalytics', e.target.checked)}
+                  className="mt-1 accent-[#00d4ff] w-4 h-4"
+                />
+                <div>
+                  <p className="text-sm font-medium text-white">Usage &amp; interaction analytics</p>
+                  <p className="text-xs text-[#9ca3c2]">
+                    Allow SAVR to analyze your recipe preferences, chat interactions, and feature usage (anonymized) to improve recommendations and the AI assistant.
+                  </p>
+                </div>
+              </label>
+
+              {consent.consentDate && (
+                <p className="text-xs text-[#6b7294]">Last updated: {consent.consentDate}</p>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Danger zone */}

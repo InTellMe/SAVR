@@ -5,11 +5,25 @@ export interface User {
   displayName?: string;
   photoURL?: string;
   subscriptionTier: SubscriptionTierName;
-  subscriptionStatus?: 'active' | 'trialing' | 'cancelled' | 'past_due' | 'pending';
+  subscriptionStatus?: 'active' | 'trialing' | 'cancelled' | 'past_due' | 'pending' | 'paused';
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  stripeEmail?: string;
+  stripeName?: string;
   paypalSubscriptionId?: string;
   trialEndsAt?: Date;
+  trialEndingNotified?: boolean;
+  currentPeriodEnd?: Date;
+  cancelAtPeriodEnd?: boolean;
+  lastPaymentDate?: Date;
+  lastPaymentStatus?: 'succeeded' | 'failed';
+  lastPaymentAmount?: number;
+  lastPaymentCurrency?: string;
+  lastPaymentFailedAt?: Date;
+  lastInvoiceId?: string;
+  paymentActionRequired?: boolean;
+  dataConsentGranted?: boolean;
+  dataConsentDate?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
