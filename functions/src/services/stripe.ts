@@ -27,6 +27,25 @@ function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
 }
 
 /**
+ * Get the billing period end date from a Stripe Subscription.
+ * In Stripe v20+ (API 2026-01-28.clover), `current_period_end` was moved
+ * from the Subscription object to SubscriptionItem. We read it from the
+ * first item, falling back to `cancel_at` for cancelling subs.
+ */
+function getSubscriptionPeriodEnd(sub: Stripe.Subscription): Date | null {
+  // Try SubscriptionItem.current_period_end first (available in Stripe v20+)
+  const itemPeriodEnd = sub.items?.data?.[0]?.current_period_end;
+  if (itemPeriodEnd) {
+    return new Date(itemPeriodEnd * 1000);
+  }
+  // Fallback: cancel_at is set when the subscription will end
+  if (sub.cancel_at) {
+    return new Date(sub.cancel_at * 1000);
+  }
+  return null;
+}
+
+/**
  * Retrieves the subscription tier from a Stripe Price object.
  * Checks the price's metadata.tier field or nickname for tier information.
  */
@@ -466,10 +485,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
     status = mapStripeStatus(sub.status);
     cancelAtPeriodEnd = sub.cancel_at_period_end;
-    // Use current_period_end for the subscription billing cycle end date
-    if (sub.current_period_end) {
-      currentPeriodEnd = new Date(sub.current_period_end * 1000);
-    }
+    // In Stripe v20+ (API 2026-01-28.clover), current_period_end was moved
+    // from Subscription to SubscriptionItem. Fall back to cancel_at.
+    currentPeriodEnd = getSubscriptionPeriodEnd(sub);
 
     if (sub.status === 'trialing' && sub.trial_end) {
       trialEnd = new Date(sub.trial_end * 1000);
@@ -545,9 +563,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
     trialEnd = new Date(subscription.trial_end * 1000);
   }
 
-  const currentPeriodEnd = subscription.current_period_end
-    ? new Date(subscription.current_period_end * 1000)
-    : null;
+  // In Stripe v20+, current_period_end moved to SubscriptionItem.
+  const currentPeriodEnd = getSubscriptionPeriodEnd(subscription);
 
   await updateUserSubscription(userId, {
     subscriptionTier: tier,
@@ -695,7 +712,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
     await updateUserSubscription(userId, {
       subscriptionStatus: internalStatus,
       ...(tier ? { subscriptionTier: tier } : {}),
-      currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+      currentPeriodEnd: getSubscriptionPeriodEnd(sub),
     });
 
     console.log(`✅ Payment succeeded for user ${userId}, sub ${subscriptionId}, status → ${internalStatus}`);
