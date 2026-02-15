@@ -77,7 +77,7 @@ function DashboardContent() {
           </h1>
           <p className="text-[#9ca3c2]">
             You&apos;re on the <span className="font-semibold text-[#00d4ff]">{userData?.subscriptionTier || 'basic'}</span> plan
-            {(userData?.subscriptionTier === 'basic' || !userData?.subscriptionTier) && (
+            {userData?.subscriptionTier === 'basic' && (
               <Link href="/pricing" className="ml-2 text-[#00d4ff] hover:text-[#00bfa6] transition">
                 Upgrade to Pro
               </Link>

@@ -80,6 +80,8 @@ export async function handleStripeWebhook(
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
+  console.log(`Processing checkout.session.completed webhook for session ${session.id}`);
+
   // Prefer client_reference_id from Pricing Table, while keeping metadata fallback.
   const claimedUserId = session.client_reference_id || session.metadata?.userId;
 
@@ -88,6 +90,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     console.error('No user ID found in checkout session - rejecting webhook');
     return;
   }
+
+  console.log(`Checkout session ${session.id} has claimed user ID: ${claimedUserId}`);
 
   // SECURITY: Validate that the checkout session's customer email matches the user's email
   // This prevents account takeover where a malicious user could modify client_reference_id
@@ -238,9 +242,11 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
       : (subscription.customer as Stripe.Customer)?.id;
 
   if (!customerId) {
-    console.error('No customer ID in subscription update event');
+    console.error(`No customer ID in subscription update event for subscription ${subscription.id}`);
     return;
   }
+
+  console.log(`Processing subscription.updated for subscription ${subscription.id}, customer ${customerId}, status ${subscription.status}`);
 
   if (!resolvedUserId) {
     // Try to find user by customer ID
