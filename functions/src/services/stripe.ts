@@ -81,7 +81,7 @@ export async function handleStripeWebhook(
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
   console.log(`Processing checkout.session.completed webhook for session ${session.id}`);
-  
+
   // Prefer client_reference_id from Pricing Table, while keeping metadata fallback.
   const claimedUserId = session.client_reference_id || session.metadata?.userId;
 

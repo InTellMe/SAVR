@@ -5,12 +5,10 @@ import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import VideoHero from '@/components/VideoHero';
 import { useAuth, hasActiveSubscription } from '@/contexts/AuthContext';
-import { useMemo } from 'react';
 
 export default function Home() {
   const { user, userData } = useAuth();
-  // Recalculate when userData changes to react to real-time subscription updates
-  const hasActiveSub = useMemo(() => hasActiveSubscription(userData), [userData]);
+  const hasActiveSub = hasActiveSubscription(userData);
 
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>
