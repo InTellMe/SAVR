@@ -1,9 +1,15 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import VideoHero from '@/components/VideoHero';
+import { useAuth, hasActiveSubscription } from '@/contexts/AuthContext';
 
 export default function Home() {
+  const { user, userData } = useAuth();
+  const hasActiveSub = hasActiveSubscription(userData);
+
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>
       <Navbar />
@@ -43,12 +49,25 @@ export default function Home() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
-              <Link href="/sign-up" className="btn-primary text-base sm:text-lg w-full sm:w-auto text-center">
-                Start Free Trial
-              </Link>
-              <Link href="/pricing" className="btn-secondary text-base sm:text-lg w-full sm:w-auto text-center">
-                View Pricing
-              </Link>
+              {!user || !hasActiveSub ? (
+                <>
+                  <Link href="/sign-up" className="btn-primary text-base sm:text-lg w-full sm:w-auto text-center">
+                    Start Free Trial
+                  </Link>
+                  <Link href="/pricing" className="btn-secondary text-base sm:text-lg w-full sm:w-auto text-center">
+                    View Pricing
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/dashboard" className="btn-primary text-base sm:text-lg w-full sm:w-auto text-center">
+                    Go to Dashboard
+                  </Link>
+                  <Link href="/pricing" className="btn-secondary text-base sm:text-lg w-full sm:w-auto text-center">
+                    Manage Subscription
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Social proof */}
@@ -190,12 +209,25 @@ export default function Home() {
             and discovering incredible new recipes every day.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
-            <Link href="/sign-up" className="btn-primary text-base sm:text-lg w-full sm:w-auto text-center">
-              Get Started Free
-            </Link>
-            <Link href="/pricing" className="btn-secondary text-base sm:text-lg w-full sm:w-auto text-center">
-              Compare Plans
-            </Link>
+            {!user || !hasActiveSub ? (
+              <>
+                <Link href="/sign-up" className="btn-primary text-base sm:text-lg w-full sm:w-auto text-center">
+                  Get Started Free
+                </Link>
+                <Link href="/pricing" className="btn-secondary text-base sm:text-lg w-full sm:w-auto text-center">
+                  Compare Plans
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/dashboard" className="btn-primary text-base sm:text-lg w-full sm:w-auto text-center">
+                  Go to Dashboard
+                </Link>
+                <Link href="/pricing" className="btn-secondary text-base sm:text-lg w-full sm:w-auto text-center">
+                  Manage Subscription
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile app coming soon */}

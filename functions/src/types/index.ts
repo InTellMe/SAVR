@@ -5,7 +5,7 @@ export interface User {
   displayName?: string;
   photoURL?: string;
   subscriptionTier: SubscriptionTierName;
-  subscriptionStatus?: 'active' | 'cancelled' | 'past_due';
+  subscriptionStatus?: 'active' | 'trialing' | 'cancelled' | 'past_due' | 'pending';
   stripeCustomerId?: string;
   paypalSubscriptionId?: string;
   createdAt: Date;

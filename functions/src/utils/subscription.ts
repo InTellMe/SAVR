@@ -1,7 +1,7 @@
 import { db } from '../utils/firebase';
 import { TIER_LIMITS, type SubscriptionTierName } from '../types';
 
-export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due';
+export type SubscriptionStatus = 'active' | 'trialing' | 'cancelled' | 'past_due' | 'pending';
 
 /**
  * Returns the effective subscription tier for a user, taking both
@@ -24,8 +24,8 @@ export async function getUserSubscriptionTier(userId: string): Promise<Subscript
   if (storedTier === 'free') storedTier = 'basic';
   if (storedTier === 'plus' || storedTier === 'premium') storedTier = 'pro';
 
-  // Downgrade paid users if status is non-active
-  if ((storedTier === 'basic' || storedTier === 'pro') && status !== undefined && status !== 'active') {
+  // Downgrade paid users if status is non-active (treat 'trialing' same as 'active')
+  if ((storedTier === 'basic' || storedTier === 'pro') && status !== undefined && status !== 'active' && status !== 'trialing') {
     return 'basic'; // downgrade to basic if subscription inactive
   }
 
@@ -170,6 +170,8 @@ export async function updateUserSubscription(
   }
 
   await db.collection('users').doc(userId).update(updateData);
+  
+  console.log(`Updated user ${userId} subscription:`, updateData);
 }
 
 /**
