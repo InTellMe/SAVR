@@ -183,6 +183,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
   let tier: SubscriptionTierName = 'basic';
   let trialEnd: Date | null = null;
+  let status: SubscriptionStatus = 'active';
 
   if (session.subscription) {
     const sub =
@@ -195,7 +196,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       tier = await getTierFromPrice(priceId);
     }
 
-    // Grant full access during trial (treat 'trialing' as 'active')
+    // Preserve the subscription status from Stripe (trialing or active)
+    status = mapStripeStatus(sub.status);
+    
+    // Store trial end date if in trial
     if (sub.status === 'trialing' && sub.trial_end) {
       trialEnd = new Date(sub.trial_end * 1000);
     }
@@ -203,7 +207,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
   await updateUserSubscription(userId, {
     subscriptionTier: tier,
-    subscriptionStatus: 'active',
+    subscriptionStatus: status,
     stripeCustomerId,
     ...(trialEnd ? { trialEndsAt: trialEnd } : {}),
   });
@@ -217,7 +221,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     await upsertUserSubscriptionRecord(userId, {
       provider: 'stripe',
       subscriptionId,
-      status: 'active',
+      status: status,
       startDate: new Date(),
     });
   }
@@ -387,8 +391,9 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
 function mapStripeStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
   switch (status) {
     case 'active':
-    case 'trialing':
       return 'active';
+    case 'trialing':
+      return 'trialing';
     case 'canceled':
       return 'cancelled';
     case 'past_due':
