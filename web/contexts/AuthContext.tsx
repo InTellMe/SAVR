@@ -23,6 +23,8 @@ interface UserData {
   subscriptionTier: SubscriptionTierName | 'free' | 'plus' | 'premium'; // legacy: free/plus/premium from Firestore
   subscriptionStatus?: string;
   stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  trialEndsAt?: Date | { seconds: number; nanoseconds: number }; // Firestore Timestamp or Date
 }
 
 export function isProTier(tier: UserData['subscriptionTier'] | undefined): boolean {
