@@ -66,6 +66,7 @@ function RecipesContent() {
   const [showImportForm, setShowImportForm] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importUrl, setImportUrl] = useState('');
+  const [importPdfText, setImportPdfText] = useState('');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showDeductionModal, setShowDeductionModal] = useState(false);
   const [deductionRecipe, setDeductionRecipe] = useState<Recipe | null>(null);
@@ -247,6 +248,32 @@ function RecipesContent() {
     } catch (err: any) {
       console.error('Error importing recipe from image:', err);
       setError('Failed to import recipe from image.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleImportFromText() {
+    if (!user || !importPdfText.trim()) return;
+
+    setImporting(true);
+    setError('');
+
+    try {
+      const importRecipeFn = httpsCallable(functions, 'importRecipe');
+      const result = await importRecipeFn({ pdfText: importPdfText.trim() });
+      const data = result.data as { success: boolean; recipeId: string; recipe: Recipe };
+
+      if (!data.success) {
+        throw new Error('Recipe import failed');
+      }
+
+      await loadRecipes();
+      setShowImportForm(false);
+      setImportPdfText('');
+    } catch (err: any) {
+      console.error('Error importing recipe from text:', err);
+      setError('Failed to import recipe from text. Please try again.');
     } finally {
       setImporting(false);
     }
@@ -621,10 +648,33 @@ function RecipesContent() {
                     className="w-full text-sm text-[#9ca3c2] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#00d4ff]/10 file:text-[#00d4ff] hover:file:bg-[#00d4ff]/20"
                   />
                 </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+                  <div className="relative flex justify-center text-sm"><span className="px-2 text-[#6b7294]" style={{ background: 'rgba(10, 10, 10, 0.7)' }}>or</span></div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-2">Paste Recipe Text</label>
+                  <textarea
+                    value={importPdfText}
+                    onChange={(e) => setImportPdfText(e.target.value)}
+                    placeholder="Paste recipe text from a PDF, email, or any source..."
+                    rows={5}
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white text-sm resize-none"
+                  />
+                  <button
+                    onClick={handleImportFromText}
+                    disabled={importing || !importPdfText.trim()}
+                    className="mt-2 w-full px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] disabled:opacity-50 text-sm"
+                  >
+                    {importing ? 'Importing...' : 'Import from Text'}
+                  </button>
+                </div>
               </div>
 
               <button
-                onClick={() => { setShowImportForm(false); setImportUrl(''); }}
+                onClick={() => { setShowImportForm(false); setImportUrl(''); setImportPdfText(''); }}
                 disabled={importing}
                 className="mt-6 w-full px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 text-sm"
               >
@@ -760,6 +810,14 @@ function NutritionPanel({ nutrition, servings }: { nutrition: NutritionalInfo; s
   );
 }
 
+interface SubstitutionOption {
+  name: string;
+  quantity: number;
+  unit: string;
+  inInventory: boolean;
+  impactNotes: string;
+}
+
 function RecipeDetailsModal({
   recipe,
   onClose,
@@ -773,6 +831,52 @@ function RecipeDetailsModal({
   onCookWithAssistant?: () => void;
   onIMadeThis?: () => void;
 }) {
+  const { user } = useAuth();
+  const [subIngredient, setSubIngredient] = useState<RecipeIngredient | null>(null);
+  const [substitutions, setSubstitutions] = useState<SubstitutionOption[]>([]);
+  const [subLoading, setSubLoading] = useState(false);
+  const [subError, setSubError] = useState('');
+
+  async function handleGetSubstitution(ingredient: RecipeIngredient) {
+    if (!user) return;
+    setSubIngredient(ingredient);
+    setSubstitutions([]);
+    setSubLoading(true);
+    setSubError('');
+
+    try {
+      // Load user inventory for context
+      const invSnap = await getDocs(collection(db, 'inventory', user.uid, 'items'));
+      const inventoryItems = invSnap.docs.map(d => {
+        const data = d.data();
+        return { name: data.name, quantity: data.quantity, unit: data.unit };
+      });
+
+      const getSubstitution = httpsCallable(functions, 'getSubstitution');
+      const result = await getSubstitution({
+        ingredientName: ingredient.name,
+        ingredientQuantity: ingredient.quantity,
+        ingredientUnit: ingredient.unit,
+        recipeTitle: recipe.title,
+        recipeIngredients: recipe.ingredients,
+        recipeInstructions: recipe.instructions,
+        inventoryItems,
+      });
+
+      const data = result.data as { success: boolean; substitutions: SubstitutionOption[] };
+      if (data.success) {
+        setSubstitutions(data.substitutions);
+      } else {
+        setSubError('No substitutions found.');
+      }
+    } catch (err) {
+      console.error('Substitution error:', err);
+      setSubError('Failed to find substitutions.');
+    } finally {
+      setSubLoading(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="glass-card rounded-lg p-6 max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
@@ -827,15 +931,63 @@ function RecipeDetailsModal({
           <h3 className="text-xl font-semibold text-white mb-3">Ingredients</h3>
           <ul className="space-y-2">
             {recipe.ingredients.map((ingredient, index) => (
-              <li key={index} className="flex items-start">
-                <span className="text-[#00d4ff] mr-2">•</span>
-                <span className="text-[#9ca3c2]">
-                  {ingredient.quantity} {ingredient.unit} {ingredient.name}
-                </span>
+              <li key={index} className="flex items-center justify-between group">
+                <div className="flex items-start">
+                  <span className="text-[#00d4ff] mr-2">•</span>
+                  <span className="text-[#9ca3c2]">
+                    {ingredient.quantity} {ingredient.unit} {ingredient.name}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleGetSubstitution(ingredient)}
+                  className="opacity-0 group-hover:opacity-100 text-xs px-2 py-1 border border-[#a855f7]/40 text-[#a855f7] rounded hover:bg-[#a855f7]/10 transition ml-2 whitespace-nowrap"
+                >
+                  Substitute
+                </button>
               </li>
             ))}
           </ul>
         </div>
+
+        {/* Substitution panel */}
+        {subIngredient && (
+          <div className="mb-6 rounded-lg p-4" style={{ background: 'rgba(168, 85, 247, 0.06)', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h4 className="text-sm font-semibold text-[#a855f7]">Substitutions for {subIngredient.name}</h4>
+                <p className="text-xs text-[#9ca3c2]">{subIngredient.quantity} {subIngredient.unit}</p>
+              </div>
+              <button onClick={() => setSubIngredient(null)} className="text-[#9ca3c2] hover:text-white text-lg">&times;</button>
+            </div>
+
+            {subLoading && (
+              <div className="flex items-center gap-2 text-sm text-[#9ca3c2]">
+                <div className="w-4 h-4 border-2 border-[#a855f7] border-t-transparent rounded-full animate-spin" />
+                Finding substitutions...
+              </div>
+            )}
+
+            {subError && <p className="text-sm text-red-400">{subError}</p>}
+
+            {substitutions.length > 0 && (
+              <div className="space-y-2">
+                {substitutions.map((sub, idx) => (
+                  <div key={idx} className="bg-white/5 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-white text-sm font-medium">
+                        {sub.quantity} {sub.unit} {sub.name}
+                      </span>
+                      {sub.inInventory && (
+                        <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">In stock</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#9ca3c2]">{sub.impactNotes}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-white mb-3">Instructions</h3>
