@@ -4,9 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { collection, query, where, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, functions, storage } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface NutritionalInfo {
@@ -55,14 +57,20 @@ export default function RecipesPage() {
 }
 
 function RecipesContent() {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
+  const router = useRouter();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [showDeductionModal, setShowDeductionModal] = useState(false);
+  const [deductionRecipe, setDeductionRecipe] = useState<Recipe | null>(null);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     recipeType: 'human' as RecipeType,
     species: 'dog' as PetSpecies,
@@ -188,6 +196,73 @@ function RecipesContent() {
     }
   }
 
+  async function handleImportRecipe() {
+    if (!user || !importUrl.trim()) return;
+
+    setImporting(true);
+    setError('');
+
+    try {
+      const importRecipeFn = httpsCallable(functions, 'importRecipe');
+      const result = await importRecipeFn({ url: importUrl.trim() });
+      const data = result.data as { success: boolean; recipeId: string; recipe: Recipe };
+
+      if (!data.success) {
+        throw new Error('Recipe import failed');
+      }
+
+      await loadRecipes();
+      setShowImportForm(false);
+      setImportUrl('');
+    } catch (err: any) {
+      console.error('Error importing recipe:', err);
+      setError('Failed to import recipe. Please check the URL and try again.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleImportFromImage(file: File) {
+    if (!user) return;
+
+    setImporting(true);
+    setError('');
+
+    try {
+      const path = `users/${user.uid}/uploads/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+
+      const importRecipeFn = httpsCallable(functions, 'importRecipe');
+      const result = await importRecipeFn({ imageUrl: url });
+      const data = result.data as { success: boolean; recipeId: string; recipe: Recipe };
+
+      if (!data.success) {
+        throw new Error('Recipe import failed');
+      }
+
+      await loadRecipes();
+      setShowImportForm(false);
+    } catch (err: any) {
+      console.error('Error importing recipe from image:', err);
+      setError('Failed to import recipe from image.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function handleCookWithAssistant(recipe: Recipe) {
+    setSelectedRecipe(null);
+    router.push(`/cook/${recipe.id}`);
+  }
+
+  function handleIMadeThis(recipe: Recipe) {
+    setSelectedRecipe(null);
+    setDeductionRecipe(recipe);
+    setShowDeductionModal(true);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen" style={{ background: '#000000' }}>
@@ -206,12 +281,20 @@ function RecipesContent() {
       <div className="container mx-auto px-4 pt-24 pb-8">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-2">
           <h1 className="text-2xl sm:text-3xl font-bold text-white">My Recipes</h1>
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition text-sm sm:text-base"
-          >
-            Generate New Recipe
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => setShowImportForm(true)}
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 sm:py-3 border border-[#00d4ff] text-[#00d4ff] font-semibold rounded-lg hover:bg-[#00d4ff]/10 transition text-sm sm:text-base"
+            >
+              Import Recipe
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-lg hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] transition text-sm sm:text-base"
+            >
+              Generate New Recipe
+            </button>
+          </div>
         </div>
 
         <p className="text-[#9ca3c2] text-sm mb-6">
@@ -468,6 +551,8 @@ function RecipesContent() {
           <RecipeDetailsModal
             recipe={selectedRecipe}
             onClose={() => setSelectedRecipe(null)}
+            onCookWithAssistant={() => handleCookWithAssistant(selectedRecipe)}
+            onIMadeThis={() => handleIMadeThis(selectedRecipe)}
             onShare={async () => {
               const shareId = crypto.randomUUID();
               await setDoc(doc(db, 'sharedRecipes', shareId), {
@@ -482,6 +567,7 @@ function RecipesContent() {
                 difficulty: selectedRecipe.difficulty,
                 cuisine: selectedRecipe.cuisine,
                 dietaryTags: selectedRecipe.dietaryTags,
+                nutrition: selectedRecipe.nutrition,
                 recipeType: selectedRecipe.recipeType,
                 species: selectedRecipe.species,
               });
@@ -490,6 +576,71 @@ function RecipesContent() {
               setError('');
               alert('Link copied to clipboard!');
             }}
+          />
+        )}
+
+        {/* Import Recipe Modal */}
+        {showImportForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="glass-card rounded-lg p-6 max-w-md w-full my-8">
+              <h3 className="text-2xl font-bold text-white mb-6">Import Recipe</h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-2">From URL</label>
+                  <input
+                    type="url"
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    placeholder="https://example.com/recipe..."
+                    className="w-full px-3 py-2 border border-white/6 rounded-md bg-white/5 text-white text-sm"
+                  />
+                  <button
+                    onClick={handleImportRecipe}
+                    disabled={importing || !importUrl.trim()}
+                    className="mt-2 w-full px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,212,255,0.4)] disabled:opacity-50 text-sm"
+                  >
+                    {importing ? 'Importing...' : 'Import from URL'}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+                  <div className="relative flex justify-center text-sm"><span className="px-2 text-[#6b7294]" style={{ background: 'rgba(10, 10, 10, 0.7)' }}>or</span></div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#9ca3c2] mb-2">From Photo / Screenshot</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImportFromImage(file);
+                    }}
+                    className="w-full text-sm text-[#9ca3c2] file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#00d4ff]/10 file:text-[#00d4ff] hover:file:bg-[#00d4ff]/20"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={() => { setShowImportForm(false); setImportUrl(''); }}
+                disabled={importing}
+                className="mt-6 w-full px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Deduction Modal ("I Made This") */}
+        {showDeductionModal && deductionRecipe && (
+          <DeductionModal
+            recipe={deductionRecipe}
+            userId={user!.uid}
+            onClose={() => { setShowDeductionModal(false); setDeductionRecipe(null); }}
+            onSuccess={() => { setShowDeductionModal(false); setDeductionRecipe(null); }}
           />
         )}
       </div>
@@ -737,6 +888,215 @@ function RecipeDetailsModal({
               Close
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeductionModal({
+  recipe,
+  userId,
+  onClose,
+  onSuccess,
+}: {
+  recipe: Recipe;
+  userId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [inventoryItems, setInventoryItems] = useState<Array<{ id: string; name: string; quantity: number; unit: string }>>([]);
+  const [deductions, setDeductions] = useState<Array<{ ingredientName: string; inventoryItemId: string; quantityUsed: number; unit: string; matched: boolean }>>([]);
+  const [servingsMultiplier, setServingsMultiplier] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    async function loadInventoryAndMatch() {
+      try {
+        const snapshot = await getDocs(collection(db, 'inventory', userId, 'items'));
+        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; quantity: number; unit: string }));
+        setInventoryItems(items);
+
+        // Auto-match recipe ingredients to inventory items
+        const matched = recipe.ingredients.map(ingredient => {
+          const match = items.find(item =>
+            item.name.toLowerCase().includes(ingredient.name.toLowerCase()) ||
+            ingredient.name.toLowerCase().includes(item.name.toLowerCase())
+          );
+          return {
+            ingredientName: ingredient.name,
+            inventoryItemId: match?.id || '',
+            quantityUsed: ingredient.quantity,
+            unit: ingredient.unit,
+            matched: !!match,
+          };
+        });
+        setDeductions(matched);
+      } catch (err) {
+        console.error('Error loading inventory:', err);
+        setError('Failed to load inventory');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInventoryAndMatch();
+  }, [userId, recipe]);
+
+  async function handleDeduct() {
+    setSaving(true);
+    setError('');
+
+    const validDeductions = deductions
+      .filter(d => d.inventoryItemId && d.quantityUsed > 0)
+      .map(d => ({
+        inventoryItemId: d.inventoryItemId,
+        quantityUsed: d.quantityUsed * servingsMultiplier,
+        unit: d.unit,
+      }));
+
+    if (validDeductions.length === 0) {
+      setError('No items to deduct. Match ingredients to inventory items first.');
+      setSaving(false);
+      return;
+    }
+
+    try {
+      const deductInventory = httpsCallable(functions, 'deductInventory');
+      const result = await deductInventory({ recipeId: recipe.id, deductions: validDeductions });
+      const data = result.data as { success: boolean; depletedItems: string[] };
+
+      if (data.depletedItems.length > 0) {
+        setSuccess(`Inventory updated! ${data.depletedItems.length} item(s) fully used up and removed.`);
+      } else {
+        setSuccess('Inventory updated successfully!');
+      }
+
+      setTimeout(onSuccess, 1500);
+    } catch (err) {
+      console.error('Error deducting inventory:', err);
+      setError('Failed to update inventory.');
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="glass-card rounded-lg p-6 max-w-lg w-full">
+          <LoadingSpinner size="lg" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="glass-card rounded-lg p-6 max-w-lg w-full my-8 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-2xl font-bold text-white">I Made This</h2>
+          <button onClick={onClose} className="text-[#9ca3c2] hover:text-white text-2xl">×</button>
+        </div>
+
+        <p className="text-sm text-[#9ca3c2] mb-4">
+          Deduct ingredients from your inventory for &quot;{recipe.title}&quot;. Adjust quantities if you used different amounts.
+        </p>
+
+        {error && (
+          <div className="mb-4 rounded border border-red-500/20 bg-red-500/10 px-4 py-2 text-red-400 text-sm">{error}</div>
+        )}
+        {success && (
+          <div className="mb-4 rounded border border-[#00bfa6]/20 bg-[#00bfa6]/10 px-4 py-2 text-[#00bfa6] text-sm">{success}</div>
+        )}
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-[#9ca3c2] mb-1">Servings cooked</label>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setServingsMultiplier(Math.max(0.25, servingsMultiplier - 0.25))}
+              className="w-8 h-8 rounded bg-white/5 text-white border border-white/10 hover:bg-white/10"
+            >
+              -
+            </button>
+            <span className="text-white font-medium w-16 text-center">
+              {servingsMultiplier === 1 ? `${recipe.servings}` : `${Math.round(recipe.servings * servingsMultiplier)}`}
+            </span>
+            <button
+              onClick={() => setServingsMultiplier(servingsMultiplier + 0.25)}
+              className="w-8 h-8 rounded bg-white/5 text-white border border-white/10 hover:bg-white/10"
+            >
+              +
+            </button>
+            <span className="text-xs text-[#6b7294] ml-2">
+              ({servingsMultiplier}x recipe)
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {deductions.map((d, idx) => (
+            <div key={idx} className="rounded-lg border border-white/6 p-3">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-sm font-medium text-white">{d.ingredientName}</span>
+                {d.matched ? (
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#00bfa6]/10 text-[#00bfa6]">Matched</span>
+                ) : (
+                  <span className="text-xs px-2 py-0.5 rounded bg-red-500/10 text-red-400">No match</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={d.quantityUsed}
+                  onChange={(e) => {
+                    const updated = [...deductions];
+                    updated[idx].quantityUsed = parseFloat(e.target.value) || 0;
+                    setDeductions(updated);
+                  }}
+                  className="w-20 px-2 py-1 text-sm border border-white/6 rounded bg-white/5 text-white"
+                  step="0.25"
+                  min="0"
+                />
+                <span className="text-sm text-[#9ca3c2]">{d.unit}</span>
+                {!d.matched && (
+                  <select
+                    value={d.inventoryItemId}
+                    onChange={(e) => {
+                      const updated = [...deductions];
+                      updated[idx].inventoryItemId = e.target.value;
+                      updated[idx].matched = !!e.target.value;
+                      setDeductions(updated);
+                    }}
+                    className="flex-1 px-2 py-1 text-sm border border-white/6 rounded bg-white/5 text-white"
+                  >
+                    <option value="">Select inventory item...</option>
+                    {inventoryItems.map(item => (
+                      <option key={item.id} value={item.id}>{item.name} ({item.quantity} {item.unit})</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2 mt-6">
+          <button
+            onClick={handleDeduct}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#00bfa6] to-[#00897b] text-white font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,191,166,0.4)] disabled:opacity-50"
+          >
+            {saving ? 'Updating...' : 'Deduct from Inventory'}
+          </button>
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-md hover:bg-gray-600"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
