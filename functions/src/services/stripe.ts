@@ -84,11 +84,43 @@ function resolveCustomerId(
   return typeof customer === 'string' ? customer : customer.id;
 }
 
-/** Look up the SAVR user by their stored Stripe customer ID. */
+/** 
+ * Look up the SAVR user by their stored Stripe customer ID.
+ * If not found by customer ID, tries to find by customer email as a fallback.
+ * This handles the race condition where subscription.created fires before checkout.completed.
+ */
 async function findUserByCustomerId(customerId: string): Promise<{ userId: string; data: FirebaseFirestore.DocumentData } | null> {
+  // First, try to find user by their stored Stripe customer ID
   const snap = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
-  if (snap.empty) return null;
-  return { userId: snap.docs[0].id, data: snap.docs[0].data() };
+  if (!snap.empty) {
+    return { userId: snap.docs[0].id, data: snap.docs[0].data() };
+  }
+
+  // Fallback: Try to find user by customer email (handles race condition)
+  // This occurs when subscription.created fires before checkout.completed has set stripeCustomerId
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer && !customer.deleted && customer.email) {
+      console.log(`🔍 User not found by customer ID ${customerId}, trying email fallback: ${customer.email}`);
+      const emailSnap = await db.collection('users').where('email', '==', customer.email).limit(1).get();
+      if (!emailSnap.empty) {
+        const userId = emailSnap.docs[0].id;
+        console.log(`✅ Found user ${userId} by email fallback, linking customer ID ${customerId}`);
+        
+        // Proactively link the customer ID to prevent future lookups
+        await db.collection('users').doc(userId).update({
+          stripeCustomerId: customerId,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        
+        return { userId, data: emailSnap.docs[0].data() };
+      }
+    }
+  } catch (error) {
+    console.error(`Error in customer email fallback lookup: ${error}`);
+  }
+
+  return null;
 }
 
 /** Log a Stripe webhook event to the `stripeEvents` collection for audit/CS. */
@@ -527,6 +559,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     `✅ Checkout processed for user ${userId}, email ${userEmail}. ` +
     `Customer: ${stripeCustomerId}, Sub: ${subscriptionId}, Tier: ${tier}, Status: ${status}`
   );
+
+  // Verify that the user document was updated correctly
+  const verifyDoc = await db.collection('users').doc(userId).get();
+  const verifyData = verifyDoc.data();
+  if (verifyData?.subscriptionStatus !== status) {
+    console.error(
+      `❌ CRITICAL: User ${userId} status mismatch after checkout! ` +
+      `Expected: ${status}, Got: ${verifyData?.subscriptionStatus || 'undefined'}`
+    );
+  } else {
+    console.log(`✅ Verified: User ${userId} status correctly set to '${status}'`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -586,6 +630,18 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
   });
 
   console.log(`✅ Subscription update for user ${userId}: tier=${tier}, status=${internalStatus}, cancel_at_period_end=${subscription.cancel_at_period_end}`);
+
+  // Verify that the user document was updated correctly
+  const verifyDoc = await db.collection('users').doc(userId).get();
+  const verifyData = verifyDoc.data();
+  if (verifyData?.subscriptionStatus !== internalStatus) {
+    console.error(
+      `❌ CRITICAL: User ${userId} status mismatch after subscription update! ` +
+      `Expected: ${internalStatus}, Got: ${verifyData?.subscriptionStatus || 'undefined'}`
+    );
+  } else {
+    console.log(`✅ Verified: User ${userId} status correctly set to '${internalStatus}'`);
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
@@ -709,13 +765,30 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
       ? await getTierFromPrice(sub.items.data[0].price.id)
       : undefined;
 
-    await updateUserSubscription(userId, {
+    const updates: Record<string, unknown> = {
       subscriptionStatus: internalStatus,
-      ...(tier ? { subscriptionTier: tier } : {}),
       currentPeriodEnd: getSubscriptionPeriodEnd(sub),
-    });
+    };
+    
+    if (tier) {
+      updates.subscriptionTier = tier;
+    }
+
+    await updateUserSubscription(userId, updates);
 
     console.log(`✅ Payment succeeded for user ${userId}, sub ${subscriptionId}, status → ${internalStatus}`);
+
+    // Verify the update was successful
+    const verifyDoc = await db.collection('users').doc(userId).get();
+    const verifyData = verifyDoc.data();
+    if (verifyData?.subscriptionStatus !== internalStatus) {
+      console.error(
+        `❌ CRITICAL: User ${userId} status mismatch after payment! ` +
+        `Expected: ${internalStatus}, Got: ${verifyData?.subscriptionStatus || 'undefined'}`
+      );
+    } else {
+      console.log(`✅ Verified: User ${userId} subscription status is '${internalStatus}'`);
+    }
   } else {
     console.log(`ℹ️  Payment succeeded but no subscription on invoice ${invoice.id}`);
   }
