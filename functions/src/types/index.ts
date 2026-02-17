@@ -354,9 +354,12 @@ export interface CategoryDocument {
 export interface UploadImageRequest {
   file?: File | Buffer; // File object (for direct upload)
   imageUrl?: string; // URL of already uploaded image
+  width: number; // Image width in pixels (required for accurate annotation coordinates)
+  height: number; // Image height in pixels (required for accurate annotation coordinates)
   source?: ImageSource;
   videoId?: string;
   frameIndex?: number;
+  autoLabel?: boolean; // Whether to automatically trigger AI segmentation (defaults to true)
 }
 
 export interface UploadImageResponse {
