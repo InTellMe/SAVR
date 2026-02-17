@@ -3,6 +3,8 @@ import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { db, admin } from './utils/firebase';
 import {
   extractIngredientsFromImage,
+  generateRecipe,
+  generateMealPlan,
   generateGroceryList,
   chatAssistant,
 } from './services/ai';
@@ -17,10 +19,33 @@ import {
   AnalyzeImageResponse,
   ChatRequest,
   ChatResponse,
+  CreateRecipeRequest,
+  CreateRecipeResponse,
+  CreateMealPlanRequest,
+  CreateMealPlanResponse,
   CreateGroceryListRequest,
   CreateGroceryListResponse,
+  UploadImageRequest,
+  UploadImageResponse,
+  GetImageAnnotationsRequest,
+  GetImageAnnotationsResponse,
+  SaveAnnotationRequest,
+  SaveAnnotationResponse,
+  ExportDatasetRequest,
+  ExportDatasetResponse,
   Recipe,
 } from './types';
+import {
+  createImageDocument,
+  getImageDocument,
+  updateImageLabelStatus,
+  createAnnotationDocument,
+  getImageAnnotations as getImageAnnotationsFromStorage,
+  getAllCategories,
+  getImageSignedUrl,
+} from './utils/datasetStorage';
+import { runSegmentationInference } from './services/segmentation';
+import { exportToCocoFormat, exportToYoloFormat } from './utils/datasetExport';
 
 // Image Analysis Function
 export const analyzeImage = onCall(
@@ -279,6 +304,526 @@ export const createStripePortal = onCall(
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create billing portal';
       console.error('Stripe portal error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Recipe Generation Function
+export const createRecipe = onCall(
+  {
+    timeoutSeconds: 120,
+    memory: '512MiB',
+    secrets: ['OPENAI_API_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { ingredients, preferences, recipeType, species } = request.data as CreateRecipeRequest;
+    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+      throw new HttpsError(
+        'invalid-argument',
+        'ingredients must be a non-empty string array'
+      );
+    }
+    const userId = request.auth.uid;
+    const mode = recipeType === 'pet' ? 'pet' : 'human';
+    const petSpecies = species ?? 'dog';
+
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
+
+    const usageCheck = await checkUsageLimit(userId, 'recipes');
+    if (!usageCheck.allowed) {
+      throw new HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
+    }
+
+    if (mode === 'pet') {
+      const petCheck = await checkUsageLimit(userId, 'petRecipes');
+      if (!petCheck.allowed) {
+        throw new HttpsError('resource-exhausted', petCheck.reason || 'Pet recipe limit reached');
+      }
+    }
+
+    try {
+      const { recipe, removedForSafety } = await generateRecipe(ingredients, preferences, {
+        mode,
+        species: petSpecies,
+      });
+
+      // Save recipe to Firestore
+      const recipeRef = await db
+        .collection('recipes')
+        .doc(userId)
+        .collection('items')
+        .add({
+          ...recipe,
+          userId,
+          generatedBy: 'ai',
+          recipeType: mode,
+          species: mode === 'pet' ? petSpecies : undefined,
+          createdAt: new Date(),
+        });
+
+      const response: CreateRecipeResponse = {
+        success: true,
+        recipeId: recipeRef.id,
+        recipe,
+        recipeType: mode,
+        species: mode === 'pet' ? petSpecies : undefined,
+        removedForSafety: removedForSafety.length > 0 ? removedForSafety : undefined,
+      };
+      return response;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate recipe';
+      console.error('Recipe generation error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Meal Plan Generation Function
+export const createMealPlan = onCall(
+  {
+    timeoutSeconds: 180,
+    memory: '512MiB',
+    secrets: ['OPENAI_API_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { days, ingredients, preferences } = request.data as CreateMealPlanRequest;
+    if (typeof days !== 'number' || days < 1 || days > 14) {
+      throw new HttpsError(
+        'invalid-argument',
+        'days must be a number between 1 and 14'
+      );
+    }
+    if (!Array.isArray(ingredients) || ingredients.length === 0) {
+      throw new HttpsError(
+        'invalid-argument',
+        'ingredients must be a non-empty string array'
+      );
+    }
+    const userId = request.auth.uid;
+
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
+
+    const usageCheck = await checkUsageLimit(userId, 'mealPlans');
+    if (!usageCheck.allowed) {
+      throw new HttpsError('resource-exhausted', usageCheck.reason || 'Limit reached');
+    }
+
+    try {
+      const mealPlan = await generateMealPlan(days, ingredients, preferences);
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + days);
+
+      const mealPlanRef = await db
+        .collection('mealPlans')
+        .doc(userId)
+        .collection('plans')
+        .add({
+          ...mealPlan,
+          userId,
+          startDate,
+          endDate,
+          createdAt: new Date(),
+        });
+
+      const response: CreateMealPlanResponse = {
+        success: true,
+        mealPlanId: mealPlanRef.id,
+        mealPlan,
+      };
+      return response;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate meal plan';
+      console.error('Meal plan generation error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Dataset Labeling Pipeline Functions
+
+// Upload image for labeling
+export const uploadLabelingImage = onCall(
+  {
+    timeoutSeconds: 300,
+    memory: '512MiB',
+    secrets: ['OPENAI_API_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageUrl, source, videoId, frameIndex } = request.data as UploadImageRequest;
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      throw new HttpsError(
+        'invalid-argument',
+        'imageUrl is required and must be a string'
+      );
+    }
+
+    const userId = request.auth.uid;
+
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
+
+    try {
+      const imageId = db.collection('images').doc().id;
+
+      const dataWithDefaults = request.data as UploadImageRequest & { width?: number; height?: number; autoLabel?: boolean };
+      const width = dataWithDefaults.width || 1920;
+      const height = dataWithDefaults.height || 1080;
+
+      const imageDoc = await createImageDocument(
+        userId,
+        imageId,
+        imageUrl,
+        width,
+        height,
+        source || 'photo',
+        videoId,
+        frameIndex
+      );
+
+      // Optionally trigger AI inference automatically
+      if (dataWithDefaults.autoLabel !== false) {
+        triggerSegmentationInference(imageId, imageUrl, width, height).catch(err => {
+          console.error('Failed to trigger segmentation inference:', err);
+        });
+      }
+
+      const response: UploadImageResponse = {
+        success: true,
+        imageId,
+        image: imageDoc,
+      };
+      return response;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
+      console.error('Image upload error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Get image annotations
+export const getImageAnnotations = onCall(
+  {
+    secrets: ['OPENAI_API_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageId } = request.data as GetImageAnnotationsRequest;
+    if (!imageId || typeof imageId !== 'string') {
+      throw new HttpsError(
+        'invalid-argument',
+        'imageId is required and must be a string'
+      );
+    }
+
+    const userId = request.auth.uid;
+
+    try {
+      const image = await getImageDocument(imageId);
+      if (!image) {
+        throw new HttpsError('not-found', 'Image not found');
+      }
+
+      if (image.ownerUid !== userId) {
+        throw new HttpsError('permission-denied', 'Access denied');
+      }
+
+      const annotations = await getImageAnnotationsFromStorage(imageId);
+      const categories = await getAllCategories();
+
+      // Provide a usable signed URL for the image if the stored path is a gs:// reference
+      let resolvedImage = image;
+      if (image.storagePathOriginal.startsWith('gs://')) {
+        const gsPath = image.storagePathOriginal.replace(/^gs:\/\/[^/]+\//, '');
+        const signedUrl = await getImageSignedUrl(gsPath);
+        resolvedImage = { ...image, storagePathOriginal: signedUrl };
+      }
+
+      const response: GetImageAnnotationsResponse = {
+        success: true,
+        image: resolvedImage,
+        annotations,
+        categories,
+      };
+      return response;
+    } catch (error: unknown) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get annotations';
+      console.error('Get annotations error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Save annotation (user corrections)
+export const saveAnnotation = onCall(
+  {
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageId, objects, parentAnnotationId, status } = request.data as SaveAnnotationRequest;
+    if (!imageId || typeof imageId !== 'string') {
+      throw new HttpsError(
+        'invalid-argument',
+        'imageId is required and must be a string'
+      );
+    }
+    if (!Array.isArray(objects)) {
+      throw new HttpsError(
+        'invalid-argument',
+        'objects must be an array'
+      );
+    }
+
+    // Validate polygon structure
+    for (const obj of objects) {
+      if (!obj.categoryId || typeof obj.categoryId !== 'string') {
+        throw new HttpsError('invalid-argument', 'Each object must have a valid categoryId');
+      }
+      if (!Array.isArray(obj.polygon) || obj.polygon.length < 3) {
+        throw new HttpsError('invalid-argument', 'Each object must have a polygon with at least 3 points');
+      }
+    }
+
+    const userId = request.auth.uid;
+
+    try {
+      const image = await getImageDocument(imageId);
+      if (!image) {
+        throw new HttpsError('not-found', 'Image not found');
+      }
+
+      if (image.ownerUid !== userId) {
+        throw new HttpsError('permission-denied', 'Access denied');
+      }
+
+      const annotation = await createAnnotationDocument(
+        imageId,
+        userId,
+        objects,
+        'user',
+        parentAnnotationId,
+        status || 'submitted'
+      );
+
+      // Update image status
+      await updateImageLabelStatus(
+        imageId,
+        status === 'approved' ? 'approved' : 'in_review',
+        annotation.id
+      );
+
+      const response: SaveAnnotationResponse = {
+        success: true,
+        annotationId: annotation.id,
+        annotation,
+      };
+      return response;
+    } catch (error: unknown) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save annotation';
+      console.error('Save annotation error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Trigger segmentation inference (can be called manually or automatically)
+export const triggerSegmentation = onCall(
+  {
+    timeoutSeconds: 300,
+    memory: '1GiB',
+    secrets: ['OPENAI_API_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageId } = request.data as { imageId: string };
+    if (!imageId || typeof imageId !== 'string') {
+      throw new HttpsError(
+        'invalid-argument',
+        'imageId is required and must be a string'
+      );
+    }
+
+    const userId = request.auth.uid;
+
+    try {
+      const image = await getImageDocument(imageId);
+      if (!image) {
+        throw new HttpsError('not-found', 'Image not found');
+      }
+
+      if (image.ownerUid !== userId) {
+        throw new HttpsError('permission-denied', 'Access denied');
+      }
+
+      // Get a usable URL for the image
+      let imageUrl: string;
+      if (image.storagePathOriginal.startsWith('gs://')) {
+        const gsPath = image.storagePathOriginal.replace(/^gs:\/\/[^/]+\//, '');
+        imageUrl = await getImageSignedUrl(gsPath);
+      } else {
+        imageUrl = image.storagePathOriginal;
+      }
+
+      const objects = await runSegmentationInference(
+        imageUrl,
+        image.width,
+        image.height
+      );
+
+      const annotation = await createAnnotationDocument(
+        imageId,
+        'system',
+        objects,
+        'ai',
+        undefined,
+        'draft'
+      );
+
+      await updateImageLabelStatus(imageId, 'ai_labeled', annotation.id);
+
+      return {
+        success: true,
+        annotationId: annotation.id,
+        objectCount: objects.length,
+      };
+    } catch (error: unknown) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to run segmentation';
+      console.error('Segmentation inference error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Helper function to trigger segmentation asynchronously (used by uploadLabelingImage)
+async function triggerSegmentationInference(
+  imageId: string,
+  imageUrl: string,
+  width: number,
+  height: number
+): Promise<void> {
+  try {
+    const objects = await runSegmentationInference(imageUrl, width, height);
+    const annotation = await createAnnotationDocument(
+      imageId,
+      'system',
+      objects,
+      'ai',
+      undefined,
+      'draft'
+    );
+    await updateImageLabelStatus(imageId, 'ai_labeled', annotation.id);
+  } catch (error) {
+    console.error('Async segmentation failed:', error);
+    throw error;
+  }
+}
+
+// Export dataset for training (supports COCO and YOLO formats)
+export const exportDataset = onCall(
+  {
+    timeoutSeconds: 300,
+    memory: '512MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { labelStatus, ownerUid, startDate, endDate, format } = request.data as ExportDatasetRequest;
+    const userId = request.auth.uid;
+
+    // Only allow users to export their own data
+    const filterUid = ownerUid || userId;
+    if (filterUid !== userId) {
+      throw new HttpsError('permission-denied', 'Can only export your own data');
+    }
+
+    try {
+      const filters = {
+        labelStatus: labelStatus || ['approved'],
+        ownerUid: filterUid,
+        startDate,
+        endDate,
+      };
+
+      let exportData: unknown;
+      let imageCount = 0;
+      let annotationCount = 0;
+
+      if (format === 'yolo') {
+        const yoloData = await exportToYoloFormat(filters);
+        exportData = Object.fromEntries(yoloData);
+        imageCount = yoloData.size;
+        // Count annotation lines across all files
+        for (const content of yoloData.values()) {
+          annotationCount += content.split('\n').filter(Boolean).length;
+        }
+      } else {
+        // Default to COCO format
+        const cocoData = await exportToCocoFormat(filters);
+        exportData = cocoData;
+        imageCount = cocoData.images.length;
+        annotationCount = cocoData.annotations.length;
+      }
+
+      const response: ExportDatasetResponse = {
+        success: true,
+        exportData: exportData as ExportDatasetResponse['exportData'],
+        imageCount,
+        annotationCount,
+      };
+      return response;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to export dataset';
+      console.error('Export dataset error:', error);
       throw new HttpsError('internal', errorMessage);
     }
   }
