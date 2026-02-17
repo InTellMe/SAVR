@@ -168,6 +168,27 @@ function InventoryContent() {
     }
   }
 
+  async function handleQuickAdjust(itemId: string, delta: number) {
+    const item = items.find(i => i.id === itemId);
+    if (!item || !user) return;
+    const newQuantity = Math.max(0, item.quantity + delta);
+    // Optimistically update UI
+    setItems(items.map(i => i.id === itemId ? { ...i, quantity: newQuantity } : i));
+    try {
+      if (newQuantity <= 0) {
+        await deleteDoc(doc(db, 'inventory', user.uid, 'items', itemId));
+        setItems(prev => prev.filter(i => i.id !== itemId));
+      } else {
+        await updateDoc(doc(db, 'inventory', user.uid, 'items', itemId), { quantity: newQuantity });
+      }
+    } catch (err) {
+      console.error('Error adjusting quantity:', err);
+      // Revert on failure
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity: item.quantity } : i));
+      setError('Failed to update quantity');
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen" style={{ background: '#000000' }}>
@@ -321,6 +342,7 @@ function InventoryContent() {
                   item={item}
                   onDelete={handleDeleteItem}
                   onEdit={setEditingItem}
+                  onQuickAdjust={handleQuickAdjust}
                 />
               ))}
             </div>
@@ -340,14 +362,16 @@ function InventoryContent() {
   );
 }
 
-function InventoryCard({ 
-  item, 
-  onDelete, 
-  onEdit 
-}: { 
-  item: InventoryItem; 
+function InventoryCard({
+  item,
+  onDelete,
+  onEdit,
+  onQuickAdjust,
+}: {
+  item: InventoryItem;
   onDelete: (id: string) => void;
   onEdit: (item: InventoryItem) => void;
+  onQuickAdjust: (id: string, delta: number) => void;
 }) {
   return (
     <div className="border border-white/6 rounded-lg p-4 hover:border-[#00d4ff]/30 transition glass-card">
@@ -357,9 +381,25 @@ function InventoryCard({
           {item.category}
         </span>
       </div>
-      <p className="text-[#9ca3c2] mb-3">
-        {item.quantity} {item.unit}
-      </p>
+      {/* Quick +/- stepper */}
+      <div className="flex items-center gap-3 mb-3">
+        <button
+          onClick={() => onQuickAdjust(item.id, -1)}
+          disabled={item.quantity <= 0}
+          className="w-8 h-8 flex items-center justify-center rounded-md bg-white/10 text-white font-bold hover:bg-red-500/30 hover:text-red-300 disabled:opacity-30 transition"
+        >
+          -
+        </button>
+        <span className="text-white font-medium min-w-[60px] text-center">
+          {item.quantity} {item.unit}
+        </span>
+        <button
+          onClick={() => onQuickAdjust(item.id, 1)}
+          className="w-8 h-8 flex items-center justify-center rounded-md bg-white/10 text-white font-bold hover:bg-green-500/30 hover:text-green-300 transition"
+        >
+          +
+        </button>
+      </div>
       {item.expiryDate && (
         <p className="text-sm text-[#9ca3c2] mb-3">
           Expires: {new Date(item.expiryDate).toLocaleDateString()}
