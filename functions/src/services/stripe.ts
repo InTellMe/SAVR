@@ -469,7 +469,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   if (sessionEmail.toLowerCase().trim() !== userEmail.toLowerCase().trim()) {
     // If client_reference_id is present and verified, log warning but continue
     // This handles cases where email casing differs or hasn't been synced yet
-    if (claimedUserId) {
+    if (session.client_reference_id) {
       console.warn(
         `⚠️  Email mismatch for user ${claimedUserId}: Firestore email '${userEmail}' does not match ` +
         `Stripe session email '${sessionEmail}', but client_reference_id is verified - proceeding with caution.`
