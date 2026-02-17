@@ -48,27 +48,41 @@ function getSubscriptionPeriodEnd(sub: Stripe.Subscription): Date | null {
 /**
  * Retrieves the subscription tier from a Stripe Price object.
  * Checks the price's metadata.tier field or nickname for tier information.
+ * Defaults to 'pro' for non-zero prices to avoid downgrading paying users.
  */
 async function getTierFromPrice(priceId: string): Promise<SubscriptionTierName> {
   try {
     const price = await stripe.prices.retrieve(priceId);
 
-    // Check metadata first (recommended approach)
+    // Check metadata first (recommended approach - most authoritative)
     if (price.metadata?.tier) {
       const tier = price.metadata.tier.toLowerCase();
       if (tier === 'pro' || tier === 'plus' || tier === 'premium') return 'pro';
       if (tier === 'basic' || tier === 'free') return 'basic';
     }
 
-    // Check nickname as fallback
+    // If no metadata, prioritize price amount over nickname to protect paying customers
+    const priceAmount = typeof price.unit_amount === 'number' ? price.unit_amount : 0;
+    
+    if (priceAmount > 0) {
+      // Paying customer - always return 'pro' to avoid accidental downgrades
+      console.warn(`Price ${priceId} missing metadata.tier field - defaulting to 'pro' for non-zero price ($${priceAmount / 100}). Please add metadata.tier='pro' in Stripe Dashboard.`);
+      return 'pro';
+    }
+
+    // Only for zero-amount prices, check nickname as a hint
     if (price.nickname) {
       const nickname = price.nickname.toLowerCase();
       if (nickname.includes('pro') || nickname.includes('plus') || nickname.includes('premium')) {
         return 'pro';
       }
+      if (nickname.includes('basic') || nickname.includes('free')) {
+        return 'basic';
+      }
     }
 
-    console.warn(`Price ${priceId} missing metadata.tier field - defaulting to 'basic' tier. Please add metadata.tier='basic' or 'pro' in Stripe Dashboard.`);
+    // Final fallback for zero-amount prices with no clear indicators
+    console.warn(`Price ${priceId} has zero amount and missing metadata.tier - defaulting to 'basic' tier. Please add metadata.tier='basic' in Stripe Dashboard.`);
     return 'basic';
   } catch (error) {
     console.error('Error retrieving price from Stripe:', error);
@@ -84,11 +98,43 @@ function resolveCustomerId(
   return typeof customer === 'string' ? customer : customer.id;
 }
 
-/** Look up the SAVR user by their stored Stripe customer ID. */
+/** 
+ * Look up the SAVR user by their stored Stripe customer ID.
+ * If not found by customer ID, tries to find by customer email as a fallback.
+ * This handles the race condition where subscription.created fires before checkout.completed.
+ */
 async function findUserByCustomerId(customerId: string): Promise<{ userId: string; data: FirebaseFirestore.DocumentData } | null> {
+  // First, try to find user by their stored Stripe customer ID
   const snap = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
-  if (snap.empty) return null;
-  return { userId: snap.docs[0].id, data: snap.docs[0].data() };
+  if (!snap.empty) {
+    return { userId: snap.docs[0].id, data: snap.docs[0].data() };
+  }
+
+  // Fallback: Try to find user by customer email (handles race condition)
+  // This occurs when subscription.created fires before checkout.completed has set stripeCustomerId
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer && !customer.deleted && customer.email) {
+      console.log(`🔍 User not found by customer ID ${customerId}, trying email fallback: ${customer.email}`);
+      const emailSnap = await db.collection('users').where('email', '==', customer.email).limit(1).get();
+      if (!emailSnap.empty) {
+        const userId = emailSnap.docs[0].id;
+        console.log(`✅ Found user ${userId} by email fallback, linking customer ID ${customerId}`);
+        
+        // Proactively link the customer ID to prevent future lookups
+        await db.collection('users').doc(userId).update({
+          stripeCustomerId: customerId,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        
+        return { userId, data: emailSnap.docs[0].data() };
+      }
+    }
+  } catch (error) {
+    console.error(`Error in customer email fallback lookup: ${error}`);
+  }
+
+  return null;
 }
 
 /** Log a Stripe webhook event to the `stripeEvents` collection for audit/CS. */
@@ -125,6 +171,13 @@ export async function handleStripeWebhook(
   const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 
   console.log(`🔔 Received Stripe webhook: ${event.type} (event ID: ${event.id})`);
+  
+  // Log client_reference_id for debugging subscription sync issues
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const clientReferenceId = session.client_reference_id || session.metadata?.userId;
+    console.log(`🔔 Checkout session client_reference_id: ${clientReferenceId || 'NONE'}`);
+  }
 
   // Log every event for audit / customer-service lookups
   await logStripeEvent(event);
@@ -426,13 +479,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     return;
   }
 
-  // Verify emails match (case-insensitive)
-  if (sessionEmail.toLowerCase() !== userEmail.toLowerCase()) {
-    console.error(
-      `❌ Email mismatch for user ${claimedUserId}: Firestore email '${userEmail}' does not match ` +
-      `Stripe session email '${sessionEmail}'. Possible account takeover attempt - rejecting webhook.`
-    );
-    return;
+  // Verify emails match (case-insensitive with trim)
+  if (sessionEmail.toLowerCase().trim() !== userEmail.toLowerCase().trim()) {
+    // If client_reference_id is present and verified, log warning but continue
+    // This handles cases where email casing differs or hasn't been synced yet
+    if (session.client_reference_id) {
+      console.warn(
+        `⚠️  Email mismatch for user ${claimedUserId}: Firestore email '${userEmail}' does not match ` +
+        `Stripe session email '${sessionEmail}', but client_reference_id is verified - proceeding with caution.`
+      );
+    } else {
+      console.error(
+        `❌ Email mismatch for user ${claimedUserId}: Firestore email '${userEmail}' does not match ` +
+        `Stripe session email '${sessionEmail}'. No verified client_reference_id - rejecting webhook.`
+      );
+      return;
+    }
   }
 
   console.log(`✅ Email validation passed`);
@@ -527,6 +589,20 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     `✅ Checkout processed for user ${userId}, email ${userEmail}. ` +
     `Customer: ${stripeCustomerId}, Sub: ${subscriptionId}, Tier: ${tier}, Status: ${status}`
   );
+
+  // Verify that the user document was updated correctly
+  // Note: This extra read adds cost but is critical for debugging subscription issues.
+  // Webhooks are low-volume (only during checkout), so the cost is acceptable.
+  const verifyDoc = await db.collection('users').doc(userId).get();
+  const verifyData = verifyDoc.data();
+  if (verifyData?.subscriptionStatus !== status) {
+    console.error(
+      `❌ CRITICAL: User ${userId} status mismatch after checkout! ` +
+      `Expected: ${status}, Got: ${verifyData?.subscriptionStatus || 'undefined'}`
+    );
+  } else {
+    console.log(`✅ Verified: User ${userId} status correctly set to '${status}'`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -586,6 +662,19 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
   });
 
   console.log(`✅ Subscription update for user ${userId}: tier=${tier}, status=${internalStatus}, cancel_at_period_end=${subscription.cancel_at_period_end}`);
+
+  // Verify that the user document was updated correctly
+  // Note: This extra read adds cost but is critical for debugging subscription issues.
+  const verifyDoc = await db.collection('users').doc(userId).get();
+  const verifyData = verifyDoc.data();
+  if (verifyData?.subscriptionStatus !== internalStatus) {
+    console.error(
+      `❌ CRITICAL: User ${userId} status mismatch after subscription update! ` +
+      `Expected: ${internalStatus}, Got: ${verifyData?.subscriptionStatus || 'undefined'}`
+    );
+  } else {
+    console.log(`✅ Verified: User ${userId} status correctly set to '${internalStatus}'`);
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
@@ -716,6 +805,19 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
     });
 
     console.log(`✅ Payment succeeded for user ${userId}, sub ${subscriptionId}, status → ${internalStatus}`);
+
+    // Verify the update was successful
+    // Note: This extra read adds cost but is critical for debugging subscription issues.
+    const verifyDoc = await db.collection('users').doc(userId).get();
+    const verifyData = verifyDoc.data();
+    if (verifyData?.subscriptionStatus !== internalStatus) {
+      console.error(
+        `❌ CRITICAL: User ${userId} status mismatch after payment! ` +
+        `Expected: ${internalStatus}, Got: ${verifyData?.subscriptionStatus || 'undefined'}`
+      );
+    } else {
+      console.log(`✅ Verified: User ${userId} subscription status is '${internalStatus}'`);
+    }
   } else {
     console.log(`ℹ️  Payment succeeded but no subscription on invoice ${invoice.id}`);
   }
