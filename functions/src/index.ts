@@ -5,6 +5,11 @@ import {
   extractIngredientsFromImage,
   generateGroceryList,
   chatAssistant,
+  getSubstitutions,
+  importRecipeFromUrl,
+  importRecipeFromImage,
+  importRecipeFromText,
+  extractFromReceipt,
 } from './services/ai';
 import {
   handleStripeWebhook,
@@ -19,7 +24,15 @@ import {
   ChatResponse,
   CreateGroceryListRequest,
   CreateGroceryListResponse,
+  DeductInventoryRequest,
+  DeductInventoryResponse,
+  ExtractReceiptRequest,
+  ExtractReceiptResponse,
+  ImportRecipeRequest,
+  ImportRecipeResponse,
   Recipe,
+  SubstitutionRequest,
+  SubstitutionResponse,
 } from './types';
 
 // Image Analysis Function
@@ -308,6 +321,260 @@ export const onUserCreate = functionsV1.auth.user().onCreate(async (user) => {
       // Don't throw error to avoid blocking user creation
     }
   });
+
+// Ingredient Substitution Function
+export const getSubstitution = onCall(
+  {
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    secrets: ['OPENAI_API_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const data = request.data as SubstitutionRequest;
+    if (!data.ingredientName || !data.recipeTitle) {
+      throw new HttpsError('invalid-argument', 'ingredientName and recipeTitle are required');
+    }
+    const userId = request.auth.uid;
+
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
+
+    try {
+      const substitutions = await getSubstitutions(
+        data.ingredientName,
+        data.ingredientQuantity,
+        data.ingredientUnit,
+        data.recipeTitle,
+        data.recipeIngredients,
+        data.recipeInstructions,
+        data.inventoryItems
+      );
+
+      const response: SubstitutionResponse = {
+        success: true,
+        originalIngredient: data.ingredientName,
+        substitutions,
+      };
+      return response;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get substitutions';
+      console.error('Substitution error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Recipe Import Function (URL, image, or PDF text)
+export const importRecipe = onCall(
+  {
+    timeoutSeconds: 120,
+    memory: '512MiB',
+    secrets: ['OPENAI_API_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { url, imageUrl, pdfText } = request.data as ImportRecipeRequest;
+    if (!url && !imageUrl && !pdfText) {
+      throw new HttpsError('invalid-argument', 'One of url, imageUrl, or pdfText is required');
+    }
+    const userId = request.auth.uid;
+
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
+
+    const usageCheck = await checkUsageLimit(userId, 'recipes');
+    if (!usageCheck.allowed) {
+      throw new HttpsError('resource-exhausted', usageCheck.reason || 'Recipe limit reached');
+    }
+
+    try {
+      let recipe;
+      if (url) {
+        recipe = await importRecipeFromUrl(url);
+      } else if (imageUrl) {
+        recipe = await importRecipeFromImage(imageUrl);
+      } else if (pdfText) {
+        recipe = await importRecipeFromText(pdfText);
+      } else {
+        throw new Error('No import source provided');
+      }
+
+      // Save to Firestore
+      const recipeRef = await db
+        .collection('recipes')
+        .doc(userId)
+        .collection('items')
+        .add({
+          ...recipe,
+          userId,
+          generatedBy: 'import',
+          recipeType: 'human',
+          createdAt: new Date(),
+        });
+
+      const response: ImportRecipeResponse = {
+        success: true,
+        recipeId: recipeRef.id,
+        recipe,
+      };
+      return response;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to import recipe';
+      console.error('Recipe import error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Inventory Deduction Function ("I Made This")
+export const deductInventory = onCall(
+  {
+    timeoutSeconds: 30,
+    memory: '256MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { deductions } = request.data as DeductInventoryRequest;
+    if (!Array.isArray(deductions) || deductions.length === 0) {
+      throw new HttpsError('invalid-argument', 'deductions must be a non-empty array');
+    }
+    const userId = request.auth.uid;
+
+    try {
+      const updatedItems: Array<{ id: string; newQuantity: number }> = [];
+      const depletedItems: string[] = [];
+      const batch = db.batch();
+
+      for (const deduction of deductions) {
+        const itemRef = db
+          .collection('inventory')
+          .doc(userId)
+          .collection('items')
+          .doc(deduction.inventoryItemId);
+
+        const itemDoc = await itemRef.get();
+        if (!itemDoc.exists) continue;
+
+        const currentData = itemDoc.data();
+        if (!currentData) continue;
+
+        const newQuantity = Math.max(0, currentData.quantity - deduction.quantityUsed);
+        updatedItems.push({ id: deduction.inventoryItemId, newQuantity });
+
+        if (newQuantity <= 0) {
+          depletedItems.push(deduction.inventoryItemId);
+          batch.delete(itemRef);
+        } else {
+          batch.update(itemRef, { quantity: newQuantity });
+        }
+      }
+
+      await batch.commit();
+
+      const response: DeductInventoryResponse = {
+        success: true,
+        updatedItems,
+        depletedItems,
+      };
+      return response;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to deduct inventory';
+      console.error('Inventory deduction error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Receipt Scanning Function
+export const scanReceipt = onCall(
+  {
+    timeoutSeconds: 300,
+    memory: '512MiB',
+    secrets: ['OPENAI_API_KEY'],
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const { imageUrl } = request.data as ExtractReceiptRequest;
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      throw new HttpsError('invalid-argument', 'imageUrl is required');
+    }
+    const userId = request.auth.uid;
+
+    const rateCheck = await checkAndIncrement(userId, 'global', 100, 60_000);
+    if (!rateCheck.allowed) {
+      throw new HttpsError('resource-exhausted', rateCheck.reason || 'Rate limit exceeded');
+    }
+
+    const usageCheck = await checkUsageLimit(userId, 'inventory');
+    if (!usageCheck.allowed) {
+      throw new HttpsError('resource-exhausted', usageCheck.reason || 'Inventory limit reached');
+    }
+
+    try {
+      const items = await extractFromReceipt(imageUrl);
+      const response: ExtractReceiptResponse = { success: true, items };
+      return response;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to scan receipt';
+      console.error('Receipt scan error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
+
+// Create Transfer Session for QR code photo transfer
+export const createTransferSession = onCall(
+  {
+    timeoutSeconds: 10,
+    memory: '256MiB',
+    cors: true,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const userId = request.auth.uid;
+
+    try {
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      const sessionRef = await db.collection('transferSessions').add({
+        userId,
+        createdAt: new Date(),
+        expiresAt,
+        imageUrls: [],
+        status: 'active',
+      });
+
+      return { success: true, sessionId: sessionRef.id, expiresAt: expiresAt.toISOString() };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create transfer session';
+      console.error('Transfer session error:', error);
+      throw new HttpsError('internal', errorMessage);
+    }
+  }
+);
 
 
 

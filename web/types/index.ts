@@ -20,6 +20,27 @@ export interface WebRecipeIngredient {
   unit: string;
 }
 
+// Nutritional information per serving
+export interface NutritionalInfo {
+  calories: number;
+  protein: number; // grams
+  carbs: number; // grams
+  fat: number; // grams
+  fiber: number; // grams
+  sugar: number; // grams
+  sodium: number; // milligrams
+}
+
+// Nutritional daily targets based on dietary preferences
+export interface NutritionalTargets {
+  calories: { min: number; max: number };
+  protein: { min: number; max: number };
+  carbs: { min: number; max: number };
+  fat: { min: number; max: number };
+  fiber?: { min: number };
+  sodium?: { max: number };
+}
+
 export interface WebRecipe {
   id: string;
   userId: string;
@@ -33,7 +54,10 @@ export interface WebRecipe {
   difficulty: 'easy' | 'medium' | 'hard';
   cuisine?: string;
   dietaryTags?: string[];
-  generatedBy?: 'ai' | 'user';
+  nutrition?: NutritionalInfo;
+  generatedBy?: 'ai' | 'user' | 'import';
+  recipeType?: 'human' | 'pet';
+  species?: 'cat' | 'dog';
   createdAt?: string;
 }
 
@@ -42,6 +66,7 @@ export interface WebMealPlanMeal {
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   recipeId?: string;
   recipeName: string;
+  nutrition?: NutritionalInfo;
 }
 
 export interface WebMealPlan {
@@ -51,7 +76,29 @@ export interface WebMealPlan {
   startDate: string;
   endDate: string;
   meals: WebMealPlanMeal[];
+  dailyNutritionSummary?: Array<{
+    day: number;
+    totals: NutritionalInfo;
+  }>;
   createdAt?: string;
+}
+
+// Substitution types
+export interface SubstitutionOption {
+  name: string;
+  quantity: number;
+  unit: string;
+  inInventory: boolean;
+  impactNotes: string;
+}
+
+// Inventory deduction types
+export interface DeductionItem {
+  inventoryItemId: string;
+  ingredientName: string;
+  quantityUsed: number;
+  unit: string;
+  currentQuantity: number;
 }
 
 export interface WebGroceryItem {

@@ -60,7 +60,8 @@ export interface Recipe {
   difficulty: 'easy' | 'medium' | 'hard';
   cuisine?: string;
   dietaryTags?: string[];
-  generatedBy: 'ai' | 'user';
+  nutrition?: NutritionalInfo;
+  generatedBy: 'ai' | 'user' | 'import';
   recipeType?: RecipeType;
   species?: PetSpecies;
   createdAt: Date;
@@ -77,6 +78,11 @@ export interface MealPlan {
     mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
     recipeId?: string;
     recipeName: string;
+    nutrition?: NutritionalInfo;
+  }>;
+  dailyNutritionSummary?: Array<{
+    day: number;
+    totals: NutritionalInfo;
   }>;
   createdAt: Date;
 }
@@ -136,6 +142,17 @@ export interface AiIngredient {
   confidence?: number;
 }
 
+// Nutritional information per serving
+export interface NutritionalInfo {
+  calories: number;
+  protein: number; // grams
+  carbs: number; // grams
+  fat: number; // grams
+  fiber: number; // grams
+  sugar: number; // grams
+  sodium: number; // milligrams
+}
+
 export interface AiRecipe {
   title: string;
   description: string;
@@ -147,6 +164,7 @@ export interface AiRecipe {
   difficulty: 'easy' | 'medium' | 'hard';
   cuisine?: string;
   dietaryTags?: string[];
+  nutrition?: NutritionalInfo;
 }
 
 export interface AiMeal {
@@ -154,11 +172,16 @@ export interface AiMeal {
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   recipeName: string;
   ingredients: string[];
+  nutrition?: NutritionalInfo;
 }
 
 export interface AiMealPlan {
   name: string;
   meals: AiMeal[];
+  dailyNutritionSummary?: Array<{
+    day: number;
+    totals: NutritionalInfo;
+  }>;
 }
 
 export interface AiGroceryItem {
@@ -247,6 +270,110 @@ export interface ChatRequest {
 export interface ChatResponse {
   success: boolean;
   response: string;
+}
+
+// Recipe import (URL, photo, PDF)
+export interface ImportRecipeRequest {
+  url?: string;
+  imageUrl?: string;
+  pdfText?: string;
+}
+
+export interface ImportRecipeResponse {
+  success: boolean;
+  recipeId: string;
+  recipe: AiRecipe;
+}
+
+// Ingredient substitution
+export interface SubstitutionRequest {
+  ingredientName: string;
+  ingredientQuantity: number;
+  ingredientUnit: string;
+  recipeTitle: string;
+  recipeIngredients: Array<{ name: string; quantity: number; unit: string }>;
+  recipeInstructions: string[];
+  inventoryItems: Array<{ name: string; quantity: number; unit: string }>;
+}
+
+export interface SubstitutionOption {
+  name: string;
+  quantity: number;
+  unit: string;
+  inInventory: boolean;
+  impactNotes: string;
+}
+
+export interface SubstitutionResponse {
+  success: boolean;
+  originalIngredient: string;
+  substitutions: SubstitutionOption[];
+}
+
+// Inventory deduction after cooking
+export interface DeductInventoryRequest {
+  recipeId: string;
+  deductions: Array<{
+    inventoryItemId: string;
+    quantityUsed: number;
+    unit: string;
+  }>;
+  servingsCooked?: number;
+}
+
+export interface DeductInventoryResponse {
+  success: boolean;
+  updatedItems: Array<{ id: string; newQuantity: number }>;
+  depletedItems: string[]; // IDs of items that reached 0
+}
+
+// Receipt scanning
+export interface ExtractReceiptRequest {
+  imageUrl: string;
+}
+
+export interface ExtractReceiptResponse {
+  success: boolean;
+  items: Array<{
+    name: string;
+    quantity: number;
+    unit: string;
+    price?: number;
+  }>;
+}
+
+// Transfer session for QR photo transfer
+export interface TransferSession {
+  id: string;
+  userId: string;
+  createdAt: Date;
+  expiresAt: Date;
+  imageUrls: string[];
+  status: 'active' | 'completed' | 'expired';
+}
+
+// Nutritional daily targets based on dietary preferences
+export interface NutritionalTargets {
+  calories: { min: number; max: number };
+  protein: { min: number; max: number };
+  carbs: { min: number; max: number };
+  fat: { min: number; max: number };
+  fiber?: { min: number };
+  sodium?: { max: number };
+}
+
+// Cooking session (tracks active cooking state)
+export interface CookingSession {
+  recipeId: string;
+  userId: string;
+  currentStep: number;
+  startedAt: Date;
+  timers: Array<{
+    stepIndex: number;
+    durationSeconds: number;
+    label: string;
+    startedAt?: Date;
+  }>;
 }
 
 export type SubscriptionTierName = 'basic' | 'pro';

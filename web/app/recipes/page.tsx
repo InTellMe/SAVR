@@ -9,6 +9,16 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
+interface NutritionalInfo {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+}
+
 interface RecipeIngredient {
   name: string;
   quantity: number;
@@ -30,8 +40,10 @@ interface Recipe {
   difficulty: 'easy' | 'medium' | 'hard';
   cuisine?: string;
   dietaryTags?: string[];
+  nutrition?: NutritionalInfo;
   recipeType?: RecipeType;
   species?: PetSpecies;
+  generatedBy?: 'ai' | 'user' | 'import';
 }
 
 export default function RecipesPage() {
@@ -512,10 +524,19 @@ function RecipeCard({
       
       <p className="text-[#9ca3c2] text-sm mb-4 line-clamp-2">{recipe.description}</p>
       
-      <div className="flex items-center text-sm text-[#9ca3c2] space-x-4 mb-4">
+      <div className="flex items-center text-sm text-[#9ca3c2] space-x-4 mb-3">
         <span>⏱️ {recipe.prepTime + recipe.cookTime} min</span>
         <span>🍽️ {recipe.servings} servings</span>
       </div>
+
+      {recipe.nutrition && (
+        <div className="flex items-center gap-3 text-xs text-[#9ca3c2] mb-4 flex-wrap">
+          <span className="px-2 py-1 rounded bg-white/5">{recipe.nutrition.calories} cal</span>
+          <span className="px-2 py-1 rounded bg-white/5">P {recipe.nutrition.protein}g</span>
+          <span className="px-2 py-1 rounded bg-white/5">C {recipe.nutrition.carbs}g</span>
+          <span className="px-2 py-1 rounded bg-white/5">F {recipe.nutrition.fat}g</span>
+        </div>
+      )}
 
       <div className="flex space-x-2">
         <button
@@ -535,14 +556,71 @@ function RecipeCard({
   );
 }
 
+function NutritionPanel({ nutrition, servings }: { nutrition: NutritionalInfo; servings: number }) {
+  const macroTotal = nutrition.protein + nutrition.carbs + nutrition.fat;
+  const proteinPct = macroTotal > 0 ? Math.round((nutrition.protein / macroTotal) * 100) : 0;
+  const carbsPct = macroTotal > 0 ? Math.round((nutrition.carbs / macroTotal) * 100) : 0;
+  const fatPct = macroTotal > 0 ? Math.round((nutrition.fat / macroTotal) * 100) : 0;
+
+  return (
+    <div className="rounded-lg p-4 mb-6" style={{ background: 'rgba(0, 212, 255, 0.04)', border: '1px solid rgba(0, 212, 255, 0.12)' }}>
+      <h3 className="text-sm font-semibold text-white mb-3">Nutrition per serving</h3>
+      <div className="grid grid-cols-4 gap-3 mb-3">
+        <div className="text-center">
+          <div className="text-lg font-bold text-white">{nutrition.calories}</div>
+          <div className="text-xs text-[#9ca3c2]">Calories</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-[#00d4ff]">{nutrition.protein}g</div>
+          <div className="text-xs text-[#9ca3c2]">Protein</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-[#a855f7]">{nutrition.carbs}g</div>
+          <div className="text-xs text-[#9ca3c2]">Carbs</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-[#f59e0b]">{nutrition.fat}g</div>
+          <div className="text-xs text-[#9ca3c2]">Fat</div>
+        </div>
+      </div>
+      {/* Macro ratio bar */}
+      <div className="flex h-2 rounded-full overflow-hidden mb-2">
+        <div className="bg-[#00d4ff]" style={{ width: `${proteinPct}%` }} />
+        <div className="bg-[#a855f7]" style={{ width: `${carbsPct}%` }} />
+        <div className="bg-[#f59e0b]" style={{ width: `${fatPct}%` }} />
+      </div>
+      <div className="flex justify-between text-xs text-[#6b7294]">
+        <span>Protein {proteinPct}%</span>
+        <span>Carbs {carbsPct}%</span>
+        <span>Fat {fatPct}%</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/6">
+        <div className="text-center">
+          <span className="text-xs text-[#9ca3c2]">Fiber: {nutrition.fiber}g</span>
+        </div>
+        <div className="text-center">
+          <span className="text-xs text-[#9ca3c2]">Sugar: {nutrition.sugar}g</span>
+        </div>
+        <div className="text-center">
+          <span className="text-xs text-[#9ca3c2]">Sodium: {nutrition.sodium}mg</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RecipeDetailsModal({
   recipe,
   onClose,
   onShare,
+  onCookWithAssistant,
+  onIMadeThis,
 }: {
   recipe: Recipe;
   onClose: () => void;
   onShare?: () => void | Promise<void>;
+  onCookWithAssistant?: () => void;
+  onIMadeThis?: () => void;
 }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
@@ -590,6 +668,10 @@ function RecipeDetailsModal({
           )}
         </div>
 
+        {recipe.nutrition && (
+          <NutritionPanel nutrition={recipe.nutrition} servings={recipe.servings} />
+        )}
+
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-white mb-3">Ingredients</h3>
           <ul className="space-y-2">
@@ -604,7 +686,7 @@ function RecipeDetailsModal({
           </ul>
         </div>
 
-        <div>
+        <div className="mb-6">
           <h3 className="text-xl font-semibold text-white mb-3">Instructions</h3>
           <ol className="space-y-3">
             {recipe.instructions.map((instruction, index) => (
@@ -616,22 +698,45 @@ function RecipeDetailsModal({
           </ol>
         </div>
 
-        <div className="flex gap-2 mt-6">
-          {onShare && (
+        <div className="flex flex-col gap-3 mt-6">
+          {/* Action buttons row */}
+          <div className="flex gap-2">
+            {onCookWithAssistant && (
+              <button
+                type="button"
+                onClick={onCookWithAssistant}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white font-semibold rounded-md hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition text-sm"
+              >
+                Cook with Assistant
+              </button>
+            )}
+            {onIMadeThis && (
+              <button
+                type="button"
+                onClick={onIMadeThis}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#00bfa6] to-[#00897b] text-white font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,191,166,0.4)] transition text-sm"
+              >
+                I Made This
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {onShare && (
+              <button
+                type="button"
+                onClick={onShare}
+                className="flex-1 px-4 py-2 border border-[#00d4ff] text-[#00d4ff] rounded-md hover:bg-[#00d4ff]/10"
+              >
+                Share recipe
+              </button>
+            )}
             <button
-              type="button"
-              onClick={onShare}
-              className="flex-1 px-4 py-2 border border-[#00d4ff] text-[#00d4ff] rounded-md hover:bg-[#00d4ff]/10"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,212,255,0.4)]"
             >
-              Share recipe
+              Close
             </button>
-          )}
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-black font-semibold rounded-md hover:shadow-[0_0_30px_rgba(0,212,255,0.4)]"
-          >
-            Close
-          </button>
+          </div>
         </div>
       </div>
     </div>
