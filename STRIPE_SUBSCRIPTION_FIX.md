@@ -129,9 +129,9 @@ if (verifyData?.subscriptionStatus !== expectedStatus) {
 ```
 
 **Where Applied:**
-- `handleCheckoutCompleted` (line 564-572)
-- `handleSubscriptionUpdated` (line 633-645)
-- `handlePaymentSucceeded` (line 773-786)
+- `handleCheckoutCompleted` (lines 563-577)
+- `handleSubscriptionUpdated` (lines 636-650)
+- `handlePaymentSucceeded` (lines 779-793)
 
 **Benefits:**
 - ✅ Immediately identifies if updates fail

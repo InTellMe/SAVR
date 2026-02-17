@@ -561,6 +561,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   );
 
   // Verify that the user document was updated correctly
+  // Note: This extra read adds cost but is critical for debugging subscription issues.
+  // Webhooks are low-volume (only during checkout), so the cost is acceptable.
   const verifyDoc = await db.collection('users').doc(userId).get();
   const verifyData = verifyDoc.data();
   if (verifyData?.subscriptionStatus !== status) {
@@ -632,6 +634,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
   console.log(`✅ Subscription update for user ${userId}: tier=${tier}, status=${internalStatus}, cancel_at_period_end=${subscription.cancel_at_period_end}`);
 
   // Verify that the user document was updated correctly
+  // Note: This extra read adds cost but is critical for debugging subscription issues.
   const verifyDoc = await db.collection('users').doc(userId).get();
   const verifyData = verifyDoc.data();
   if (verifyData?.subscriptionStatus !== internalStatus) {
@@ -774,6 +777,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
     console.log(`✅ Payment succeeded for user ${userId}, sub ${subscriptionId}, status → ${internalStatus}`);
 
     // Verify the update was successful
+    // Note: This extra read adds cost but is critical for debugging subscription issues.
     const verifyDoc = await db.collection('users').doc(userId).get();
     const verifyData = verifyDoc.data();
     if (verifyData?.subscriptionStatus !== internalStatus) {
