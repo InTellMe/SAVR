@@ -62,6 +62,24 @@ SAVR is an AI-powered food management platform that helps you manage your pantry
   - `stripeWebhook`: Subscription event handling
   - `onUserCreate`: Automatic user initialization
 
+### Shared TypeScript Types (`/functions/src/types/index.ts`)
+
+⚠️ **IMPORTANT**: The TypeScript interfaces in `/functions/src/types/index.ts` are shared between the web frontend and backend services.
+
+**When modifying shared types, you MUST:**
+1. Verify changes work in **both** `/web` and `/functions`
+2. Run `npm run build` in **both** directories before committing
+3. Update imports in any files that reference the modified types
+4. Test all affected endpoints and components
+
+**Common shared types include:**
+- Request/Response contracts: `UploadImageRequest`, `SaveAnnotationRequest`, `ExportDatasetRequest`, etc.
+- Domain models: `Recipe`, `InventoryItem`, `MealPlan`, etc.
+- AI types: `AiRecipe`, `AiIngredient`, `NutritionalInfo`, etc.
+- Annotation types: `AnnotationObject`, `PolygonPoint`, `ImageDocument`, etc.
+
+Any breaking changes to these interfaces will break the build pipeline and must be coordinated across both projects.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
