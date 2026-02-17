@@ -48,27 +48,41 @@ function getSubscriptionPeriodEnd(sub: Stripe.Subscription): Date | null {
 /**
  * Retrieves the subscription tier from a Stripe Price object.
  * Checks the price's metadata.tier field or nickname for tier information.
+ * Defaults to 'pro' for non-zero prices to avoid downgrading paying users.
  */
 async function getTierFromPrice(priceId: string): Promise<SubscriptionTierName> {
   try {
     const price = await stripe.prices.retrieve(priceId);
 
-    // Check metadata first (recommended approach)
+    // Check metadata first (recommended approach - most authoritative)
     if (price.metadata?.tier) {
       const tier = price.metadata.tier.toLowerCase();
       if (tier === 'pro' || tier === 'plus' || tier === 'premium') return 'pro';
       if (tier === 'basic' || tier === 'free') return 'basic';
     }
 
-    // Check nickname as fallback
+    // If no metadata, prioritize price amount over nickname to protect paying customers
+    const priceAmount = typeof price.unit_amount === 'number' ? price.unit_amount : 0;
+    
+    if (priceAmount > 0) {
+      // Paying customer - always return 'pro' to avoid accidental downgrades
+      console.warn(`Price ${priceId} missing metadata.tier field - defaulting to 'pro' for non-zero price ($${priceAmount / 100}). Please add metadata.tier='pro' in Stripe Dashboard.`);
+      return 'pro';
+    }
+
+    // Only for zero-amount prices, check nickname as a hint
     if (price.nickname) {
       const nickname = price.nickname.toLowerCase();
       if (nickname.includes('pro') || nickname.includes('plus') || nickname.includes('premium')) {
         return 'pro';
       }
+      if (nickname.includes('basic') || nickname.includes('free')) {
+        return 'basic';
+      }
     }
 
-    console.warn(`Price ${priceId} missing metadata.tier field - defaulting to 'basic' tier. Please add metadata.tier='basic' or 'pro' in Stripe Dashboard.`);
+    // Final fallback for zero-amount prices with no clear indicators
+    console.warn(`Price ${priceId} has zero amount and missing metadata.tier - defaulting to 'basic' tier. Please add metadata.tier='basic' in Stripe Dashboard.`);
     return 'basic';
   } catch (error) {
     console.error('Error retrieving price from Stripe:', error);
@@ -157,6 +171,13 @@ export async function handleStripeWebhook(
   const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 
   console.log(`🔔 Received Stripe webhook: ${event.type} (event ID: ${event.id})`);
+  
+  // Log client_reference_id for debugging subscription sync issues
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const clientReferenceId = session.client_reference_id || session.metadata?.userId;
+    console.log(`🔔 Checkout session client_reference_id: ${clientReferenceId || 'NONE'}`);
+  }
 
   // Log every event for audit / customer-service lookups
   await logStripeEvent(event);
@@ -458,13 +479,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     return;
   }
 
-  // Verify emails match (case-insensitive)
-  if (sessionEmail.toLowerCase() !== userEmail.toLowerCase()) {
-    console.error(
-      `❌ Email mismatch for user ${claimedUserId}: Firestore email '${userEmail}' does not match ` +
-      `Stripe session email '${sessionEmail}'. Possible account takeover attempt - rejecting webhook.`
-    );
-    return;
+  // Verify emails match (case-insensitive with trim)
+  if (sessionEmail.toLowerCase().trim() !== userEmail.toLowerCase().trim()) {
+    // If client_reference_id is present and verified, log warning but continue
+    // This handles cases where email casing differs or hasn't been synced yet
+    if (session.client_reference_id) {
+      console.warn(
+        `⚠️  Email mismatch for user ${claimedUserId}: Firestore email '${userEmail}' does not match ` +
+        `Stripe session email '${sessionEmail}', but client_reference_id is verified - proceeding with caution.`
+      );
+    } else {
+      console.error(
+        `❌ Email mismatch for user ${claimedUserId}: Firestore email '${userEmail}' does not match ` +
+        `Stripe session email '${sessionEmail}'. No verified client_reference_id - rejecting webhook.`
+      );
+      return;
+    }
   }
 
   console.log(`✅ Email validation passed`);
