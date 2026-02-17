@@ -473,11 +473,23 @@ export const uploadLabelingImage = onCall(
       throw new HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { imageUrl, source, videoId, frameIndex } = request.data as UploadImageRequest;
+    const { imageUrl, width, height, source, videoId, frameIndex, autoLabel } = request.data as UploadImageRequest;
     if (!imageUrl || typeof imageUrl !== 'string') {
       throw new HttpsError(
         'invalid-argument',
         'imageUrl is required and must be a string'
+      );
+    }
+    if (!width || typeof width !== 'number' || width <= 0) {
+      throw new HttpsError(
+        'invalid-argument',
+        'width is required and must be a positive number'
+      );
+    }
+    if (!height || typeof height !== 'number' || height <= 0) {
+      throw new HttpsError(
+        'invalid-argument',
+        'height is required and must be a positive number'
       );
     }
 
@@ -491,10 +503,6 @@ export const uploadLabelingImage = onCall(
     try {
       const imageId = db.collection('images').doc().id;
 
-      const dataWithDefaults = request.data as UploadImageRequest & { width?: number; height?: number; autoLabel?: boolean };
-      const width = dataWithDefaults.width || 1920;
-      const height = dataWithDefaults.height || 1080;
-
       const imageDoc = await createImageDocument(
         userId,
         imageId,
@@ -507,8 +515,14 @@ export const uploadLabelingImage = onCall(
       );
 
       // Optionally trigger AI inference automatically
-      if (dataWithDefaults.autoLabel !== false) {
-        triggerSegmentationInference(imageId, imageUrl, width, height).catch(err => {
+      if (autoLabel !== false) {
+        // Convert gs:// URLs to signed URLs for OpenAI vision API
+        let usableImageUrl = imageUrl;
+        if (imageUrl.startsWith('gs://')) {
+          const gsPath = imageUrl.replace(/^gs:\/\/[^/]+\//, '');
+          usableImageUrl = await getImageSignedUrl(gsPath);
+        }
+        triggerSegmentationInference(imageId, usableImageUrl, width, height).catch(err => {
           console.error('Failed to trigger segmentation inference:', err);
         });
       }
