@@ -765,16 +765,11 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
       ? await getTierFromPrice(sub.items.data[0].price.id)
       : undefined;
 
-    const updates: Record<string, unknown> = {
+    await updateUserSubscription(userId, {
       subscriptionStatus: internalStatus,
+      ...(tier ? { subscriptionTier: tier } : {}),
       currentPeriodEnd: getSubscriptionPeriodEnd(sub),
-    };
-    
-    if (tier) {
-      updates.subscriptionTier = tier;
-    }
-
-    await updateUserSubscription(userId, updates);
+    });
 
     console.log(`✅ Payment succeeded for user ${userId}, sub ${subscriptionId}, status → ${internalStatus}`);
 
