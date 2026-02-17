@@ -7,10 +7,6 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   trailingSlash: true,
-  turbopack: {
-    // Set root to parent directory to silence lockfile warning
-    root: path.resolve(__dirname, ".."),
-  },
 };
 
 export default nextConfig;
