@@ -39,6 +39,14 @@ import {
   Recipe,
   SubstitutionRequest,
   SubstitutionResponse,
+  UploadImageRequest,
+  UploadImageResponse,
+  SaveAnnotationRequest,
+  SaveAnnotationResponse,
+  GetImageAnnotationsRequest,
+  GetImageAnnotationsResponse,
+  ExportDatasetRequest,
+  ExportDatasetResponse,
 } from './types';
 import {
   createImageDocument,

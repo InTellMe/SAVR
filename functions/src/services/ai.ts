@@ -5,7 +5,6 @@ import {
   AiMealPlan,
   AiRecipe,
   ExtractedIngredient,
-  NutritionalInfo,
   Recipe,
   SubstitutionOption,
 } from '../types';
