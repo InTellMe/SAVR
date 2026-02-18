@@ -51,10 +51,12 @@ export default function PricingPage() {
     const table = document.createElement('stripe-pricing-table');
     table.setAttribute('pricing-table-id', pricingTableId);
     table.setAttribute('publishable-key', publishableKey);
-    table.setAttribute('client-reference-id', user.uid);
-
-    // Append to container
-    pricingTableRef.current.appendChild(table);
+    
+    // Add a safety check for the UID
+    if (user.uid) {
+      table.setAttribute('client-reference-id', user.uid);
+      pricingTableRef.current.appendChild(table);
+    }
   }, [user, hasActiveSub, stripeConfigured, pricingTableId, publishableKey]);
 
   async function handleManageBilling() {
