@@ -444,6 +444,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   }
 
   console.log(`✅ Checkout session ${session.id} has claimed user ID: ${claimedUserId}`);
+  console.log("Processing checkout for UID:", claimedUserId);
 
   // SECURITY: Validate that the checkout session's customer email matches the user's email
   const userDoc = await db.collection('users').doc(claimedUserId).get();
