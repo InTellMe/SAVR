@@ -88,8 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
 
         // Ensure the user document exists (first sign-up)
-        // Use surgical check: only create if document doesn't exist OR if it exists
-        // but has no subscription data (to avoid overwriting webhook-written data)
+        // STRICT CHECK: Only create if document doesn't exist
+        // Never overwrite existing subscription data to prevent race conditions with webhook
         try {
           const userDoc = await getDoc(userDocRef);
           if (!userDoc.exists()) {
@@ -106,19 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               createdAt: new Date(),
               updatedAt: new Date(),
             });
-          } else {
-            // User exists - only update if subscription data is missing
-            // This prevents overwriting webhook-written subscription status
-            const existingData = userDoc.data();
-            if (!existingData.subscriptionStatus && !existingData.stripeCustomerId) {
-              // User exists but has no subscription data - add defaults with merge
-              await setDoc(userDocRef, {
-                subscriptionTier: 'basic',
-                subscriptionStatus: 'pending',
-                updatedAt: new Date(),
-              }, { merge: true });
-            }
           }
+          // If user exists, do NOT update - let webhook handle subscription status
         } catch (error) {
           console.error('Failed to ensure user document exists:', error);
         }

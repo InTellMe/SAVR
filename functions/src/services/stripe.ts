@@ -444,6 +444,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   }
 
   console.log(`✅ Checkout session ${session.id} has claimed user ID: ${claimedUserId}`);
+  console.log("Processing checkout for UID:", claimedUserId);
 
   // SECURITY: Validate that the checkout session's customer email matches the user's email
   const userDoc = await db.collection('users').doc(claimedUserId).get();
@@ -505,6 +506,16 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     console.error(`❌ No Stripe customer ID in checkout session ${session.id} - rejecting webhook`);
     return;
   }
+
+  // IMMEDIATE USER LINKAGE: Write stripeCustomerId to Firestore immediately
+  // This ensures future lookups succeed even if the webhook is delayed or re-sent
+  console.log(`🔗 Immediately linking Stripe customer ${stripeCustomerId} to user ${claimedUserId}`);
+  await db.collection('users').doc(claimedUserId).update({
+    stripeCustomerId,
+    stripeEmail: sessionEmail,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  console.log(`✅ Stripe customer ID linked to user document`);
 
   let userId = claimedUserId;
 

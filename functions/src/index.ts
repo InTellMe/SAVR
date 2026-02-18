@@ -271,6 +271,9 @@ export const stripeWebhook = onRequest(
   {
     secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
     cors: false,
+    region: 'us-central1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
   },
   async (req, res) => {
     const signature = req.headers['stripe-signature'] as string;
