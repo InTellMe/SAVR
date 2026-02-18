@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth, isProTier, hasActiveSubscription } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function ProtectedRoute({
@@ -13,21 +13,26 @@ export default function ProtectedRoute({
 }) {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isActive = hasActiveSubscription(userData);
   const hasPro = isProTier(userData?.subscriptionTier);
+  
+  // Check if user is returning from successful Stripe checkout
+  const isReturningFromStripe = searchParams.get('stripeSuccess') === 'true';
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/sign-in');
-      } else if (!isActive) {
+      } else if (!isActive && !isReturningFromStripe) {
         // User hasn't completed Stripe onboarding — send to pricing
+        // BUT allow access if they just successfully paid (grace period for webhook processing)
         router.push('/pricing');
       } else if (requirePro && !hasPro) {
         router.push('/pricing');
       }
     }
-  }, [user, userData, loading, router, requirePro, hasPro, isActive]);
+  }, [user, userData, loading, router, requirePro, hasPro, isActive, isReturningFromStripe]);
 
   if (loading) {
     return (
@@ -37,7 +42,7 @@ export default function ProtectedRoute({
     );
   }
 
-  if (!user || !isActive || (requirePro && !hasPro)) {
+  if (!user || (!isActive && !isReturningFromStripe) || (requirePro && !hasPro)) {
     return null;
   }
 
