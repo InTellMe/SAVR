@@ -438,6 +438,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   // Prefer client_reference_id from Pricing Table, while keeping metadata fallback.
   const claimedUserId = session.client_reference_id || session.metadata?.userId;
 
+  console.log("!!! WEBHOOK EXECUTING !!! UID:", session.client_reference_id);
+
   if (!claimedUserId) {
     console.error('❌ No user ID found in checkout session - rejecting webhook');
     return;
@@ -507,16 +509,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     return;
   }
 
-  // IMMEDIATE USER LINKAGE: Write stripeCustomerId to Firestore immediately
-  // This ensures future lookups succeed even if the webhook is delayed or re-sent
-  console.log(`🔗 Immediately linking Stripe customer ${stripeCustomerId} to user ${claimedUserId}`);
-  await db.collection('users').doc(claimedUserId).update({
-    stripeCustomerId,
-    stripeEmail: sessionEmail,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  console.log(`✅ Stripe customer ID linked to user document`);
-
   let userId = claimedUserId;
 
   // Verify against server-trusted customer identity
@@ -570,6 +562,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   } else {
     console.warn(`⚠️  No subscription found in checkout session ${session.id}`);
   }
+
+  // IMMEDIATE USER LINKAGE: Write stripeCustomerId AND subscription status to Firestore immediately
+  // This ensures the subscription is activated immediately and prevents frontend race conditions
+  // Using set with merge:true to ensure this works even if the document is in an unexpected state
+  console.log(`🔗 Immediately linking Stripe customer ${stripeCustomerId} to user ${userId} with status ${status}`);
+  await db.collection('users').doc(userId).set({
+    stripeCustomerId,
+    stripeEmail: sessionEmail,
+    subscriptionStatus: status,
+    subscriptionTier: tier,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  console.log(`✅ Stripe customer ID and subscription status linked to user document`);
 
   // Persist enriched data for customer service
   await updateUserSubscription(userId, {
