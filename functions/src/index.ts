@@ -276,21 +276,88 @@ export const stripeWebhook = onRequest(
     memory: '256MiB',
   },
   async (req, res) => {
+    // Debug: Log that webhook was called
+    console.log('🔔 Stripe webhook endpoint called');
+    
     const signature = req.headers['stripe-signature'] as string;
 
     if (!signature) {
+      console.error('❌ No Stripe signature in request headers');
       res.status(400).send('No signature');
       return;
     }
+
+    // Debug: Verify secrets are available
+    const hasSecretKey = !!process.env.STRIPE_SECRET_KEY;
+    const hasWebhookSecret = !!process.env.STRIPE_WEBHOOK_SECRET;
+    
+    if (!hasSecretKey || !hasWebhookSecret) {
+      console.error(
+        `❌ Missing Stripe secrets: STRIPE_SECRET_KEY=${hasSecretKey}, STRIPE_WEBHOOK_SECRET=${hasWebhookSecret}`
+      );
+      res.status(500).send('Stripe secrets not configured');
+      return;
+    }
+
+    console.log('✅ Stripe secrets are available');
 
     try {
       await handleStripeWebhook(req.rawBody.toString(), signature);
       res.json({ received: true });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Webhook error';
-      console.error('Webhook error:', error);
+      console.error('❌ Webhook processing error:', error);
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('No signatures found')) {
+        console.error('❌ Invalid webhook signature - check STRIPE_WEBHOOK_SECRET matches Stripe Dashboard');
+      } else if (errorMessage.includes('webhook secret')) {
+        console.error('❌ Webhook secret not configured - run setup-stripe-secrets.sh');
+      }
+      
       res.status(400).send(`Webhook Error: ${errorMessage}`);
     }
+  }
+);
+
+// Health check endpoint for Stripe webhook configuration
+// Use this to verify that the webhook endpoint is accessible and secrets are configured
+// Access at: https://us-central1-<project-id>.cloudfunctions.net/stripeWebhookHealth
+export const stripeWebhookHealth = onRequest(
+  {
+    cors: true,
+    region: 'us-central1',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+  },
+  async (req, res) => {
+    const hasSecretKey = !!process.env.STRIPE_SECRET_KEY;
+    const hasWebhookSecret = !!process.env.STRIPE_WEBHOOK_SECRET;
+    
+    const secretKeyLength = process.env.STRIPE_SECRET_KEY?.length || 0;
+    const webhookSecretLength = process.env.STRIPE_WEBHOOK_SECRET?.length || 0;
+    
+    const allSecretsConfigured = hasSecretKey && hasWebhookSecret;
+    
+    res.json({
+      status: allSecretsConfigured ? 'healthy' : 'unhealthy',
+      timestamp: new Date().toISOString(),
+      secrets: {
+        STRIPE_SECRET_KEY: {
+          configured: hasSecretKey,
+          length: secretKeyLength,
+          prefix: hasSecretKey ? process.env.STRIPE_SECRET_KEY?.substring(0, 7) : null,
+        },
+        STRIPE_WEBHOOK_SECRET: {
+          configured: hasWebhookSecret,
+          length: webhookSecretLength,
+          prefix: hasWebhookSecret ? process.env.STRIPE_WEBHOOK_SECRET?.substring(0, 7) : null,
+        },
+      },
+      message: allSecretsConfigured
+        ? 'All Stripe secrets are configured correctly'
+        : 'Missing one or more Stripe secrets - run setup-stripe-secrets.sh',
+    });
   }
 );
 
