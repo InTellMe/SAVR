@@ -1,14 +1,38 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import VideoHero from '@/components/VideoHero';
 import { useAuth, hasActiveSubscription } from '@/contexts/AuthContext';
 
+const CHECKOUT_GRACE_PERIOD_MS = 10 * 60 * 1000; // 10 minutes
+
 export default function Home() {
-  const { user, userData } = useAuth();
+  const { user, userData, loading } = useAuth();
   const hasActiveSub = hasActiveSubscription(userData);
+
+  // Redirect to dashboard if user just completed Stripe checkout
+  // The Stripe Pricing Table redirects to savr.cam/ (root) after checkout,
+  // so we detect checkout intent via localStorage and send them to the dashboard
+  useEffect(() => {
+    if (loading || !user) return;
+
+    // If user already has an active subscription, let them browse the home page normally
+    if (hasActiveSub) return;
+
+    try {
+      const pending = localStorage.getItem('savr_checkout_pending');
+      if (!pending) return;
+      const elapsed = Date.now() - parseInt(pending, 10);
+      if (elapsed >= 0 && elapsed < CHECKOUT_GRACE_PERIOD_MS) {
+        window.location.href = '/dashboard?stripeSuccess=true';
+      }
+    } catch {
+      // localStorage unavailable — non-critical
+    }
+  }, [loading, user, hasActiveSub]);
 
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>

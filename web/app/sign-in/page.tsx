@@ -2,11 +2,24 @@
 
 import { useState, ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
+
+const CHECKOUT_GRACE_PERIOD_MS = 10 * 60 * 1000; // 10 minutes
+
+function hasRecentCheckoutIntent(): boolean {
+  try {
+    const pending = localStorage.getItem('savr_checkout_pending');
+    if (!pending) return false;
+    const elapsed = Date.now() - parseInt(pending, 10);
+    return elapsed >= 0 && elapsed < CHECKOUT_GRACE_PERIOD_MS;
+  } catch {
+    return false;
+  }
+}
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -16,8 +29,22 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   async function redirectAfterAuth() {
+    // Check for explicit redirect parameter (e.g., from pricing page after checkout)
+    const redirectParam = searchParams.get('redirect');
+    if (redirectParam) {
+      router.push(redirectParam);
+      return;
+    }
+
+    // Check for recent checkout intent via localStorage
+    if (hasRecentCheckoutIntent()) {
+      router.push('/dashboard?stripeSuccess=true');
+      return;
+    }
+
     const currentUser = auth.currentUser;
     if (!currentUser) {
       router.push('/dashboard');

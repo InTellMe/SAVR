@@ -118,7 +118,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userDocRef,
           (snapshot) => {
             if (snapshot.exists()) {
-              setUserData(snapshot.data() as UserData);
+              const data = snapshot.data() as UserData;
+              setUserData(data);
+
+              // Clear checkout intent flag once subscription is confirmed active
+              // This means the Stripe webhook has processed and Firestore is updated
+              if (data.subscriptionStatus === 'active' || data.subscriptionStatus === 'trialing') {
+                try {
+                  localStorage.removeItem('savr_checkout_pending');
+                } catch {
+                  // non-critical
+                }
+              }
             } else {
               setUserData({
                 uid: firebaseUser.uid,
