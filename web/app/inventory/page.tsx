@@ -4,9 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import {
+  getInventory,
+  addInventoryItem,
+  updateInventoryItem,
+  deleteInventoryItem,
+  type InventoryItem as DBInventoryItem
+} from '@/lib/db';
 
 interface InventoryItem {
   id: string;
@@ -51,12 +56,16 @@ function InventoryContent() {
     if (!user) return;
 
     try {
-      const itemsCollection = collection(db, 'inventory', user.uid, 'items');
-      const q = query(itemsCollection, where('userId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      const inventoryItems = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const data = await getInventory(user.uid);
+      const inventoryItems = data.map(item => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        category: item.category,
+        expiryDate: item.expiry_date,
+        imageUrl: item.image_url,
+        addedDate: item.created_at,
       } as InventoryItem));
       setItems(inventoryItems);
     } catch (error) {
@@ -71,22 +80,25 @@ function InventoryContent() {
     if (!user || !newItem.name.trim()) return;
 
     try {
-      const itemsCollection = collection(db, 'inventory', user.uid, 'items');
-      const docRef = await addDoc(itemsCollection, {
-        userId: user.uid,
+      const addedItem = await addInventoryItem(user.uid, {
         name: newItem.name.trim(),
         quantity: newItem.quantity,
         unit: newItem.unit.trim(),
         category: newItem.category,
-        addedDate: new Date().toISOString(),
-        imageUrl: newItem.imageUrl || null,
+        image_url: newItem.imageUrl || undefined,
       });
 
       setItems([
         ...items,
         {
-          id: docRef.id,
-          ...newItem,
+          id: addedItem.id,
+          name: addedItem.name,
+          quantity: addedItem.quantity,
+          unit: addedItem.unit,
+          category: addedItem.category,
+          expiryDate: addedItem.expiry_date,
+          imageUrl: addedItem.image_url,
+          addedDate: addedItem.created_at,
         },
       ]);
 
@@ -104,7 +116,7 @@ function InventoryContent() {
 
   async function handleDeleteItem(itemId: string) {
     try {
-      await deleteDoc(doc(db, 'inventory', user!.uid, 'items', itemId));
+      await deleteInventoryItem(itemId);
       setItems(items.filter(item => item.id !== itemId));
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -134,18 +146,24 @@ function InventoryContent() {
       const qtyMatch = qtyStr.match(/^([\d.]+)\s*(\w+)?$/);
       const quantity = qtyMatch ? parseFloat(qtyMatch[1]) || 1 : 1;
       const unit = (qtyMatch?.[2] || 'unit').toLowerCase();
-      const itemsCollection = collection(db, 'inventory', user.uid, 'items');
-      const docRef = await addDoc(itemsCollection, {
-        userId: user.uid,
+      
+      const addedItem = await addInventoryItem(user.uid, {
         name,
         quantity,
         unit,
         category: 'pantry',
-        addedDate: new Date().toISOString(),
       });
+      
       setItems([
         ...items,
-        { id: docRef.id, name, quantity, unit, category: 'pantry' },
+        {
+          id: addedItem.id,
+          name: addedItem.name,
+          quantity: addedItem.quantity,
+          unit: addedItem.unit,
+          category: addedItem.category,
+          addedDate: addedItem.created_at,
+        },
       ]);
       setBarcodeInput('');
     } catch (err) {
@@ -158,9 +176,15 @@ function InventoryContent() {
 
   async function handleUpdateItem(item: InventoryItem) {
     try {
-      const { id, ...updateData } = item;
-      await updateDoc(doc(db, 'inventory', user!.uid, 'items', id), updateData);
-      setItems(items.map(i => i.id === id ? item : i));
+      await updateInventoryItem(item.id, {
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        category: item.category,
+        expiry_date: item.expiryDate,
+        image_url: item.imageUrl || undefined,
+      });
+      setItems(items.map(i => i.id === item.id ? item : i));
       setEditingItem(null);
     } catch (error) {
       console.error('Error updating item:', error);
@@ -176,10 +200,10 @@ function InventoryContent() {
     setItems(items.map(i => i.id === itemId ? { ...i, quantity: newQuantity } : i));
     try {
       if (newQuantity <= 0) {
-        await deleteDoc(doc(db, 'inventory', user.uid, 'items', itemId));
+        await deleteInventoryItem(itemId);
         setItems(prev => prev.filter(i => i.id !== itemId));
       } else {
-        await updateDoc(doc(db, 'inventory', user.uid, 'items', itemId), { quantity: newQuantity });
+        await updateInventoryItem(itemId, { quantity: newQuantity });
       }
     } catch (err) {
       console.error('Error adjusting quantity:', err);
