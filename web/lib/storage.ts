@@ -19,8 +19,8 @@ export async function uploadImage(
   userId: string,
   file: File
 ): Promise<string> {
-  const fileName = `${Date.now()}_${file.name}`;
-  const filePath = `${userId}/${fileName}`;
+  const timestampedFileName = `${Date.now()}_${file.name}`;
+  const filePath = `${userId}/${timestampedFileName}`;
   
   const { data, error } = await supabase.storage
     .from(bucket)

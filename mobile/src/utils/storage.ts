@@ -25,9 +25,8 @@ export async function uploadImageToStorage(
   const response = await fetch(uri);
   const blob = await response.blob();
   
-  const timestamp = Date.now();
-  const fileNameWithTimestamp = `${timestamp}_${fileName}`;
-  const filePath = `${userId}/${fileNameWithTimestamp}`;
+  const timestampedFileName = `${Date.now()}_${fileName}`;
+  const filePath = `${userId}/${timestampedFileName}`;
   
   const { data, error } = await supabase.storage
     .from(bucket)
