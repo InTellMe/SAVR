@@ -5,11 +5,10 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { getRecipes, getInventory, deleteRecipe, createSharedRecipe } from '@/lib/db';
 import { uploadImage, getPublicUrl } from '@/lib/storage';
+import { callApi } from '@/lib/api';
 
 interface NutritionalInfo {
   calories: number;
@@ -135,13 +134,12 @@ function RecipesContent() {
         return;
       }
 
-      // Call Cloud Function
-      const createRecipe = httpsCallable(functions, 'createRecipe');
+      // Call API Route
       const cuisineStr = formData.cuisinePreferences.length > 0
         ? formData.cuisinePreferences.join(', ')
         : undefined;
 
-      const result = await createRecipe({
+      const result = await callApi('/ai/create-recipe', {
         ingredients,
         recipeType: formData.recipeType,
         species: formData.recipeType === 'pet' ? formData.species : undefined,
@@ -214,9 +212,8 @@ function RecipesContent() {
     setError('');
 
     try {
-      const importRecipeFn = httpsCallable(functions, 'importRecipe');
-      const result = await importRecipeFn({ url: importUrl.trim() });
-      const data = result.data as { success: boolean; recipeId: string; recipe: Recipe };
+      const result = await callApi('/ai/import-recipe', { url: importUrl.trim() });
+      const data = result as { success: boolean; recipeId: string; recipe: Recipe };
 
       if (!data.success) {
         throw new Error('Recipe import failed');
@@ -244,9 +241,8 @@ function RecipesContent() {
       const filePath = await uploadImage('recipe-images', user.uid, file);
       const url = getPublicUrl('recipe-images', filePath);
 
-      const importRecipeFn = httpsCallable(functions, 'importRecipe');
-      const result = await importRecipeFn({ imageUrl: url });
-      const data = result.data as { success: boolean; recipeId: string; recipe: Recipe };
+      const result = await callApi('/ai/import-recipe', { imageUrl: url });
+      const data = result as { success: boolean; recipeId: string; recipe: Recipe };
 
       if (!data.success) {
         throw new Error('Recipe import failed');
@@ -269,9 +265,8 @@ function RecipesContent() {
     setError('');
 
     try {
-      const importRecipeFn = httpsCallable(functions, 'importRecipe');
-      const result = await importRecipeFn({ pdfText: importPdfText.trim() });
-      const data = result.data as { success: boolean; recipeId: string; recipe: Recipe };
+      const result = await callApi('/ai/import-recipe', { text: importPdfText.trim() });
+      const data = result as { success: boolean; recipeId: string; recipe: Recipe };
 
       if (!data.success) {
         throw new Error('Recipe import failed');
@@ -848,18 +843,12 @@ function RecipeDetailsModal({
         unit: item.unit
       }));
 
-      const getSubstitution = httpsCallable(functions, 'getSubstitution');
-      const result = await getSubstitution({
-        ingredientName: ingredient.name,
-        ingredientQuantity: ingredient.quantity,
-        ingredientUnit: ingredient.unit,
-        recipeTitle: recipe.title,
-        recipeIngredients: recipe.ingredients,
-        recipeInstructions: recipe.instructions,
-        inventoryItems: inventoryNames,
+      const result = await callApi('/ai/get-substitution', {
+        ingredient: ingredient.name,
+        reason: 'Looking for substitutions',
       });
 
-      const data = result.data as { success: boolean; substitutions: SubstitutionOption[] };
+      const data = result as { success: boolean; substitutions: SubstitutionOption[] };
       if (data.success) {
         setSubstitutions(data.substitutions);
       } else {
@@ -1117,9 +1106,8 @@ function DeductionModal({
     }
 
     try {
-      const deductInventory = httpsCallable(functions, 'deductInventory');
-      const result = await deductInventory({ recipeId: recipe.id, deductions: validDeductions });
-      const data = result.data as { success: boolean; depletedItems: string[] };
+      const result = await callApi('/inventory/deduct', { recipeId: recipe.id, deductions: validDeductions });
+      const data = result as { success: boolean; depletedItems: string[] };
 
       if (data.depletedItems.length > 0) {
         setSuccess(`Inventory updated! ${data.depletedItems.length} item(s) fully used up and removed.`);
