@@ -4,9 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect, useRef } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '@/lib/firebase';
+import { functions } from '@/lib/firebase';
+import { getChatHistory } from '@/lib/db';
 
 interface Message {
   id: string;
@@ -47,17 +47,14 @@ function ChatContent() {
     if (!user) return;
 
       try {
-        const messagesCollection = collection(db, 'chatHistory', user.uid, 'messages');
-        const q = query(messagesCollection, where('userId', '==', user.uid), orderBy('timestamp', 'asc'));
-        const snapshot = await getDocs(q);
-        const chatMessages = snapshot.docs.map(
-          (docSnap) =>
-            ({
-              id: docSnap.id,
-              ...(docSnap.data() as Omit<Message, 'id'>),
-            } as Message)
-        );
-        setMessages(chatMessages);
+        const chatMessages = await getChatHistory(user.uid);
+        const mappedMessages = chatMessages.map(msg => ({
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: msg.created_at,
+        } as Message));
+        setMessages(mappedMessages);
       } catch (error) {
         console.error('Error loading chat history:', error);
       }

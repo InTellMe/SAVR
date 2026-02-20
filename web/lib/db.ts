@@ -97,6 +97,37 @@ export interface SharedRecipe {
   created_at: string;
 }
 
+export interface DataConsent {
+  id: string;
+  user_id: string;
+  marketing_emails: boolean;
+  data_usage_for_training: boolean;
+  analytics_tracking: boolean;
+  consent_version: string;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email?: string;
+  display_name?: string;
+  subscription_tier: string;
+  subscription_status: string;
+  dietary_preferences?: string[];
+  allergens?: string[];
+  preferences?: {
+    cuisines?: string[];
+    diets?: string[];
+    restrictions?: string[];
+    additionalNotes?: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
 // ============================================================================
 // Inventory Operations
 // ============================================================================
@@ -465,6 +496,74 @@ export async function getSharedRecipe(shareId: string): Promise<SharedRecipe | n
     if (error.code === 'PGRST116') return null;
     throw error;
   }
+  return data;
+}
+
+// ============================================================================
+// Data Consent Operations
+// ============================================================================
+
+export async function getDataConsent(userId: string): Promise<DataConsent | null> {
+  const { data, error } = await supabase
+    .from('data_consent')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+  
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
+}
+
+export async function upsertDataConsent(
+  userId: string,
+  consent: Omit<DataConsent, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+): Promise<DataConsent> {
+  const { data, error } = await supabase
+    .from('data_consent')
+    .upsert({
+      user_id: userId,
+      ...consent,
+    }, { onConflict: 'user_id' })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+// ============================================================================
+// User Profile Operations
+// ============================================================================
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
+}
+
+export async function updateUserProfile(
+  userId: string,
+  updates: Partial<Pick<UserProfile, 'display_name' | 'dietary_preferences' | 'allergens' | 'preferences'>>
+): Promise<UserProfile> {
+  const { data, error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single();
+  
+  if (error) throw error;
   return data;
 }
 
