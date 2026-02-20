@@ -571,9 +571,16 @@ export async function updateUserProfile(
 // Realtime Subscriptions
 // ============================================================================
 
+export interface RealtimePayload {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: Record<string, any>;
+  old: Record<string, any>;
+  errors: any;
+}
+
 export function subscribeToInventory(
   userId: string,
-  callback: (payload: any) => void
+  callback: (payload: RealtimePayload) => void
 ) {
   const channel = supabase
     .channel('inventory_changes')
@@ -596,7 +603,7 @@ export function subscribeToInventory(
 
 export function subscribeToRecipes(
   userId: string,
-  callback: (payload: any) => void
+  callback: (payload: RealtimePayload) => void
 ) {
   const channel = supabase
     .channel('recipes_changes')
@@ -619,7 +626,7 @@ export function subscribeToRecipes(
 
 export function subscribeToMealPlans(
   userId: string,
-  callback: (payload: any) => void
+  callback: (payload: RealtimePayload) => void
 ) {
   const channel = supabase
     .channel('meal_plans_changes')
@@ -642,7 +649,7 @@ export function subscribeToMealPlans(
 
 export function subscribeToGroceryLists(
   userId: string,
-  callback: (payload: any) => void
+  callback: (payload: RealtimePayload) => void
 ) {
   const channel = supabase
     .channel('grocery_lists_changes')

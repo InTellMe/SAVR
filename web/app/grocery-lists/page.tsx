@@ -152,7 +152,16 @@ function GroceryListsContent() {
       const updatedItems = [...list.items];
       updatedItems[itemIndex].checked = !updatedItems[itemIndex].checked;
 
-      await updateGroceryList(listId, { items: updatedItems as any });
+      await updateGroceryList(listId, { 
+        items: updatedItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          category: item.category,
+          checked: item.checked,
+          notes: item.notes,
+        }))
+      });
 
       setLists(lists.map(l => l.id === listId ? { ...l, items: updatedItems } : l));
       if (selectedList?.id === listId) {
