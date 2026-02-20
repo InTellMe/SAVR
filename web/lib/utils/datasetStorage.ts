@@ -78,21 +78,23 @@ export async function generateAndUploadThumbnail(
   // Note: For production, use sharp or similar library to resize
   // For now, we'll just upload the original as thumbnail (can be optimized later)
   const path = getThumbnailStoragePath(imageId);
-  const file = BUCKET.file(path);
   
- 
-  await file.save(imageBuffer, {
-    metadata: {
+  const { data, error } = await supabase.storage
+    .from(LABELING_BUCKET)
+    .upload(path, imageBuffer, {
       contentType: 'image/jpeg',
-    },
-  });
- 
-  await file.makePublic();
-  return `gs://${BUCKET.name}/${path}`;
+      upsert: true,
+    });
+
+  if (error) {
+    throw new Error(`Failed to upload thumbnail: ${error.message}`);
+  }
+
+  return `${LABELING_BUCKET}/${path}`;
 }
  
 /**
- * Create image document in Firestore
+ * Create image document in Supabase
  */
 export async function createImageDocument(
   uid: string,
@@ -105,39 +107,75 @@ export async function createImageDocument(
   frameIndex?: number,
   thumbnailPath?: string
 ): Promise<ImageDocument> {
-  const imageDoc: Omit<ImageDocument, 'id'> = {
-    ownerUid: uid,
-    source,
-    videoId,
-    frameIndex,
-    storagePathOriginal: storagePath,
-    thumbnailPath,
-    width,
-    height,
-    createdAt: admin.firestore.FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
-    labelStatus: 'unlabeled',
-  };
- 
-  await db.collection('images').doc(imageId).set(imageDoc);
- 
+  const { data, error } = await supabase
+    .from('images')
+    .insert({
+      id: imageId,
+      user_id: uid,
+      uploaded_by: uid,
+      filename: storagePath.split('/').pop() || imageId,
+      storage_path: storagePath,
+      width,
+      height,
+      source,
+      video_id: videoId,
+      frame_index: frameIndex,
+      thumbnail_path: thumbnailPath,
+      label_status: 'unlabeled',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create image document: ${error.message}`);
+  }
+
   return {
-    id: imageId,
-    ...imageDoc,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } as ImageDocument;
+    id: data.id,
+    ownerUid: data.uploaded_by,
+    source: data.source as 'photo' | 'video_frame',
+    videoId: data.video_id,
+    frameIndex: data.frame_index,
+    storagePathOriginal: data.storage_path,
+    thumbnailPath: data.thumbnail_path,
+    width: data.width,
+    height: data.height,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+    labelStatus: data.label_status as ImageDocument['labelStatus'],
+    currentAnnotationId: data.current_annotation_id,
+  };
 }
  
 /**
- * Get image document from Firestore
+ * Get image document from Supabase
  */
 export async function getImageDocument(imageId: string): Promise<ImageDocument | null> {
-  const doc = await db.collection('images').doc(imageId).get();
-  if (!doc.exists) {
+  const { data, error } = await supabase
+    .from('images')
+    .select('*')
+    .eq('id', imageId)
+    .single();
+
+  if (error || !data) {
     return null;
   }
-  return { id: doc.id, ...doc.data() } as ImageDocument;
+
+  return {
+    id: data.id,
+    ownerUid: data.uploaded_by,
+    source: data.source as 'photo' | 'video_frame',
+    videoId: data.video_id,
+    frameIndex: data.frame_index,
+    storagePathOriginal: data.storage_path,
+    thumbnailPath: data.thumbnail_path,
+    width: data.width,
+    height: data.height,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+    labelStatus: data.label_status as ImageDocument['labelStatus'],
+    currentAnnotationId: data.current_annotation_id,
+  };
 }
  
 /**
@@ -149,17 +187,24 @@ export async function updateImageLabelStatus(
   currentAnnotationId?: string
 ): Promise<void> {
   const updateData: Record<string, unknown> = {
-    labelStatus,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    label_status: labelStatus,
   };
   if (currentAnnotationId) {
-    updateData.currentAnnotationId = currentAnnotationId;
+    updateData.current_annotation_id = currentAnnotationId;
   }
-  await db.collection('images').doc(imageId).update(updateData);
+
+  const { error } = await supabase
+    .from('images')
+    .update(updateData)
+    .eq('id', imageId);
+
+  if (error) {
+    throw new Error(`Failed to update image label status: ${error.message}`);
+  }
 }
  
 /**
- * Create annotation document in Firestore
+ * Create annotation document in Supabase
  */
 export async function createAnnotationDocument(
   imageId: string,
@@ -170,73 +215,105 @@ export async function createAnnotationDocument(
   status: AnnotationDocument['status'] = 'draft'
 ): Promise<AnnotationDocument> {
   // Get current max version for this image
-  const existingAnnotations = await db
-    .collection('annotations')
-    .where('imageId', '==', imageId)
-    .orderBy('version', 'desc')
-    .limit(1)
-    .get();
- 
-  const nextVersion = existingAnnotations.empty ? 1 : existingAnnotations.docs[0].data().version + 1;
- 
-  const annotationId = db.collection('annotations').doc().id;
-  const annotationDoc: Omit<AnnotationDocument, 'id'> = {
-    imageId,
-    version: nextVersion,
-    source,
-    parentAnnotationId,
-    status,
-    createdByUid,
-    createdAt: admin.firestore.FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp() as FirebaseFirestore.Timestamp,
-    objects,
-  };
- 
-  await db.collection('annotations').doc(annotationId).set(annotationDoc);
- 
+  const { data: existingAnnotations } = await supabase
+    .from('annotations')
+    .select('version')
+    .eq('image_id', imageId)
+    .order('version', { ascending: false })
+    .limit(1);
+
+  const nextVersion = existingAnnotations && existingAnnotations.length > 0 
+    ? existingAnnotations[0].version + 1 
+    : 1;
+
+  const { data, error } = await supabase
+    .from('annotations')
+    .insert({
+      image_id: imageId,
+      version: nextVersion,
+      source,
+      parent_annotation_id: parentAnnotationId,
+      status,
+      created_by_uid: createdByUid,
+      objects,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create annotation: ${error.message}`);
+  }
+
   return {
-    id: annotationId,
-    ...annotationDoc,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } as AnnotationDocument;
+    id: data.id,
+    imageId: data.image_id,
+    version: data.version,
+    source: data.source as 'ai' | 'user',
+    parentAnnotationId: data.parent_annotation_id,
+    status: data.status as AnnotationDocument['status'],
+    createdByUid: data.created_by_uid,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+    objects: data.objects,
+  };
 }
  
 /**
  * Get annotations for an image
  */
 export async function getImageAnnotations(imageId: string): Promise<AnnotationDocument[]> {
-  const snapshot = await db
-    .collection('annotations')
-    .where('imageId', '==', imageId)
-    .orderBy('version', 'desc')
-    .get();
- 
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as AnnotationDocument[];
+  const { data, error } = await supabase
+    .from('annotations')
+    .select('*')
+    .eq('image_id', imageId)
+    .order('version', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to get annotations: ${error.message}`);
+  }
+
+  return (data || []).map(item => ({
+    id: item.id,
+    imageId: item.image_id,
+    version: item.version,
+    source: item.source as 'ai' | 'user',
+    parentAnnotationId: item.parent_annotation_id,
+    status: item.status as AnnotationDocument['status'],
+    createdByUid: item.created_by_uid,
+    createdAt: new Date(item.created_at),
+    updatedAt: new Date(item.updated_at),
+    objects: item.objects,
+  }));
 }
  
 /**
  * Get latest annotation for an image
  */
 export async function getLatestAnnotation(imageId: string): Promise<AnnotationDocument | null> {
-  const snapshot = await db
-    .collection('annotations')
-    .where('imageId', '==', imageId)
-    .orderBy('version', 'desc')
+  const { data, error } = await supabase
+    .from('annotations')
+    .select('*')
+    .eq('image_id', imageId)
+    .order('version', { ascending: false })
     .limit(1)
-    .get();
- 
-  if (snapshot.empty) {
+    .single();
+
+  if (error || !data) {
     return null;
   }
- 
+
   return {
-    id: snapshot.docs[0].id,
-    ...snapshot.docs[0].data(),
-  } as AnnotationDocument;
+    id: data.id,
+    imageId: data.image_id,
+    version: data.version,
+    source: data.source as 'ai' | 'user',
+    parentAnnotationId: data.parent_annotation_id,
+    status: data.status as AnnotationDocument['status'],
+    createdByUid: data.created_by_uid,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+    objects: data.objects,
+  };
 }
  
 /**
@@ -248,43 +325,84 @@ export async function getOrCreateCategory(
   color?: string,
   metadata?: Record<string, unknown>
 ): Promise<CategoryDocument> {
-  const categoryRef = db.collection('categories').doc(categoryId);
-  const categoryDoc = await categoryRef.get();
- 
-  if (categoryDoc.exists) {
-    return { id: categoryDoc.id, ...categoryDoc.data() } as CategoryDocument;
+  // Try to get existing category
+  const { data: existing } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('id', categoryId)
+    .single();
+
+  if (existing) {
+    return {
+      id: existing.id,
+      name: existing.name,
+      color: existing.color,
+      metadata: existing.metadata,
+    };
   }
- 
-  const newCategory: Omit<CategoryDocument, 'id'> = {
-    name,
-    color,
-    metadata,
+
+  // Create new category
+  const { data, error } = await supabase
+    .from('categories')
+    .insert({
+      id: categoryId,
+      name,
+      color,
+      metadata: metadata || {},
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create category: ${error.message}`);
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    color: data.color,
+    metadata: data.metadata,
   };
- 
-  await categoryRef.set(newCategory);
-  return { id: categoryId, ...newCategory };
 }
  
 /**
  * Get all categories
  */
 export async function getAllCategories(): Promise<CategoryDocument[]> {
-  const snapshot = await db.collection('categories').get();
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as CategoryDocument[];
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*');
+
+  if (error) {
+    throw new Error(`Failed to get categories: ${error.message}`);
+  }
+
+  return (data || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    color: item.color,
+    metadata: item.metadata,
+  }));
 }
  
 /**
- * Get signed URL for image access
+ * Get signed URL for image access from Supabase Storage
  */
 export async function getImageSignedUrl(storagePath: string, expiresIn: number = 3600): Promise<string> {
-  const file = BUCKET.file(storagePath);
-  const [url] = await file.getSignedUrl({
-    action: 'read',
-    expires: Date.now() + expiresIn * 1000,
-  });
-  return url;
+  // Extract bucket and path from storage path
+  // Format: bucket/path or just path
+  const parts = storagePath.split('/');
+  const bucket = parts[0] === LABELING_BUCKET ? parts.shift()! : LABELING_BUCKET;
+  const path = parts.join('/');
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, expiresIn);
+
+  if (error) {
+    throw new Error(`Failed to get signed URL: ${error.message}`);
+  }
+
+  return data.signedUrl;
 }
  
