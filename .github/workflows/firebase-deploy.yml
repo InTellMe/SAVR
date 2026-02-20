@@ -1,6 +1,6 @@
 # Deploy to Firebase (Hosting, Functions, Firestore, Storage) on push to main.
 #
-# Required GitHub Secrets (set in repository Settings → Environments → production → Secrets):
+# Required GitHub Secrets (set in repository Settings → Environments → Production → Secrets):
 # ┌─────────────────────────────────────────────────────────────────────────────────┐
 # │ Firebase Authentication (choose ONE method):                                    │
 # │   Method 1 (Token - Recommended): FIREBASE_TOKEN                               │
@@ -23,6 +23,15 @@
 # │   NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID                                          │
 # │   NEXT_PUBLIC_APP_URL                                                          │
 # └─────────────────────────────────────────────────────────────────────────────────┘
+#
+# GitHub Environment Setup:
+# This workflow uses the "Production" GitHub Environment (note: capital P).
+# To configure secrets:
+#   1. Go to: Repository → Settings → Environments
+#   2. Create/select the "Production" environment (exact name required)
+#   3. Add the above secrets to the Production environment
+# Environment-scoped secrets provide isolation and require manual approval for deployments
+# if protection rules are configured.
 #
 # Security: This workflow only runs on direct pushes to main (not PRs or forks).
 # Secrets are NOT available to workflows triggered from forked repositories.

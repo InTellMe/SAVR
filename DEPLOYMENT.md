@@ -197,13 +197,17 @@ A workflow in `.github/workflows/firebase-deploy.yml` deploys Hosting, Functions
 
 **Trigger:** Push to `main`.
 
-**Required GitHub Secrets:**
+**Required GitHub Secrets (in Production Environment):**
 
-- `FIREBASE_TOKEN` — from `firebase login:ci` (run locally once, paste into repo Settings → Secrets).
+The workflow uses the `Production` GitHub Environment (capital P). All secrets below must be configured in:
+`Repository → Settings → Environments → Production → Environment secrets`
+
+- `FIREBASE_TOKEN` — from `firebase login:ci` (run locally once, paste into environment secrets).
+  OR `FIREBASE_SERVICE_ACCOUNT_JSON` — service account key JSON from Firebase Console
 - `FIREBASE_PROJECT_ID` — your Firebase project ID.
 - All web build-time vars (same names as in `web/.env.example`):
   - `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`
-  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_APP_URL`
+  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID`, `NEXT_PUBLIC_APP_URL`
 
 **Note:** Cloud Functions environment variables are **not** set by the workflow. Configure them once in Google Cloud Console (see Step 2.2).
 
