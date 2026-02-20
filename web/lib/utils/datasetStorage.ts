@@ -79,7 +79,7 @@ export async function generateAndUploadThumbnail(
   // For now, we'll just upload the original as thumbnail (can be optimized later)
   const path = getThumbnailStoragePath(imageId);
   
-  const { data, error } = await getSupabase().storage
+  const { error } = await getSupabase().storage
     .from(LABELING_BUCKET)
     .upload(path, imageBuffer, {
       contentType: 'image/jpeg',
