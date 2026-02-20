@@ -55,6 +55,13 @@ export default function PricingPage() {
     // Add a safety check for the UID
     if (user.uid) {
       table.setAttribute('client-reference-id', user.uid);
+      
+      // Set customer email to prevent init endpoint 400 errors
+      // This prefills and locks the email field in Stripe Checkout
+      if (user.email) {
+        table.setAttribute('customer-email', user.email);
+      }
+      
       pricingTableRef.current.appendChild(table);
     }
   }, [user, hasActiveSub, stripeConfigured, pricingTableId, publishableKey]);
