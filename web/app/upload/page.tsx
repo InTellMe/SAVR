@@ -8,10 +8,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { storage, functions, db } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
-import { addDoc, collection, query, where, getDocs, doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
 import { httpsCallable as httpsCallableFn } from 'firebase/functions';
 import QRCode from 'qrcode';
+import { getInventory, addInventoryItem } from '@/lib/db';
 
 interface ExtractedIngredient {
   name: string;
@@ -54,8 +55,8 @@ function UploadContent() {
     async function loadExisting() {
       if (!user) return;
       try {
-        const snap = await getDocs(collection(db, 'inventory', user.uid, 'items'));
-        setExistingItems(snap.docs.map(d => (d.data().name as string).toLowerCase()));
+        const items = await getInventory(user.uid);
+        setExistingItems(items.map(item => item.name.toLowerCase()));
       } catch {
         // Non-critical
       }
@@ -217,19 +218,16 @@ function UploadContent() {
     setSuccessMessage('');
 
     try {
-      const itemsCollection = collection(db, 'inventory', user.uid, 'items');
       const toSave = ingredients.filter(ing => !ing.isDuplicate || confirm(`"${ing.name}" may already be in your inventory. Add anyway?`));
 
       await Promise.all(
         toSave.map((ingredient) =>
-          addDoc(itemsCollection, {
-            userId: user.uid,
+          addInventoryItem(user.uid, {
             name: ingredient.name,
             quantity: ingredient.quantity,
             unit: ingredient.unit,
             category: ingredient.category,
-            addedDate: new Date(),
-            imageUrl: imageUrl || null,
+            image_url: imageUrl || undefined,
           })
         )
       );
