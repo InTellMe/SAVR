@@ -1,6 +1,6 @@
 -- Create shared_recipes table for recipe sharing
 create table public.shared_recipes (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   share_id text unique not null,
   recipe_id uuid references public.recipes on delete cascade not null,
   user_id uuid references public.users on delete cascade not null,

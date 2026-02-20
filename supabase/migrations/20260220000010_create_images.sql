@@ -1,6 +1,6 @@
 -- Create images table for ML dataset/labeling
 create table public.images (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   user_id uuid references public.users on delete cascade,
   filename text not null,
   storage_path text not null unique,
