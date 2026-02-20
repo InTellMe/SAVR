@@ -123,9 +123,9 @@ function SettingsContent() {
             <p>
               <span className="font-medium">Email:</span> {user?.email}
             </p>
-            {userData?.stripeEmail && userData.stripeEmail !== user?.email && (
+            {userData?.stripe_email && userData.stripe_email !== user?.email && (
               <p>
-                <span className="font-medium">Billing email:</span> {userData.stripeEmail}
+                <span className="font-medium">Billing email:</span> {userData.stripe_email}
               </p>
             )}
             <p>
@@ -137,17 +137,17 @@ function SettingsContent() {
                 <span className="capitalize">{userData.subscription_status}</span>
               </p>
             )}
-            {userData?.cancelAtPeriodEnd && (
+            {userData?.cancel_at_period_end && (
               <p className="text-amber-400">
                 Your subscription will cancel at the end of the current billing period.
               </p>
             )}
-            {userData?.paymentActionRequired && (
+            {userData?.payment_action_required && (
               <p className="text-red-400">
                 Payment action required. Please update your payment method in the billing portal.
               </p>
             )}
-            {userData?.lastPaymentStatus === 'failed' && (
+            {userData?.last_payment_status === 'failed' && (
               <p className="text-red-400">
                 Your last payment failed. Please update your payment method to maintain access.
               </p>
@@ -166,7 +166,7 @@ function SettingsContent() {
               : 'Upgrade to Pro to unlock unlimited recipes, AI chat, and more.'}
           </p>
           <div className="flex flex-wrap gap-3">
-            {userData?.stripeCustomerId && (
+            {userData?.stripe_customer_id && (
               <button
                 type="button"
                 onClick={handleManageSubscription}

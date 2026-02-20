@@ -14,6 +14,7 @@ interface GroceryItem {
   unit: string;
   category: string;
   checked: boolean;
+  notes?: string;
 }
 
 interface GroceryList {

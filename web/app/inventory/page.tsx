@@ -95,7 +95,7 @@ function InventoryContent() {
           name: addedItem.name,
           quantity: addedItem.quantity,
           unit: addedItem.unit,
-          category: addedItem.category,
+          category: addedItem.category as 'pantry' | 'fridge' | 'freezer',
           expiryDate: addedItem.expiry_date,
           imageUrl: addedItem.image_url,
           addedDate: addedItem.created_at,
@@ -161,7 +161,7 @@ function InventoryContent() {
           name: addedItem.name,
           quantity: addedItem.quantity,
           unit: addedItem.unit,
-          category: addedItem.category,
+          category: addedItem.category as 'pantry' | 'fridge' | 'freezer',
           addedDate: addedItem.created_at,
         },
       ]);

@@ -48,9 +48,9 @@ function SubscriptionDebugContent() {
           <div className="glass-card rounded-lg p-6 mb-6">
             <h2 className="text-xl font-semibold text-white mb-4">Firebase Authentication</h2>
             <div className="space-y-3">
-              <InfoRow label="User ID" value={user?.uid || 'N/A'} />
+              <InfoRow label="User ID" value={user?.id || 'N/A'} />
               <InfoRow label="Email" value={user?.email || 'N/A'} />
-              <InfoRow label="Email Verified" value={user?.emailVerified ? 'Yes' : 'No'} />
+              <InfoRow label="Email Verified" value={user?.email_confirmed_at ? 'Yes' : 'No'} />
             </div>
           </div>
 
@@ -73,7 +73,7 @@ function SubscriptionDebugContent() {
               />
               <InfoRow 
                 label="Stripe Subscription ID" 
-                value={userData?.stripeSubscriptionId || 'Not set'} 
+                value={userData?.stripe_subscription_id || 'Not set'} 
               />
               <InfoRow 
                 label="Trial Ends At" 

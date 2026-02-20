@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { AnnotationObject, PolygonPoint } from '../types';
+import { AnnotationObject, PolygonPoint } from '../types/functions';
 
 // Type for raw segmentation response from OpenAI
 interface RawSegmentationObject {

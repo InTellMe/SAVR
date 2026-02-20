@@ -95,7 +95,11 @@ function RecipesContent() {
         id: r.id,
         title: r.title,
         description: r.description || '',
-        ingredients: r.ingredients as RecipeIngredient[],
+        ingredients: (r.ingredients as any[]).map((ing: any) => ({
+          name: ing.name,
+          quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) || 0 : ing.quantity || 0,
+          unit: ing.unit || ''
+        })) as RecipeIngredient[],
         instructions: Array.isArray(r.instructions) 
           ? r.instructions.map((inst: any) => typeof inst === 'string' ? inst : inst.text)
           : [],
@@ -678,7 +682,7 @@ function RecipesContent() {
         {showDeductionModal && deductionRecipe && (
           <DeductionModal
             recipe={deductionRecipe}
-            userId={user!.uid}
+            userId={user!.id}
             onClose={() => { setShowDeductionModal(false); setDeductionRecipe(null); }}
             onSuccess={() => { setShowDeductionModal(false); setDeductionRecipe(null); }}
           />

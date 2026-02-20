@@ -1,4 +1,4 @@
-import { AiIngredient, CanonicalUnit, ExtractedIngredient } from '../types';
+import { AiIngredient, CanonicalUnit, ExtractedIngredient } from '../types/functions';
 
 // Default confidence value for AI-extracted ingredients when confidence is not provided
 const DEFAULT_AI_CONFIDENCE = 0.5;
