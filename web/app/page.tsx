@@ -6,8 +6,7 @@ import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import VideoHero from '@/components/VideoHero';
 import { useAuth, hasActiveSubscription } from '@/contexts/AuthContext';
-
-const CHECKOUT_GRACE_PERIOD_MS = 10 * 60 * 1000; // 10 minutes
+import { trackCheckoutIntentIfReturning, hasRecentCheckoutIntent } from '@/lib/checkout';
 
 export default function Home() {
   const { user, userData, loading } = useAuth();
@@ -16,15 +15,7 @@ export default function Home() {
   // Detect if user is returning from Stripe Checkout and set the checkout intent flag
   // This is more reliable than setting it on the pricing page before they actually checkout
   useEffect(() => {
-    try {
-      const referrer = document.referrer;
-      // Check if user is coming back from Stripe Checkout
-      if (referrer && referrer.includes('checkout.stripe.com')) {
-        localStorage.setItem('savr_checkout_pending', Date.now().toString());
-      }
-    } catch {
-      // referrer or localStorage unavailable — non-critical
-    }
+    trackCheckoutIntentIfReturning();
   }, []);
 
   // Redirect to dashboard if user just completed Stripe checkout
@@ -36,15 +27,8 @@ export default function Home() {
     // If user already has an active subscription, let them browse the home page normally
     if (hasActiveSub) return;
 
-    try {
-      const pending = localStorage.getItem('savr_checkout_pending');
-      if (!pending) return;
-      const elapsed = Date.now() - parseInt(pending, 10);
-      if (elapsed >= 0 && elapsed < CHECKOUT_GRACE_PERIOD_MS) {
-        window.location.href = '/dashboard?stripeSuccess=true';
-      }
-    } catch {
-      // localStorage unavailable — non-critical
+    if (hasRecentCheckoutIntent()) {
+      window.location.href = '/dashboard?stripeSuccess=true';
     }
   }, [loading, user, hasActiveSub]);
 

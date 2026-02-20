@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { trackCheckoutIntentIfReturning } from '@/lib/checkout';
 
 export default function DashboardPage() {
   return (
@@ -32,15 +33,7 @@ function DashboardContent() {
   // Detect if user is returning from Stripe Checkout and set the checkout intent flag
   // This is more reliable than setting it on the pricing page before they actually checkout
   useEffect(() => {
-    try {
-      const referrer = document.referrer;
-      // Check if user is coming back from Stripe Checkout
-      if (referrer && referrer.includes('checkout.stripe.com')) {
-        localStorage.setItem('savr_checkout_pending', Date.now().toString());
-      }
-    } catch {
-      // referrer or localStorage unavailable — non-critical
-    }
+    trackCheckoutIntentIfReturning();
   }, []);
 
   useEffect(() => {
