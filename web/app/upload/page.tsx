@@ -5,13 +5,12 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import ImageUpload from '@/components/ImageUpload';
 import { useAuth } from '@/contexts/AuthContext';
-import { db } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
-import { getInventory, addInventoryItem } from '@/lib/db';
+import { getInventory, addInventoryItem, TransferSession } from '@/lib/db';
 import { uploadImage, getPublicUrl } from '@/lib/storage';
 import { callApi } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 interface ExtractedIngredient {
   name: string;
@@ -54,7 +53,7 @@ function UploadContent() {
     async function loadExisting() {
       if (!user) return;
       try {
-        const items = await getInventory(user.uid);
+        const items = await getInventory(user.id);
         setExistingItems(items.map(item => item.name.toLowerCase()));
       } catch {
         // Non-critical
@@ -80,7 +79,7 @@ function UploadContent() {
 
     try {
       // Upload to Supabase Storage
-      const filePath = await uploadImage('inventory-images', user.uid, file);
+      const filePath = await uploadImage('inventory-images', user.id, file);
       const url = getPublicUrl('inventory-images', filePath);
       setImageUrl(url);
 
@@ -168,16 +167,30 @@ function UploadContent() {
     }
   }
 
-  // Listen for incoming transferred photos
+  // Listen for incoming transferred photos using Supabase realtime
   useEffect(() => {
     if (!transferSessionId) return;
-    const unsub = onSnapshot(doc(db, 'transferSessions', transferSessionId), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setTransferPhotos(data.imageUrls || []);
-      }
-    });
-    return () => unsub();
+    
+    const channel = supabase
+      .channel(`transfer_session_${transferSessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'transfer_sessions',
+          filter: `id=eq.${transferSessionId}`,
+        },
+        (payload) => {
+          const session = payload.new as TransferSession;
+          setTransferPhotos(session.image_urls || []);
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      channel.unsubscribe();
+    };
   }, [transferSessionId]);
 
   async function handleAnalyzeTransferredPhoto(url: string) {
@@ -216,7 +229,7 @@ function UploadContent() {
 
       await Promise.all(
         toSave.map((ingredient) =>
-          addInventoryItem(user.uid, {
+          addInventoryItem(user.id, {
             name: ingredient.name,
             quantity: ingredient.quantity,
             unit: ingredient.unit,

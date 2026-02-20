@@ -70,7 +70,7 @@ function MealPlansContent() {
     if (!user) return;
 
     try {
-      const plans = await getMealPlans(user.uid);
+      const plans = await getMealPlans(user.id);
       const mappedPlans = plans.map(plan => ({
         id: plan.id,
         name: plan.title,
@@ -102,7 +102,7 @@ function MealPlansContent() {
     setError('');
 
     try {
-      const inventoryItems = await getInventory(user.uid);
+      const inventoryItems = await getInventory(user.id);
       const ingredients = inventoryItems.map(item => item.name);
 
       const result = await callApi('/ai/create-meal-plan', {

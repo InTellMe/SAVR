@@ -56,7 +56,7 @@ function InventoryContent() {
     if (!user) return;
 
     try {
-      const data = await getInventory(user.uid);
+      const data = await getInventory(user.id);
       const inventoryItems = data.map(item => ({
         id: item.id,
         name: item.name,
@@ -80,7 +80,7 @@ function InventoryContent() {
     if (!user || !newItem.name.trim()) return;
 
     try {
-      const addedItem = await addInventoryItem(user.uid, {
+      const addedItem = await addInventoryItem(user.id, {
         name: newItem.name.trim(),
         quantity: newItem.quantity,
         unit: newItem.unit.trim(),
@@ -95,7 +95,7 @@ function InventoryContent() {
           name: addedItem.name,
           quantity: addedItem.quantity,
           unit: addedItem.unit,
-          category: addedItem.category,
+          category: addedItem.category as 'pantry' | 'fridge' | 'freezer',
           expiryDate: addedItem.expiry_date,
           imageUrl: addedItem.image_url,
           addedDate: addedItem.created_at,
@@ -147,7 +147,7 @@ function InventoryContent() {
       const quantity = qtyMatch ? parseFloat(qtyMatch[1]) || 1 : 1;
       const unit = (qtyMatch?.[2] || 'unit').toLowerCase();
       
-      const addedItem = await addInventoryItem(user.uid, {
+      const addedItem = await addInventoryItem(user.id, {
         name,
         quantity,
         unit,
@@ -161,7 +161,7 @@ function InventoryContent() {
           name: addedItem.name,
           quantity: addedItem.quantity,
           unit: addedItem.unit,
-          category: addedItem.category,
+          category: addedItem.category as 'pantry' | 'fridge' | 'freezer',
           addedDate: addedItem.created_at,
         },
       ]);

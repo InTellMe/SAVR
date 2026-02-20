@@ -1,6 +1,6 @@
 # SAVR by GooseyPrime
 
-SAVR is an AI-powered food management platform that helps you manage your pantry inventory, generate recipes, plan meals, and create grocery lists. Built as a Firebase-hosted React/Next.js web application focusing on a web-based MVP where users upload photos of their pantry and fridge to manage inventory.
+SAVR is an AI-powered food management platform that helps you manage your pantry inventory, generate recipes, plan meals, and create grocery lists. Built as a modern web and mobile application with Supabase backend and Vercel hosting, focusing on intelligent photo-based inventory management.
 
 > **📋 GitHub Actions Setup**: Automated deployment requires GitHub Secrets configuration. See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for required secrets and setup instructions.
 
@@ -34,64 +34,79 @@ SAVR is an AI-powered food management platform that helps you manage your pantry
 
 ### Web Application (`/web`)
 
-- **Framework**: Next.js 16 with TypeScript
+- **Framework**: Next.js 16 with TypeScript, React 19
 - **Styling**: Tailwind CSS 4
-- **Backend**: Firebase (Auth, Firestore, Cloud Functions, Storage)
-- **Hosting**: Firebase Hosting at savr.cam
+- **Backend**: Supabase (Auth, Postgres, Storage, Realtime)
+- **API Routes**: Vercel serverless functions
+- **Hosting**: Vercel at savr.cam
 - **Key Feature**: Photo upload for pantry/fridge inventory management
 
 ### Mobile Application (`/mobile`)
 
 - **Framework**: Expo 54 + React Native 0.81 with TypeScript
 - **Navigation**: React Navigation 7.x (bottom tabs + stack)
-- **Backend**: Shared Firebase infrastructure with web app
+- **Backend**: Shared Supabase infrastructure with web app
 - **Platforms**: Android (Google Play Store) and iOS (App Store)
 - **Key Feature**: Camera-based AI pantry scanning, full feature parity with web
 - **Build System**: EAS Build for production releases
 
-### Cloud Functions (`/functions`)
+### API Routes (`/web/app/api`)
 
-- **Runtime**: Node.js 20 with TypeScript
-- **Services**:
-  - `analyzeImage`: OpenAI Vision + Google Vision API for ingredient extraction
-  - `createRecipe`: GPT-4 powered recipe generation
-  - `createMealPlan`: Multi-day meal planning
-  - `createGroceryList`: Smart grocery list generation
+- **Runtime**: Node.js 20 with TypeScript (Vercel serverless)
+- **AI Services** (`/api/ai/*`):
+  - `analyze-image`: OpenAI Vision + Google Vision API for ingredient extraction
+  - `create-recipe`: GPT-4 powered recipe generation
+  - `create-meal-plan`: Multi-day meal planning
+  - `create-grocery-list`: Smart grocery list generation
   - `chat`: AI cooking assistant
-  - `createStripeCheckout`: Stripe subscription management
-  - `stripeWebhook`: Subscription event handling
-  - `onUserCreate`: Automatic user initialization
+  - `scan-receipt`: Receipt scanning and extraction
+- **Inventory** (`/api/inventory/*`):
+  - `deduct`: Automatic inventory deduction
+- **Stripe** (`/api/stripe/*`):
+  - `webhook`: Subscription event handling
+  - `portal`: Customer portal access
+- **Transfer** (`/api/transfer/*`):
+  - `create-session`: Photo transfer sessions
+- **ML Labeling** (`/api/labeling/*`):
+  - `upload`, `annotations`, `save-annotation`, `segment`, `export`: Dataset management
 
-### Shared TypeScript Types (`/functions/src/types/index.ts`)
+### Database (Supabase Postgres)
 
-⚠️ **IMPORTANT**: The TypeScript interfaces in `/functions/src/types/index.ts` are shared between the web frontend and backend services.
+- **Tables**: users, inventory, recipes, meal_plans, grocery_lists, chat_history, shared_recipes, transfer_sessions, data_consent, images, annotations, categories
+- **Security**: Row Level Security (RLS) policies for all tables
+- **Realtime**: PostgreSQL change data capture for live updates
+- **Migrations**: Versioned SQL migrations in `supabase/migrations/`
+
+### Shared TypeScript Types
+
+⚠️ **IMPORTANT**: TypeScript interfaces are shared across web frontend and API routes.
 
 **When modifying shared types, you MUST:**
-1. Verify changes work in **both** `/web` and `/functions`
-2. Run `npm run build` in **both** directories before committing
+1. Verify changes work in both `/web/app` and `/web/app/api`
+2. Run `npm run build` in `/web` before committing
 3. Update imports in any files that reference the modified types
 4. Test all affected endpoints and components
 
 **Common shared types include:**
-- Request/Response contracts: `UploadImageRequest`, `SaveAnnotationRequest`, `ExportDatasetRequest`, etc.
-- Domain models: `Recipe`, `InventoryItem`, `MealPlan`, etc.
+- Database models: `InventoryItem`, `Recipe`, `MealPlan`, `GroceryList`, etc.
 - AI types: `AiRecipe`, `AiIngredient`, `NutritionalInfo`, etc.
-- Annotation types: `AnnotationObject`, `PolygonPoint`, `ImageDocument`, etc.
+- Request/Response contracts for API routes
+- Supabase database row types
 
-Any breaking changes to these interfaces will break the build pipeline and must be coordinated across both projects.
+Any breaking changes to these interfaces will break the build pipeline and must be coordinated across the application.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js 20+
-- Firebase CLI (`npm install -g firebase-tools`)
-- Firebase project with:
+- Supabase CLI (`npm install -g supabase`)
+- Supabase project with:
   - Authentication enabled (Email, Google)
-  - Firestore database
-  - Cloud Functions
-  - Storage
-  - Hosting
+  - PostgreSQL database
+  - Storage buckets
+  - Realtime enabled
+- Vercel account (for deployment)
 
 ### Setup
 
@@ -116,7 +131,7 @@ Use the automated setup script to install all dependencies:
 setup.bat
 ```
 
-This will automatically install dependencies for both web and functions, and build the functions.
+This will automatically install dependencies for web and mobile applications.
 
 **Manual Setup (Alternative):**
 
@@ -126,10 +141,11 @@ This will automatically install dependencies for both web and functions, and bui
 # Copy the example file
 cp .env.example .env.local
 
-# Add your Firebase and API keys
-# - Firebase configuration from Firebase Console
+# Add your Supabase and API keys
+# - Supabase URL and keys from Supabase Dashboard
 # - OpenAI API key from OpenAI
 # - Stripe keys from Stripe Dashboard
+# - Google Cloud Vision API key (optional, for fallback)
 ```
 
 2b. **Install dependencies**
@@ -139,36 +155,25 @@ cp .env.example .env.local
 cd web
 npm install
 
-# Cloud Functions
-cd ../functions
-npm install
-
 # Mobile app (optional)
 cd ../mobile
 npm install
 ```
 
-3. **Deploy Firebase infrastructure**
+3. **Set up Supabase**
 
 ```bash
-# Login to Firebase
-firebase login
+# Start Supabase locally
+supabase start
 
-# Initialize Firebase (if not already done)
-firebase init
+# Apply database migrations
+supabase db reset --local
 
-# Deploy Firestore rules and indexes
-firebase deploy --only firestore
-
-# Deploy Storage rules
-firebase deploy --only storage
-
-# Build and deploy Cloud Functions
-cd functions
-npm run build
-cd ..
-firebase deploy --only functions
+# Get local credentials
+supabase status
 ```
+
+Update your `.env.local` with the local Supabase credentials for development.
 
 4. **Run the web app locally** (Primary Platform)
 
@@ -192,40 +197,41 @@ npm start
 
 ```
 SAVR/
+```
+├── .github/                   # GitHub Actions workflows
+│   └── workflows/            # CI/CD pipelines
 ├── web/                      # Next.js web application
 │   ├── app/                  # Next.js 13+ app directory
+│   │   └── api/             # Vercel API routes (serverless functions)
 │   ├── components/           # React components
 │   ├── contexts/             # React contexts (Auth)
-│   ├── lib/                  # Utilities and Firebase config
+│   ├── lib/                  # Utilities, Supabase config, database helpers
 │   └── public/               # Static assets
 ├── mobile/                   # React Native mobile app
 │   ├── src/
 │   │   ├── screens/          # App screens
 │   │   ├── components/       # Reusable components
 │   │   ├── navigation/       # Navigation setup
-│   │   └── contexts/         # Auth and app contexts
+│   │   ├── contexts/         # Auth and app contexts
+│   │   ├── config/           # Supabase configuration
+│   │   └── utils/            # API client, utilities
 │   └── App.tsx               # App entry point
-├── functions/                # Firebase Cloud Functions
-│   ├── src/
-│   │   ├── services/         # AI and payment services
-│   │   ├── types/            # TypeScript types
-│   │   └── utils/            # Helper utilities
-│   └── package.json
-├── firebase.json             # Firebase configuration
-├── firestore.rules           # Firestore security rules
-├── firestore.indexes.json    # Firestore indexes
-├── storage.rules             # Storage security rules
+├── supabase/                 # Supabase configuration
+│   ├── migrations/           # Database schema migrations
+│   └── config.toml           # Local development config
+├── e2e-tests/                # End-to-end tests (Playwright)
 └── .env.example              # Environment variables template
 ```
 
 ## 🔐 Security
 
-- Firebase Authentication for user management
-- Firestore security rules enforce data access control
-- Storage rules prevent unauthorized file access
-- Server-side subscription tier validation
-- HTTPS-only Cloud Functions
+- Supabase Authentication for user management
+- Row Level Security (RLS) policies on all database tables
+- Storage bucket policies prevent unauthorized file access
+- Server-side subscription tier validation in API routes
+- HTTPS-only API endpoints (Vercel)
 - No API keys or secrets in client code
+- Automated security scanning via GitHub Actions (CodeQL, Trivy, secret scanning)
 
 ## 🔑 Environment Variables & Secrets
 
@@ -233,14 +239,16 @@ SAVR requires various environment variables and secrets for operation and deploy
 
 ### For CI/CD Deployment (GitHub Actions)
 - **[GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md)** - Complete guide for configuring GitHub Actions secrets
-- Required: 10 GitHub secrets for web deployment, 2 additional for mobile
-- **Firebase Authentication**: Choose one method:
-  - **Token-based** (recommended for simplicity): `FIREBASE_TOKEN` from `firebase login:ci`
-  - **Service Account** (recommended for production): `FIREBASE_SERVICE_ACCOUNT_JSON` with JSON key content
+- Required: Supabase, Vercel, Stripe, and OpenAI secrets
+- **Authentication**: 
+  - `VERCEL_TOKEN` - Vercel deployment token
+  - `SUPABASE_SERVICE_ROLE_KEY` - Supabase admin access
 - **Required secrets for web deployment**:
-  - `FIREBASE_PROJECT_ID` - Firebase project identifier
-  - `FIREBASE_TOKEN` or `FIREBASE_SERVICE_ACCOUNT_JSON` - Authentication
-  - 8 `NEXT_PUBLIC_*` variables - Firebase config and Stripe publishable key
+  - `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` - Vercel project identifiers
+  - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase connection
+  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe client-side key
+  - `OPENAI_API_KEY` - OpenAI API access (server-side only)
+  - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` - Stripe server-side keys
 
 ### For Local Development
 
@@ -251,10 +259,10 @@ cp .env.example .env.local
 ```
 
 Required variables (from `.env.example`):
-- **Firebase**: 6 config values (API key, auth domain, project ID, storage bucket, sender ID, app ID)
+- **Supabase**: URL and anon key
 - **OpenAI**: API key for GPT-4 and Vision
 - **Google Cloud Vision**: API key (optional fallback)
-- **Stripe**: Publishable key, secret key, webhook secret, and 4 price IDs
+- **Stripe**: Publishable key, secret key, webhook secret, and price IDs
 - **App**: Base URL
 
 **Mobile Application** (`mobile/.env`):
@@ -264,27 +272,22 @@ cp mobile/.env.example mobile/.env
 ```
 
 Required variables (from `mobile/.env.example`):
-- **Firebase**: Same 6 config values as web (using `EXPO_PUBLIC_*` prefix)
+- **Supabase**: URL and anon key (using `EXPO_PUBLIC_*` prefix)
 - **Google OAuth**: 3 client IDs (Web, iOS, Android)
-
-**Firebase Functions**:
-Configure via Firebase CLI or inherit from root `.env`:
-```bash
-firebase functions:config:set openai.api_key="your_key"
-```
 
 ### Environment Variable Categories
 
 | Category | Count | Examples | Sensitive |
 |----------|-------|----------|-----------|
-| Firebase Config | 6 | API_KEY, AUTH_DOMAIN, PROJECT_ID, etc. | ❌ Public |
-| Firebase Deploy | 2 | FIREBASE_TOKEN, FIREBASE_PROJECT_ID | ✅ Private |
+| Supabase Config | 2 | URL, ANON_KEY | ❌ Public |
+| Supabase Deploy | 2 | SERVICE_ROLE_KEY, PROJECT_REF | ✅ Private |
 | OpenAI | 1 | OPENAI_API_KEY | ✅ Private |
 | Google Cloud | 1 | GOOGLE_CLOUD_VISION_API_KEY | ✅ Private |
 | Stripe Config | 3 | Publishable/Secret keys, Webhook secret | ⚠️ Mixed |
 | Stripe Prices | 4 | Price IDs for 4 subscription tiers | ❌ Public |
 | Mobile Build | 2 | EXPO_TOKEN, GOOGLE_PLAY_SERVICE_ACCOUNT_KEY | ✅ Private |
 | Google OAuth | 3 | Client IDs for Web/iOS/Android | ❌ Public |
+| Vercel | 3 | TOKEN, ORG_ID, PROJECT_ID | ✅ Private |
 | App Config | 1 | NEXT_PUBLIC_APP_URL | ❌ Public |
 
 **Security Notes**:
@@ -302,18 +305,16 @@ For detailed setup instructions, see [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SE
 # Web app
 cd web
 npm run build
-
-# Functions
-cd functions
-npm run build
 ```
 
 ### Test locally
 
+Start Supabase local development:
 ```bash
-# Use Firebase emulators for local testing
-firebase emulators:start
+supabase start
 ```
+
+This starts local PostgreSQL, Storage, and other Supabase services.
 
 ## 🌐 Deployment
 
@@ -321,49 +322,55 @@ firebase emulators:start
 
 Before deploying, ensure all required secrets are configured:
 - **For automated CI/CD**: See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for GitHub Actions secrets setup
-- **For manual deployment**: Ensure Firebase CLI is authenticated and environment variables are set
+- **For manual deployment**: Ensure Vercel CLI is installed and authenticated
 
-### ⚠️ Important: Gen1 to Gen2 Migration
+### Web Application (Vercel)
 
-If you encounter deployment errors about "Upgrading from 1st Gen to 2nd Gen is not yet supported", see [FIREBASE_FUNCTIONS_MIGRATION.md](FIREBASE_FUNCTIONS_MIGRATION.md) for the complete migration guide.
+**Automatic Deployment:**
+- Push to `main` branch triggers automatic deployment via GitHub Actions
+- Pull requests get preview deployments automatically
+- See [DEPLOYMENT.md](DEPLOYMENT.md) for details
 
-**Quick fix:**
-```bash
-npm run deploy:migrate-gen2
-```
-
-This will delete old Gen1 functions and deploy the new Gen2 versions.
-
-### Web Application
-
+**Manual Deployment:**
 ```bash
 cd web
 npm run build
-cd ..
-firebase deploy --only hosting
+vercel --prod
 ```
 
-### Cloud Functions
+**First-time Vercel Setup:**
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Link to your Vercel project
+cd web
+vercel link
+
+# Configure environment variables in Vercel Dashboard
+# - NEXT_PUBLIC_SUPABASE_URL
+# - NEXT_PUBLIC_SUPABASE_ANON_KEY
+# - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+# - NEXT_PUBLIC_APP_URL
+# - SUPABASE_SERVICE_ROLE_KEY
+# - OPENAI_API_KEY
+# - STRIPE_SECRET_KEY
+# - STRIPE_WEBHOOK_SECRET
+```
+
+### Database Migrations (Supabase)
 
 ```bash
-cd functions
-npm run build
-cd ..
-firebase deploy --only functions
+# Apply migrations to production
+supabase db push --project-ref your-project-ref
+
+# Or use GitHub Actions workflow
+# Migrations run automatically on deployment to main
 ```
-
-### All-in-One Deployment
-
-Deploy everything (hosting, storage, firestore rules, functions):
-```bash
-npm run deploy
-```
-
-For troubleshooting, see [DEPLOYMENT_TROUBLESHOOTING.md](DEPLOYMENT_TROUBLESHOOTING.md).
 
 ### Custom Domain
 
-Configure `savr.cam` in Firebase Hosting settings with www redirect.
+Configure `savr.cam` in Vercel project settings.
 
 ### Mobile App - Google Play Store Deployment
 

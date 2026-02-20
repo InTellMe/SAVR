@@ -5,8 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -19,20 +17,9 @@ export default function SignUpPage() {
   const { signUp, signInWithGoogle } = useAuth();
   const router = useRouter();
 
-  async function redirectBasedOnSubscription(uid: string) {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        const status = data?.subscriptionStatus;
-        if (status === 'active' || status === 'trialing') {
-          router.push('/dashboard');
-          return;
-        }
-      }
-    } catch {
-      // Fall through to pricing
-    }
+  async function redirectBasedOnSubscription() {
+    // Redirect to pricing page for new signups
+    // AuthContext will handle user data fetching via Supabase
     router.push('/pricing');
   }
 
@@ -54,24 +41,10 @@ export default function SignUpPage() {
 
     try {
       await signUp(email, password);
-
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('User not found after signup');
-      }
-
-      // Create Firestore document with 'basic' tier and 'pending' status
-      // matching Firestore security rules
-      const userDoc = {
-        uid: currentUser.uid,
-        email,
-        subscriptionTier: 'basic',
-        subscriptionStatus: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-
-      await setDoc(doc(db, 'users', currentUser.uid), userDoc);
-      router.push('/pricing');
+      
+      // User record is automatically created in Supabase via database trigger
+      // with default subscription_tier='basic' and subscription_status='pending'
+      await redirectBasedOnSubscription();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create account';
       if (message.includes('auth/email-already-in-use')) {
@@ -95,31 +68,10 @@ export default function SignUpPage() {
 
     try {
       await signInWithGoogle();
-
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('Google sign-up failed');
-      }
-
-      // Check if user document already exists (returning user)
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      const existingDoc = await getDoc(userDocRef);
-
-      if (existingDoc.exists()) {
-        // Returning user — redirect based on their subscription status
-        await redirectBasedOnSubscription(currentUser.uid);
-      } else {
-        // New user — create document with 'basic'/'pending' matching Firestore rules
-        await setDoc(userDocRef, {
-          uid: currentUser.uid,
-          email: currentUser.email,
-          displayName: currentUser.displayName,
-          subscriptionTier: 'basic',
-          subscriptionStatus: 'pending',
-          createdAt: new Date().toISOString(),
-        });
-        router.push('/pricing');
-      }
+      
+      // User record is automatically created in Supabase via database trigger
+      // AuthContext will handle fetching user data and redirect happens in auth callback
+      router.push('/pricing');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to sign up with Google';
       if (message.includes('auth/popup-closed-by-user')) {

@@ -6,8 +6,7 @@ import Navbar from '@/components/Navbar';
 import PolygonAnnotation from '@/components/PolygonAnnotation';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
-import { functions } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { callApi } from '@/lib/api';
 import { uploadLabelingImage, getPublicUrl } from '@/lib/storage';
 import {
   WebImageDocument,
@@ -83,8 +82,7 @@ function LabelingContent() {
       });
 
       // Create image document
-      const uploadImageFn = httpsCallable(functions, 'uploadLabelingImage');
-      const result = await uploadImageFn({
+      const result = await callApi('/labeling/upload', {
         imageUrl: url,
         width: img.width,
         height: img.height,
@@ -92,7 +90,7 @@ function LabelingContent() {
         autoLabel: true, // Automatically trigger AI labeling
       });
 
-      const data = result.data as { success: boolean; imageId: string; image: WebImageDocument };
+      const data = result as { success: boolean; imageId: string; image: WebImageDocument };
       if (!data.success) {
         throw new Error('Failed to upload image');
       }
@@ -116,9 +114,8 @@ function LabelingContent() {
     if (!user) return;
 
     try {
-      const getAnnotations = httpsCallable(functions, 'getImageAnnotations');
-      const result = await getAnnotations({ imageId });
-      const data = result.data as {
+      const result = await callApi('/labeling/annotations', { imageId });
+      const data = result as {
         success: boolean;
         image: WebImageDocument;
         annotations: WebAnnotationDocument[];
@@ -150,17 +147,16 @@ function LabelingContent() {
     setError('');
 
     try {
-      const saveAnnotation = httpsCallable(functions, 'saveAnnotation');
       const parentAnnotationId = annotations.length > 0 ? annotations[0].id : undefined;
 
-      const result = await saveAnnotation({
+      const result = await callApi('/labeling/save-annotation', {
         imageId: image.id,
         objects: currentObjects,
         parentAnnotationId,
         status: 'submitted',
       });
 
-      const data = result.data as { success: boolean; annotationId: string };
+      const data = result as { success: boolean; annotationId: string };
       if (data.success) {
         // Reload annotations
         await loadImageAnnotations(image.id);
@@ -181,10 +177,9 @@ function LabelingContent() {
     setError('');
 
     try {
-      const triggerSegmentation = httpsCallable(functions, 'triggerSegmentation');
-      const result = await triggerSegmentation({ imageId: image.id });
+      const result = await callApi('/labeling/segment', { imageId: image.id });
 
-      const data = result.data as { success: boolean; annotationId: string };
+      const data = result as { success: boolean; annotationId: string };
       if (data.success) {
         // Wait a bit, then reload annotations
         setTimeout(() => {

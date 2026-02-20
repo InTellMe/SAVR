@@ -35,6 +35,25 @@ jobs:
       - run: npx tsc --noEmit
         working-directory: web
 
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy_key
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+
   typecheck-mobile:
     runs-on: ubuntu-latest
     steps:
@@ -48,3 +67,55 @@ jobs:
         working-directory: mobile
       - run: npx tsc --noEmit
         working-directory: mobile
+
+  lint-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+        working-directory: mobile
+      - run: npm run lint
+        working-directory: mobile
+        continue-on-error: true
+
+  check-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+      - name: Start Supabase
+        run: supabase start
+      - name: Test migrations
+        run: supabase db reset --local
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
+
+  check-env-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify .env.example files exist
+        run: |
+          if [ ! -f ".env.example" ]; then
+            echo "❌ Missing .env.example in root"
+            exit 1
+          fi
+          echo "✅ Root .env.example exists"
+      - name: Check for secrets in code
+        run: |
+          # Check for common secret patterns
+          if grep -r -E "(api_key|apikey|secret|password|token).*=.*['\"][a-zA-Z0-9]{20,}" --include="*.ts" --include="*.tsx" --include="*.js" --exclude-dir=node_modules .; then
+            echo "⚠️  Potential hardcoded secrets found!"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets detected"

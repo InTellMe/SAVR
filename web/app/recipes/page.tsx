@@ -89,13 +89,17 @@ function RecipesContent() {
     if (!user) return;
 
     try {
-      const recipeList = await getRecipes(user.uid);
+      const recipeList = await getRecipes(user.id);
       // Map DB recipe format to UI format
       const mappedRecipes = recipeList.map(r => ({
         id: r.id,
         title: r.title,
         description: r.description || '',
-        ingredients: r.ingredients as RecipeIngredient[],
+        ingredients: (r.ingredients as any[]).map((ing: any) => ({
+          name: ing.name,
+          quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) || 0 : ing.quantity || 0,
+          unit: ing.unit || ''
+        })) as RecipeIngredient[],
         instructions: Array.isArray(r.instructions) 
           ? r.instructions.map((inst: any) => typeof inst === 'string' ? inst : inst.text)
           : [],
@@ -125,7 +129,7 @@ function RecipesContent() {
 
     try {
       // Get user's inventory
-      const inventoryItems = await getInventory(user.uid);
+      const inventoryItems = await getInventory(user.id);
       const ingredients = inventoryItems.map(item => item.name).filter(Boolean);
 
       if (ingredients.length === 0) {
@@ -238,7 +242,7 @@ function RecipesContent() {
 
     try {
       // Upload to Supabase Storage
-      const filePath = await uploadImage('recipe-images', user.uid, file);
+      const filePath = await uploadImage('recipe-images', user.id, file);
       const url = getPublicUrl('recipe-images', filePath);
 
       const result = await callApi('/ai/import-recipe', { imageUrl: url });
@@ -587,7 +591,7 @@ function RecipesContent() {
             onShare={async () => {
               if (!user) return;
               const shareId = crypto.randomUUID();
-              await createSharedRecipe(user.uid, selectedRecipe.id, shareId);
+              await createSharedRecipe(user.id, selectedRecipe.id, shareId);
               const url = `${window.location.origin}/recipe?id=${shareId}`;
               await navigator.clipboard.writeText(url);
               setError('');
@@ -678,7 +682,7 @@ function RecipesContent() {
         {showDeductionModal && deductionRecipe && (
           <DeductionModal
             recipe={deductionRecipe}
-            userId={user!.uid}
+            userId={user!.id}
             onClose={() => { setShowDeductionModal(false); setDeductionRecipe(null); }}
             onSuccess={() => { setShowDeductionModal(false); setDeductionRecipe(null); }}
           />
@@ -836,7 +840,7 @@ function RecipeDetailsModal({
 
     try {
       // Load user inventory for context
-      const inventoryItems = await getInventory(user.uid);
+      const inventoryItems = await getInventory(user.id);
       const inventoryNames = inventoryItems.map(item => ({
         name: item.name,
         quantity: item.quantity,

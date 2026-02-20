@@ -450,8 +450,8 @@ export interface ImageDocument {
   thumbnailPath?: string; // path to thumbnail version
   width: number;
   height: number;
-  createdAt: Date | FirebaseFirestore.Timestamp; // Firestore Timestamp
-  updatedAt: Date | FirebaseFirestore.Timestamp; // Firestore Timestamp
+  createdAt: Date | string; // ISO date string or Date object
+  updatedAt: Date | string; // ISO date string or Date object
   labelStatus: LabelStatus;
   currentAnnotationId?: string; // reference to the latest accepted annotation set
 }
@@ -464,8 +464,8 @@ export interface AnnotationDocument {
   parentAnnotationId?: string; // previous annotation this was derived from
   status: AnnotationStatus;
   createdByUid: string; // annotator user ID (or system for AI)
-  createdAt: Date | FirebaseFirestore.Timestamp; // Firestore Timestamp
-  updatedAt: Date | FirebaseFirestore.Timestamp; // Firestore Timestamp
+  createdAt: Date | string; // ISO date string or Date object
+  updatedAt: Date | string; // ISO date string or Date object
   objects: AnnotationObject[];
 }
 

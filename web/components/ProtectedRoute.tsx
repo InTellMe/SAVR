@@ -16,7 +16,7 @@ export default function ProtectedRoute({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isActive = hasActiveSubscription(userData);
-  const hasPro = isProTier(userData?.subscriptionTier);
+  const hasPro = isProTier(userData?.subscription_tier);
 
   // Check if user is returning from successful Stripe checkout
   const isReturningFromStripe = searchParams.get('stripeSuccess') === 'true';

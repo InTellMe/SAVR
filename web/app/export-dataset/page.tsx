@@ -5,8 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
-import { functions } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { callApi } from '@/lib/api';
 import { CocoDataset } from '@/types';
 
 export default function ExportDatasetPage() {
@@ -32,14 +31,13 @@ function ExportContent() {
     setError('');
 
     try {
-      const exportDataset = httpsCallable(functions, 'exportDataset');
-      const result = await exportDataset({
+      const result = await callApi('/labeling/export', {
         labelStatus,
-        ownerUid: user.uid,
+        ownerUid: user.id,
         format: exportFormat,
       });
 
-      const data = result.data as {
+      const data = result as {
         success: boolean;
         exportData: CocoDataset;
         imageCount: number;

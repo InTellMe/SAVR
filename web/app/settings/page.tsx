@@ -31,7 +31,7 @@ function SettingsContent() {
     async function loadConsent() {
       if (!user) return;
       try {
-        const data = await getDataConsent(user.uid);
+        const data = await getDataConsent(user.id);
         if (data) {
           setConsent({
             imageTraining: data.data_usage_for_training ?? false,
@@ -53,7 +53,7 @@ function SettingsContent() {
     const updated = { ...consent, [field]: value };
     setConsent(updated);
     try {
-      await upsertDataConsent(user.uid, {
+      await upsertDataConsent(user.id, {
         marketing_emails: false, // Default value
         data_usage_for_training: updated.imageTraining,
         analytics_tracking: updated.interactionAnalytics,
@@ -65,10 +65,10 @@ function SettingsContent() {
     }
   }
 
-  const tier = userData?.subscriptionTier;
+  const tier = userData?.subscription_tier;
   const tierLabel = 
     tier === 'pro' || tier === 'plus' || tier === 'premium' ? 'Pro' : 'Basic';
-  const hasPro = isProTier(userData?.subscriptionTier);
+  const hasPro = isProTier(userData?.subscription_tier);
 
   async function handleManageSubscription() {
     if (!user) return;
@@ -123,31 +123,31 @@ function SettingsContent() {
             <p>
               <span className="font-medium">Email:</span> {user?.email}
             </p>
-            {userData?.stripeEmail && userData.stripeEmail !== user?.email && (
+            {userData?.stripe_email && userData.stripe_email !== user?.email && (
               <p>
-                <span className="font-medium">Billing email:</span> {userData.stripeEmail}
+                <span className="font-medium">Billing email:</span> {userData.stripe_email}
               </p>
             )}
             <p>
               <span className="font-medium">Subscription tier:</span> {tierLabel}
             </p>
-            {userData?.subscriptionStatus && (
+            {userData?.subscription_status && (
               <p>
                 <span className="font-medium">Subscription status:</span>{' '}
-                <span className="capitalize">{userData.subscriptionStatus}</span>
+                <span className="capitalize">{userData.subscription_status}</span>
               </p>
             )}
-            {userData?.cancelAtPeriodEnd && (
+            {userData?.cancel_at_period_end && (
               <p className="text-amber-400">
                 Your subscription will cancel at the end of the current billing period.
               </p>
             )}
-            {userData?.paymentActionRequired && (
+            {userData?.payment_action_required && (
               <p className="text-red-400">
                 Payment action required. Please update your payment method in the billing portal.
               </p>
             )}
-            {userData?.lastPaymentStatus === 'failed' && (
+            {userData?.last_payment_status === 'failed' && (
               <p className="text-red-400">
                 Your last payment failed. Please update your payment method to maintain access.
               </p>
@@ -166,7 +166,7 @@ function SettingsContent() {
               : 'Upgrade to Pro to unlock unlimited recipes, AI chat, and more.'}
           </p>
           <div className="flex flex-wrap gap-3">
-            {userData?.stripeCustomerId && (
+            {userData?.stripe_customer_id && (
               <button
                 type="button"
                 onClick={handleManageSubscription}

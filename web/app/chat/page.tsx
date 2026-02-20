@@ -46,7 +46,7 @@ function ChatContent() {
     if (!user) return;
 
       try {
-        const chatMessages = await getChatHistory(user.uid);
+        const chatMessages = await getChatHistory(user.id);
         const mappedMessages = chatMessages.map(msg => ({
           id: msg.id,
           role: msg.role as 'user' | 'assistant',

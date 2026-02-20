@@ -116,7 +116,11 @@ export default function CookContent() {
           userId: recipeData.user_id,
           title: recipeData.title,
           description: recipeData.description || '',
-          ingredients: recipeData.ingredients as Array<{ name: string; quantity: number; unit: string }>,
+          ingredients: (recipeData.ingredients as any[]).map((ing: any) => ({
+            name: ing.name,
+            quantity: typeof ing.quantity === 'string' ? parseFloat(ing.quantity) || 0 : ing.quantity || 0,
+            unit: ing.unit || ''
+          })),
           instructions: Array.isArray(recipeData.instructions)
             ? recipeData.instructions.map((inst: any) => typeof inst === 'string' ? inst : inst.text)
             : [],
@@ -260,7 +264,7 @@ export default function CookContent() {
     setShowDeduction(true);
     // Load inventory for deduction
     try {
-      const items = await getInventory(user.uid);
+      const items = await getInventory(user.id);
       setInventory(items.map(item => ({
         id: item.id,
         name: item.name,

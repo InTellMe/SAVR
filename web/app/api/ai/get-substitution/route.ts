@@ -6,14 +6,30 @@ export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (auth.error) return auth.error;
   
-  const { ingredient, reason } = await request.json();
+  const { 
+    ingredientName, 
+    ingredientQuantity, 
+    ingredientUnit,
+    recipeTitle,
+    recipeIngredients,
+    recipeInstructions,
+    inventoryItems
+  } = await request.json();
   
-  if (!ingredient) {
-    return NextResponse.json({ error: 'Ingredient required' }, { status: 400 });
+  if (!ingredientName) {
+    return NextResponse.json({ error: 'Ingredient name required' }, { status: 400 });
   }
   
   try {
-    const substitutions = await getSubstitutions(ingredient, reason);
+    const substitutions = await getSubstitutions(
+      ingredientName,
+      ingredientQuantity || 1,
+      ingredientUnit || 'unit',
+      recipeTitle || '',
+      recipeIngredients || [],
+      recipeInstructions || [],
+      inventoryItems || []
+    );
     return NextResponse.json({ success: true, substitutions });
   } catch (error) {
     console.error('Error getting substitutions:', error);

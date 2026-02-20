@@ -669,3 +669,64 @@ export function subscribeToGroceryLists(
     channel.unsubscribe();
   };
 }
+
+// ============================================================================
+// Transfer Session Operations
+// ============================================================================
+
+export interface TransferSession {
+  id: string;
+  token: string;
+  user_id: string;
+  from_user_id?: string;
+  to_user_id?: string;
+  status: 'pending' | 'active' | 'completed' | 'expired' | 'cancelled';
+  image_urls: string[];
+  data_snapshot?: any;
+  expires_at: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getTransferSession(token: string): Promise<TransferSession | null> {
+  const { data, error } = await supabase
+    .from('transfer_sessions')
+    .select('*')
+    .eq('token', token)
+    .single();
+  
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    throw error;
+  }
+  return data;
+}
+
+export async function updateTransferSession(
+  token: string,
+  updates: Partial<Pick<TransferSession, 'status' | 'image_urls' | 'completed_at'>>
+): Promise<TransferSession> {
+  const { data, error} = await supabase
+    .from('transfer_sessions')
+    .update(updates)
+    .eq('token', token)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function addImageToTransferSession(
+  token: string,
+  imageUrl: string
+): Promise<TransferSession> {
+  // First get current image_urls
+  const session = await getTransferSession(token);
+  if (!session) throw new Error('Transfer session not found');
+  
+  const updatedUrls = [...(session.image_urls || []), imageUrl];
+  
+  return updateTransferSession(token, { image_urls: updatedUrls });
+}

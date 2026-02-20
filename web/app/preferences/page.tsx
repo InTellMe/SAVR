@@ -71,7 +71,7 @@ function PreferencesContent() {
     async function loadPreferences() {
       if (!user) return;
       try {
-        const userProfile = await getUserProfile(user.uid);
+        const userProfile = await getUserProfile(user.id);
         if (userProfile?.preferences) {
           setPreferences({
             cuisines: userProfile.preferences.cuisines || [],
@@ -95,7 +95,7 @@ function PreferencesContent() {
     setError('');
     setSaved(false);
     try {
-      await updateUserProfile(user.uid, { preferences });
+      await updateUserProfile(user.id, { preferences });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
