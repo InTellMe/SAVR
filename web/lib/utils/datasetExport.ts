@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '../supabase';
 import {
   ImageDocument,
   AnnotationDocument,
@@ -11,10 +11,10 @@ import {
 } from '../types/functions';
 import { calculatePolygonArea, calculateBoundingBox } from '../services/segmentation';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Use lazy initialization for Supabase admin client
+function getSupabase() {
+  return getSupabaseAdmin();
+}
 
 interface ExportFilters {
   labelStatus?: LabelStatus[];
@@ -28,7 +28,7 @@ interface ExportFilters {
  */
 export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDataset> {
   // Build Supabase query
-  let query = supabase
+  let query = getSupabase()
     .from('images')
     .select('*');
 
@@ -54,7 +54,7 @@ export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDa
     throw new Error(`Failed to fetch images: ${imagesError.message}`);
   }
 
-  const images: ImageDocument[] = (imagesData || []).map(item => ({
+  const images: ImageDocument[] = (imagesData || []).map((item: any) => ({
     id: item.id,
     ownerUid: item.uploaded_by,
     source: item.source as 'photo' | 'video_frame',
@@ -71,7 +71,7 @@ export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDa
   }));
 
   // Get all categories
-  const { data: categoriesData, error: categoriesError } = await supabase
+  const { data: categoriesData, error: categoriesError } = await getSupabase()
     .from('categories')
     .select('*');
 
@@ -79,7 +79,7 @@ export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDa
     throw new Error(`Failed to fetch categories: ${categoriesError.message}`);
   }
 
-  const categories: CategoryDocument[] = (categoriesData || []).map(item => ({
+  const categories: CategoryDocument[] = (categoriesData || []).map((item: any) => ({
     id: item.id,
     name: item.name,
     color: item.color,
@@ -105,7 +105,7 @@ export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDa
 
   for (const image of images) {
     // Get approved annotation (prefer user-approved, fallback to latest)
-    const { data: annotationsData, error: annotationsError } = await supabase
+    const { data: annotationsData, error: annotationsError } = await getSupabase()
       .from('annotations')
       .select('*')
       .eq('image_id', image.id)
@@ -116,7 +116,7 @@ export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDa
       continue;
     }
 
-    const annotations: AnnotationDocument[] = (annotationsData || []).map(item => ({
+    const annotations: AnnotationDocument[] = (annotationsData || []).map((item: any) => ({
       id: item.id,
       imageId: item.image_id,
       version: item.version,
