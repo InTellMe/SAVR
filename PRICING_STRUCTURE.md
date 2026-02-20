@@ -105,7 +105,7 @@ SAVR uses Stripe's **embeddable Pricing Table** for subscription management. Thi
 
 ### 2. Environment Variables
 
-#### For Server-Side (Cloud Functions):
+#### For Server-Side (API routes):
 ```bash
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -138,7 +138,7 @@ For existing subscribers to manage their subscriptions:
 4. `checkout.session.completed` webhook fires
 5. Backend retrieves `client_reference_id` to identify user
 6. Backend fetches price metadata to determine tier (`basic` or `pro`)
-7. User's Firestore document is updated with subscription details
+7. User's Supabase `users` row is updated with subscription details
 
 ### For Existing Subscribers
 
