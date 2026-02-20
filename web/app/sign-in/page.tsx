@@ -1,25 +1,13 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
-
-const CHECKOUT_GRACE_PERIOD_MS = 10 * 60 * 1000; // 10 minutes
-
-function hasRecentCheckoutIntent(): boolean {
-  try {
-    const pending = localStorage.getItem('savr_checkout_pending');
-    if (!pending) return false;
-    const elapsed = Date.now() - parseInt(pending, 10);
-    return elapsed >= 0 && elapsed < CHECKOUT_GRACE_PERIOD_MS;
-  } catch {
-    return false;
-  }
-}
+import { trackCheckoutIntentIfReturning, hasRecentCheckoutIntent } from '@/lib/checkout';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -30,6 +18,12 @@ export default function SignInPage() {
   const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Detect if user is returning from Stripe Checkout and set the checkout intent flag
+  // This is more reliable than setting it on the pricing page before they actually checkout
+  useEffect(() => {
+    trackCheckoutIntentIfReturning();
+  }, []);
 
   async function redirectAfterAuth() {
     // Check for explicit redirect parameter (e.g., from pricing page after checkout)

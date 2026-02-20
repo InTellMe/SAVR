@@ -3,25 +3,7 @@
 import { useAuth, isProTier, hasActiveSubscription } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-
-const CHECKOUT_GRACE_PERIOD_MS = 10 * 60 * 1000; // 10 minutes
-
-/**
- * Check if user recently initiated a Stripe checkout (localStorage fallback).
- * The Stripe Pricing Table's redirect URL is configured in the Stripe Dashboard
- * and may not include ?stripeSuccess=true. This localStorage flag lets us detect
- * that the user was on the pricing page and may be returning from checkout.
- */
-function hasRecentCheckoutIntent(): boolean {
-  try {
-    const pending = localStorage.getItem('savr_checkout_pending');
-    if (!pending) return false;
-    const elapsed = Date.now() - parseInt(pending, 10);
-    return elapsed >= 0 && elapsed < CHECKOUT_GRACE_PERIOD_MS;
-  } catch {
-    return false;
-  }
-}
+import { hasRecentCheckoutIntent, clearCheckoutIntent } from '@/lib/checkout';
 
 export default function ProtectedRoute({
   children,
@@ -41,10 +23,8 @@ export default function ProtectedRoute({
 
   // Also check localStorage for checkout intent (fallback when Stripe redirect
   // URL doesn't include ?stripeSuccess=true)
-  const [hasCheckoutIntent, setHasCheckoutIntent] = useState(false);
-  useEffect(() => {
-    setHasCheckoutIntent(hasRecentCheckoutIntent());
-  }, []);
+  // Initialize synchronously to avoid race condition with redirect logic
+  const [hasCheckoutIntent, setHasCheckoutIntent] = useState(() => hasRecentCheckoutIntent());
 
   // Grace period: allow access if user just came from Stripe checkout
   const inGracePeriod = isReturningFromStripe || hasCheckoutIntent;
@@ -52,11 +32,7 @@ export default function ProtectedRoute({
   // Clear checkout intent once subscription activates (webhook processed)
   useEffect(() => {
     if (isActive && hasCheckoutIntent) {
-      try {
-        localStorage.removeItem('savr_checkout_pending');
-      } catch {
-        // non-critical
-      }
+      clearCheckoutIntent();
       setHasCheckoutIntent(false);
     }
   }, [isActive, hasCheckoutIntent]);
