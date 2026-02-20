@@ -46,6 +46,10 @@ The SQL migrations in `/supabase/migrations/` need to be applied to your databas
    - `20260220000008_create_transfer_sessions.sql`
    - `20260220000009_create_data_consent.sql`
    - `20260220000010_create_images.sql`
+   - `20260220000011_add_user_preferences.sql`
+   - `20260220000012_create_storage_buckets_and_policies.sql`
+   - `20260220000013_create_annotations_and_categories.sql`
+   - `20260220000014_update_transfer_sessions_schema.sql`
 
 ### Option B: Using Supabase CLI (Recommended)
 

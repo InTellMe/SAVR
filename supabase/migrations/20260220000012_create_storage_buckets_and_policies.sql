@@ -13,8 +13,8 @@ values ('inventory-images', 'inventory-images', false);
 insert into storage.buckets (id, name, public)
 values ('labeling-images', 'labeling-images', false);
 
--- Enable RLS on storage.objects
-alter table storage.objects enable row level security;
+-- Note: RLS is already enabled on storage.objects by default in Supabase
+-- No need to manually enable it
 
 -- Recipe Images Policies (Public bucket)
 create policy "Public can view recipe images"
