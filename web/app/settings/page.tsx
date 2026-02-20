@@ -31,7 +31,7 @@ function SettingsContent() {
     async function loadConsent() {
       if (!user) return;
       try {
-        const data = await getDataConsent(user.uid);
+        const data = await getDataConsent(user.id);
         if (data) {
           setConsent({
             imageTraining: data.data_usage_for_training ?? false,
@@ -53,7 +53,7 @@ function SettingsContent() {
     const updated = { ...consent, [field]: value };
     setConsent(updated);
     try {
-      await upsertDataConsent(user.uid, {
+      await upsertDataConsent(user.id, {
         marketing_emails: false, // Default value
         data_usage_for_training: updated.imageTraining,
         analytics_tracking: updated.interactionAnalytics,
@@ -65,10 +65,10 @@ function SettingsContent() {
     }
   }
 
-  const tier = userData?.subscriptionTier;
+  const tier = userData?.subscription_tier;
   const tierLabel = 
     tier === 'pro' || tier === 'plus' || tier === 'premium' ? 'Pro' : 'Basic';
-  const hasPro = isProTier(userData?.subscriptionTier);
+  const hasPro = isProTier(userData?.subscription_tier);
 
   async function handleManageSubscription() {
     if (!user) return;
@@ -131,10 +131,10 @@ function SettingsContent() {
             <p>
               <span className="font-medium">Subscription tier:</span> {tierLabel}
             </p>
-            {userData?.subscriptionStatus && (
+            {userData?.subscription_status && (
               <p>
                 <span className="font-medium">Subscription status:</span>{' '}
-                <span className="capitalize">{userData.subscriptionStatus}</span>
+                <span className="capitalize">{userData.subscription_status}</span>
               </p>
             )}
             {userData?.cancelAtPeriodEnd && (

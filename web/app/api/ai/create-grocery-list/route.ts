@@ -18,9 +18,9 @@ export async function POST(request: NextRequest) {
       .from('grocery_lists')
       .insert({
         user_id: user.id,
-        name: groceryList.name || 'AI Generated Grocery List',
+        title: 'AI Generated Grocery List',
         meal_plan_id: mealPlanId,
-        items: groceryList.items,
+        items: groceryList, // groceryList is already an array of items
         is_ai_generated: true,
       })
       .select()

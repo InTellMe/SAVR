@@ -60,12 +60,12 @@ function SubscriptionDebugContent() {
             <div className="space-y-3">
               <InfoRow 
                 label="Status" 
-                value={userData?.subscriptionStatus || 'pending'} 
-                highlight={userData?.subscriptionStatus === 'active' || userData?.subscriptionStatus === 'trialing'}
+                value={userData?.subscription_status || 'pending'} 
+                highlight={userData?.subscription_status === 'active' || userData?.subscription_status === 'trialing'}
               />
               <InfoRow 
                 label="Tier" 
-                value={userData?.subscriptionTier || 'basic'} 
+                value={userData?.subscription_tier || 'basic'} 
               />
               <InfoRow 
                 label="Stripe Customer ID" 

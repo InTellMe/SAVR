@@ -53,7 +53,7 @@ function UploadContent() {
     async function loadExisting() {
       if (!user) return;
       try {
-        const items = await getInventory(user.uid);
+        const items = await getInventory(user.id);
         setExistingItems(items.map(item => item.name.toLowerCase()));
       } catch {
         // Non-critical
@@ -79,7 +79,7 @@ function UploadContent() {
 
     try {
       // Upload to Supabase Storage
-      const filePath = await uploadImage('inventory-images', user.uid, file);
+      const filePath = await uploadImage('inventory-images', user.id, file);
       const url = getPublicUrl('inventory-images', filePath);
       setImageUrl(url);
 
@@ -229,7 +229,7 @@ function UploadContent() {
 
       await Promise.all(
         toSave.map((ingredient) =>
-          addInventoryItem(user.uid, {
+          addInventoryItem(user.id, {
             name: ingredient.name,
             quantity: ingredient.quantity,
             unit: ingredient.unit,

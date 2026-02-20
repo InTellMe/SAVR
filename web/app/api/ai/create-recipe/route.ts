@@ -11,23 +11,23 @@ export async function POST(request: NextRequest) {
   const { ingredients, preferences } = await request.json();
   
   try {
-    const recipe = await generateRecipe(ingredients, preferences);
+    const result = await generateRecipe(ingredients, preferences);
     
     // Optionally save to database
     const { data, error } = await supabase
       .from('recipes')
       .insert({
         user_id: user.id,
-        title: recipe.title,
-        description: recipe.description,
-        ingredients: recipe.ingredients,
-        instructions: recipe.instructions,
+        title: result.recipe.title,
+        description: result.recipe.description,
+        ingredients: result.recipe.ingredients,
+        instructions: result.recipe.instructions,
         is_ai_generated: true,
-        cuisine_type: recipe.cuisineType,
-        dietary_info: recipe.dietaryInfo,
-        prep_time: recipe.prepTime,
-        cook_time: recipe.cookTime,
-        servings: recipe.servings,
+        cuisine: result.recipe.cuisine,
+        dietary_tags: result.recipe.dietaryTags,
+        prep_time_minutes: result.recipe.prepTime,
+        cook_time_minutes: result.recipe.cookTime,
+        servings: result.recipe.servings,
       })
       .select()
       .single();

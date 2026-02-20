@@ -55,7 +55,7 @@ function GroceryListsContent() {
     if (!user) return;
 
     try {
-      const groceryLists = await getGroceryLists(user.uid);
+      const groceryLists = await getGroceryLists(user.id);
       const mappedLists = groceryLists.map(list => ({
         id: list.id,
         name: list.title,
@@ -81,7 +81,7 @@ function GroceryListsContent() {
     if (!user) return;
 
     try {
-      const recipeList = await getRecipes(user.uid);
+      const recipeList = await getRecipes(user.id);
       const simpleRecipes = recipeList.map(recipe => ({
         id: recipe.id,
         title: recipe.title,

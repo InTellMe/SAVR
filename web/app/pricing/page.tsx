@@ -14,8 +14,8 @@ export default function PricingPage() {
   const [error, setError] = useState('');
   const pricingTableRef = useRef<HTMLDivElement>(null);
 
-  const tier = userData?.subscriptionTier;
-  const status = userData?.subscriptionStatus;
+  const tier = userData?.subscription_tier;
+  const status = userData?.subscription_status;
   const hasActiveSub = status === 'active' || status === 'trialing';
   const isPro = hasActiveSub && (tier === 'pro' || tier === 'plus' || tier === 'premium');
 
@@ -52,8 +52,8 @@ export default function PricingPage() {
     table.setAttribute('publishable-key', publishableKey);
 
     // Add a safety check for the UID
-    if (user.uid) {
-      table.setAttribute('client-reference-id', user.uid);
+    if (user.id) {
+      table.setAttribute('client-reference-id', user.id);
       
       // Set customer email to prevent init endpoint 400 errors
       // This prefills and locks the email field in Stripe Checkout
@@ -111,7 +111,7 @@ export default function PricingPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20">
         {/* Onboarding banner for new users */}
-        {user && userData?.subscriptionStatus === 'pending' && (
+        {user && userData?.subscription_status === 'pending' && (
           <div className="max-w-2xl mx-auto mb-10 rounded-xl px-6 py-5 text-center" style={{ background: 'rgba(0, 212, 255, 0.06)', border: '1px solid rgba(0, 212, 255, 0.2)' }}>
             <h3 className="text-lg font-semibold text-white mb-2">Choose a plan to get started</h3>
             <p className="text-sm text-[#9ca3c2]">

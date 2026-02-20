@@ -17,14 +17,18 @@ export async function POST(request: NextRequest) {
   try {
     const mealPlan = await generateMealPlan(days, preferences, inventory);
     
+    // Calculate date range
+    const startDate = new Date().toISOString();
+    const endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+    
     // Save to database
     const { data, error } = await supabase
       .from('meal_plans')
       .insert({
         user_id: user.id,
-        name: mealPlan.name || `${days}-Day Meal Plan`,
-        start_date: mealPlan.startDate || new Date().toISOString(),
-        end_date: mealPlan.endDate || new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+        title: mealPlan.name || `${days}-Day Meal Plan`,
+        start_date: startDate,
+        end_date: endDate,
         meals: mealPlan.meals,
         is_ai_generated: true,
       })
