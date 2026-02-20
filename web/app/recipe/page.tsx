@@ -2,10 +2,9 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import { getSharedRecipe, getRecipe } from '@/lib/db';
 
 interface SharedRecipe {
   title: string;
@@ -37,27 +36,35 @@ function SharedRecipeContent() {
     }
     (async () => {
       try {
-        const ref = doc(db, 'sharedRecipes', id);
-        const snap = await getDoc(ref);
-        if (!snap.exists()) {
+        const sharedRecipe = await getSharedRecipe(id);
+        if (!sharedRecipe) {
           setError('Recipe not found or link has expired.');
           setRecipe(null);
           return;
         }
-        const data = snap.data();
+        
+        const recipeData = await getRecipe(sharedRecipe.recipe_id);
+        if (!recipeData) {
+          setError('Recipe not found.');
+          setRecipe(null);
+          return;
+        }
+        
         setRecipe({
-          title: data.title,
-          description: data.description || '',
-          ingredients: data.ingredients || [],
-          instructions: data.instructions || [],
-          prepTime: data.prepTime ?? 0,
-          cookTime: data.cookTime ?? 0,
-          servings: data.servings ?? 1,
-          difficulty: data.difficulty ?? 'easy',
-          cuisine: data.cuisine,
-          dietaryTags: data.dietaryTags,
-          recipeType: data.recipeType,
-          species: data.species,
+          title: recipeData.title,
+          description: recipeData.description || '',
+          ingredients: recipeData.ingredients as Array<{ name: string; quantity: number; unit: string }>,
+          instructions: Array.isArray(recipeData.instructions)
+            ? recipeData.instructions.map((inst: any) => typeof inst === 'string' ? inst : inst.text)
+            : [],
+          prepTime: recipeData.prep_time_minutes ?? 0,
+          cookTime: recipeData.cook_time_minutes ?? 0,
+          servings: recipeData.servings ?? 1,
+          difficulty: recipeData.difficulty ?? 'easy',
+          cuisine: recipeData.cuisine,
+          dietaryTags: recipeData.dietary_tags,
+          recipeType: 'human', // Default, can be enhanced if needed
+          species: undefined,
         });
       } catch (err) {
         console.error(err);
