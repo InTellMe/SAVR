@@ -1,6 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../config/firebase';
+import { uploadImageToStorage, getPublicUrl } from './storage';
 
 export async function requestCameraPermissions() {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -53,12 +52,8 @@ export async function pickImageFromLibrary(): Promise<string | null> {
 }
 
 export async function uploadImage(uri: string, userId: string, itemId: string): Promise<string> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  
-  const storageRef = ref(storage, `inventory/${userId}/${itemId}.jpg`);
-  await uploadBytes(storageRef, blob);
-  
-  const downloadURL = await getDownloadURL(storageRef);
-  return downloadURL;
+  const fileName = `${itemId}.jpg`;
+  const filePath = await uploadImageToStorage('inventory-images', userId, uri, fileName);
+  const url = getPublicUrl('inventory-images', filePath);
+  return url;
 }
