@@ -13,6 +13,20 @@ export default function Home() {
   const { user, userData, loading } = useAuth();
   const hasActiveSub = hasActiveSubscription(userData);
 
+  // Detect if user is returning from Stripe Checkout and set the checkout intent flag
+  // This is more reliable than setting it on the pricing page before they actually checkout
+  useEffect(() => {
+    try {
+      const referrer = document.referrer;
+      // Check if user is coming back from Stripe Checkout
+      if (referrer && referrer.includes('checkout.stripe.com')) {
+        localStorage.setItem('savr_checkout_pending', Date.now().toString());
+      }
+    } catch {
+      // referrer or localStorage unavailable — non-critical
+    }
+  }, []);
+
   // Redirect to dashboard if user just completed Stripe checkout
   // The Stripe Pricing Table redirects to savr.cam/ (root) after checkout,
   // so we detect checkout intent via localStorage and send them to the dashboard

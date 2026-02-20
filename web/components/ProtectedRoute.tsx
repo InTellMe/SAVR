@@ -41,10 +41,8 @@ export default function ProtectedRoute({
 
   // Also check localStorage for checkout intent (fallback when Stripe redirect
   // URL doesn't include ?stripeSuccess=true)
-  const [hasCheckoutIntent, setHasCheckoutIntent] = useState(false);
-  useEffect(() => {
-    setHasCheckoutIntent(hasRecentCheckoutIntent());
-  }, []);
+  // Initialize synchronously to avoid race condition with redirect logic
+  const [hasCheckoutIntent, setHasCheckoutIntent] = useState(() => hasRecentCheckoutIntent());
 
   // Grace period: allow access if user just came from Stripe checkout
   const inGracePeriod = isReturningFromStripe || hasCheckoutIntent;
