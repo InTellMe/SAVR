@@ -6,9 +6,9 @@ import Navbar from '@/components/Navbar';
 import PolygonAnnotation from '@/components/PolygonAnnotation';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
-import { functions, storage } from '@/lib/firebase';
+import { functions } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadLabelingImage, getPublicUrl } from '@/lib/storage';
 import {
   WebImageDocument,
   WebAnnotationDocument,
@@ -70,11 +70,9 @@ function LabelingContent() {
     setCurrentObjects([]);
 
     try {
-      // Upload image to storage
-      const path = `images/${user.uid}/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      // Upload image to Supabase Storage
+      const filePath = await uploadLabelingImage(file);
+      const url = getPublicUrl('labeling-images', filePath);
 
       // Get image dimensions
       const img = new Image();
@@ -85,8 +83,8 @@ function LabelingContent() {
       });
 
       // Create image document
-      const uploadImage = httpsCallable(functions, 'uploadLabelingImage');
-      const result = await uploadImage({
+      const uploadImageFn = httpsCallable(functions, 'uploadLabelingImage');
+      const result = await uploadImageFn({
         imageUrl: url,
         width: img.width,
         height: img.height,
