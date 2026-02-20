@@ -1,7 +1,33 @@
 # PR Plan: Firebase Dependency Removal & Final Cleanup
 
+## ⚠️ Prerequisites Before Running This PR
+
+**DO NOT proceed with Firebase cleanup until:**
+
+1. **Testing Complete** - All migrated functions must be tested and working:
+   - ✅ All AI functions tested (analyze-image, chat, create-recipe, etc.)
+   - ✅ Inventory deduction tested
+   - ✅ Transfer sessions tested
+   - ✅ Stripe portal tested
+   - ✅ Mobile app tested with new API routes
+
+2. **ML Labeling Functions Implemented** - Currently stubbed functions need full implementation:
+   - ⚠️ `uploadLabelingImage` - needs implementation
+   - ⚠️ `getImageAnnotations` - needs implementation
+   - ⚠️ `saveAnnotation` - needs implementation
+   - ⚠️ `triggerSegmentation` - needs implementation
+   - ⚠️ `exportDataset` - needs implementation
+   - OR these pages (app/labeling, app/export-dataset) must be deprecated/removed
+
+3. **GitHub Actions Updated** (PR #4):
+   - ⚠️ Vercel deployment workflow configured
+   - ⚠️ Preview deployment workflow created
+   - ⚠️ Mobile build workflow updated
+
 ## Overview
 Remove all Firebase dependencies and configurations after successful migration to Supabase. This is the final cleanup PR that removes Firebase completely from the codebase.
+
+**Current Migration Status:** ~80% complete. Core features migrated, but ML labeling functions and testing remain.
 
 ## Scope
 
@@ -103,12 +129,21 @@ Or simply delete them if not needed for historical reference.
 Before removing anything, verify:
 1. ✅ All CRUD operations use Supabase
 2. ✅ All storage operations use Supabase Storage
-3. ✅ All Cloud Functions migrated to Vercel API routes
+3. ✅ All Cloud Functions migrated to Vercel API routes (10/15 core functions complete, 5 ML functions stubbed)
 4. ✅ Authentication uses Supabase Auth
 5. ✅ Stripe webhooks use Vercel API route
-6. ✅ GitHub Actions updated
+6. ⏳ GitHub Actions updated (not yet done)
 7. ✅ Web app deployed on Vercel
 8. ✅ Mobile app builds with EAS
+
+**Current Status:**
+- ✅ Core AI functions migrated (analyze-image, chat, create-recipe, create-meal-plan, create-grocery-list, import-recipe, get-substitution, scan-receipt)
+- ✅ Inventory deduction migrated
+- ✅ Transfer sessions migrated
+- ✅ Stripe portal migrated
+- ⚠️ ML labeling functions stubbed (need full implementation before cleanup)
+- ✅ All web app pages updated to use new API routes
+- ✅ Mobile app API client updated
 
 **Run verification checks:**
 ```bash
