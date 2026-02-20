@@ -164,7 +164,7 @@ vercel link
 
 1. Go to Developers → Webhooks
 2. Click "Add endpoint"
-3. **Endpoint URL**: `https://savr.cam/api/webhooks/stripe`
+3. **Endpoint URL**: `https://savr.cam/api/stripe/webhook`
 4. **Events to send**:
    - `customer.subscription.created`
    - `customer.subscription.updated`
@@ -326,7 +326,7 @@ vercel logs
 3. Check Vercel function logs
 4. Test webhook with Stripe CLI:
    ```bash
-   stripe listen --forward-to https://savr.cam/api/webhooks/stripe
+   stripe listen --forward-to https://savr.cam/api/stripe/webhook
    ```
 
 ### Database Connection Issues
@@ -380,7 +380,7 @@ For issues:
 2. Check Supabase dashboard logs
 3. Check GitHub Actions workflow runs
 4. Review this deployment guide
-5. Check [DEPLOYMENT_TROUBLESHOOTING.md](DEPLOYMENT_TROUBLESHOOTING.md) if it exists
+5. Check deployment logs in Vercel, Supabase, and GitHub Actions
 
 ---
 

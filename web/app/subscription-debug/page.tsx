@@ -16,8 +16,13 @@ export default function SubscriptionDebugPage() {
 function SubscriptionDebugContent() {
   const { user, userData } = useAuth();
 
-  const formatDate = (date: Date | { seconds: number; nanoseconds: number } | undefined) => {
+  const formatDate = (
+    date: string | Date | { seconds: number; nanoseconds: number } | undefined
+  ) => {
     if (!date) return 'N/A';
+    if (typeof date === 'string') {
+      return new Date(date).toISOString();
+    }
     if (date instanceof Date) {
       return date.toISOString();
     }
@@ -44,9 +49,9 @@ function SubscriptionDebugContent() {
             Use this information when reporting subscription issues to support.
           </p>
 
-          {/* Firebase Auth Info */}
+          {/* Supabase Auth Info */}
           <div className="glass-card rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Firebase Authentication</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Supabase Authentication</h2>
             <div className="space-y-3">
               <InfoRow label="User ID" value={user?.id || 'N/A'} />
               <InfoRow label="Email" value={user?.email || 'N/A'} />
@@ -69,7 +74,7 @@ function SubscriptionDebugContent() {
               />
               <InfoRow 
                 label="Stripe Customer ID" 
-                value={userData?.stripeCustomerId || 'Not set'} 
+                value={userData?.stripe_customer_id || 'Not set'} 
               />
               <InfoRow 
                 label="Stripe Subscription ID" 
@@ -77,7 +82,7 @@ function SubscriptionDebugContent() {
               />
               <InfoRow 
                 label="Trial Ends At" 
-                value={formatDate(userData?.trialEndsAt)} 
+                value={formatDate(userData?.trial_ends_at)} 
               />
             </div>
           </div>
@@ -99,7 +104,7 @@ function SubscriptionDebugContent() {
               </p>
               <ol className="mt-2 space-y-1 text-sm text-[#9ca3c2] list-decimal list-inside">
                 <li>Check Stripe Dashboard → Developers → Webhooks for delivery status</li>
-                <li>Check Firebase Console → Functions → Logs for webhook errors</li>
+                <li>Check Vercel dashboard logs for webhook errors</li>
                 <li>Verify you completed checkout (not just abandoned cart)</li>
                 <li>Wait 30 seconds and refresh this page</li>
               </ol>
