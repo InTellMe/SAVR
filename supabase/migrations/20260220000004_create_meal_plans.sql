@@ -1,6 +1,6 @@
 -- Create meal_plans table
 create table public.meal_plans (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   user_id uuid references public.users on delete cascade not null,
   title text not null,
   description text,

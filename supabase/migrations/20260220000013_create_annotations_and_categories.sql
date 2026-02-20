@@ -31,7 +31,7 @@ create trigger handle_categories_updated_at
 
 -- Create annotations table for ML dataset labeling
 create table public.annotations (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   image_id uuid references public.images on delete cascade not null,
   version integer not null default 1,
   source text not null check (source in ('ai', 'user')),

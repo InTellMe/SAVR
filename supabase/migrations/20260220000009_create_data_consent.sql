@@ -1,6 +1,6 @@
 -- Create data_consent table for GDPR/privacy compliance
 create table public.data_consent (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   user_id uuid references public.users on delete cascade not null unique,
   marketing_emails boolean default false,
   data_usage_for_training boolean default false,

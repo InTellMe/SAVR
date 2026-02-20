@@ -1,6 +1,6 @@
 -- Create transfer_sessions table for account data transfers
 create table public.transfer_sessions (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   token text unique not null,
   from_user_id uuid references public.users on delete cascade not null,
   to_user_id uuid references public.users on delete cascade,
