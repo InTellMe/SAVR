@@ -113,7 +113,7 @@ export async function createImageDocument(
       id: imageId,
       user_id: uid,
       uploaded_by: uid,
-      filename: storagePath.split('/').pop() || imageId,
+      filename: storagePath.split('/').pop()?.trim() || imageId,
       storage_path: storagePath,
       width,
       height,

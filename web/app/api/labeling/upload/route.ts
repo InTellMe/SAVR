@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
       // Trigger segmentation asynchronously (don't wait for it)
       triggerSegmentationInference(imageId, usableImageUrl, width, height).catch(err => {
-        console.error('Failed to trigger segmentation inference:', err);
+        console.error(`Failed to trigger segmentation inference for image ${imageId}:`, err);
       });
     }
 
