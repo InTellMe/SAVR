@@ -1,5 +1,30 @@
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../config/firebase';
+import { supabase } from '../config/supabase';
+
+const API_BASE = process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:3000';
+
+export async function callApi(endpoint: string, data: any) {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+  
+  const response = await fetch(`${API_BASE}/api${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'API request failed');
+  }
+  
+  return response.json();
+}
 
 export interface GenerateRecipesParams {
   maxRecipes?: number;
@@ -14,21 +39,17 @@ export interface ChatWithAIParams {
 }
 
 export const generateRecipes = async (params?: GenerateRecipesParams) => {
-  const callable = httpsCallable(functions, 'generateRecipes');
-  return await callable(params || {});
+  return await callApi('/ai/create-recipe', params || {});
 };
 
 export const generateMealPlan = async (params: GenerateMealPlanParams) => {
-  const callable = httpsCallable(functions, 'generateMealPlan');
-  return await callable(params);
+  return await callApi('/ai/create-meal-plan', params);
 };
 
 export const chatWithAI = async (params: ChatWithAIParams) => {
-  const callable = httpsCallable(functions, 'chatWithAI');
-  return await callable(params);
+  return await callApi('/ai/chat', params);
 };
 
 export const analyzeImage = async (imageUrl: string) => {
-  const callable = httpsCallable(functions, 'analyzeImage');
-  return await callable({ imageUrl });
+  return await callApi('/ai/analyze-image', { imageUrl });
 };
