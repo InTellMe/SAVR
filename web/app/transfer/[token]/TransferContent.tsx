@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getTransferSession, addImageToTransferSession } from '@/lib/db';
 import { uploadImage, getPublicUrl } from '@/lib/storage';
 
 type SessionStatus = 'loading' | 'active' | 'expired' | 'completed' | 'error';
@@ -23,22 +22,21 @@ export default function TransferContent() {
 
   async function checkSession() {
     try {
-      const sessionDoc = await getDoc(doc(db, 'transferSessions', token));
-      if (!sessionDoc.exists()) {
+      const session = await getTransferSession(token);
+      if (!session) {
         setStatus('error');
         return;
       }
 
-      const data = sessionDoc.data();
-      const expiresAt = data.expiresAt?.toDate?.() || new Date(data.expiresAt);
+      const expiresAt = new Date(session.expires_at);
 
-      if (data.status === 'completed') {
+      if (session.status === 'completed') {
         setStatus('completed');
       } else if (new Date() > expiresAt) {
         setStatus('expired');
       } else {
         setStatus('active');
-        setUploadedCount(data.imageUrls?.length || 0);
+        setUploadedCount(session.image_urls?.length || 0);
       }
     } catch (err) {
       console.error('Session check error:', err);
@@ -53,21 +51,19 @@ export default function TransferContent() {
     setError('');
 
     try {
-      const sessionDoc = await getDoc(doc(db, 'transferSessions', token));
-      if (!sessionDoc.exists()) {
+      const session = await getTransferSession(token);
+      if (!session) {
         setStatus('error');
         return;
       }
-      const userId = sessionDoc.data().userId;
+      const userId = session.user_id;
 
       for (const file of Array.from(files)) {
         // Upload to Supabase Storage
         const filePath = await uploadImage('inventory-images', userId, file);
         const url = getPublicUrl('inventory-images', filePath);
 
-        await updateDoc(doc(db, 'transferSessions', token), {
-          imageUrls: arrayUnion(url),
-        });
+        await addImageToTransferSession(token, url);
 
         setUploadedCount(prev => prev + 1);
       }

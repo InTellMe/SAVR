@@ -5,13 +5,12 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import ImageUpload from '@/components/ImageUpload';
 import { useAuth } from '@/contexts/AuthContext';
-import { db } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
-import { getInventory, addInventoryItem } from '@/lib/db';
+import { getInventory, addInventoryItem, TransferSession } from '@/lib/db';
 import { uploadImage, getPublicUrl } from '@/lib/storage';
 import { callApi } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 interface ExtractedIngredient {
   name: string;
@@ -168,16 +167,30 @@ function UploadContent() {
     }
   }
 
-  // Listen for incoming transferred photos
+  // Listen for incoming transferred photos using Supabase realtime
   useEffect(() => {
     if (!transferSessionId) return;
-    const unsub = onSnapshot(doc(db, 'transferSessions', transferSessionId), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setTransferPhotos(data.imageUrls || []);
-      }
-    });
-    return () => unsub();
+    
+    const channel = supabase
+      .channel(`transfer_session_${transferSessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'transfer_sessions',
+          filter: `id=eq.${transferSessionId}`,
+        },
+        (payload) => {
+          const session = payload.new as TransferSession;
+          setTransferPhotos(session.image_urls || []);
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      channel.unsubscribe();
+    };
   }, [transferSessionId]);
 
   async function handleAnalyzeTransferredPhoto(url: string) {

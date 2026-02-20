@@ -5,8 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import { doc, getDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
 import { trackCheckoutIntentIfReturning, hasRecentCheckoutIntent } from '@/lib/checkout';
 
 export default function SignInPage() {
@@ -15,7 +13,7 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<ReactNode>('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, userData } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -39,21 +37,12 @@ export default function SignInPage() {
       return;
     }
 
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
+    // AuthContext provides userData with subscription status from Supabase
+    const status = userData?.subscription_status || 'pending';
+    if (status === 'active' || status === 'trialing') {
       router.push('/dashboard');
-      return;
-    }
-    try {
-      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-      const status = userDoc.exists() ? userDoc.data()?.subscriptionStatus : 'pending';
-      if (status === 'active' || status === 'trialing') {
-        router.push('/dashboard');
-      } else {
-        router.push('/pricing');
-      }
-    } catch {
-      router.push('/dashboard');
+    } else {
+      router.push('/pricing');
     }
   }
 
