@@ -5,11 +5,11 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, functions, storage } from '@/lib/firebase';
+import { functions, storage } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { getRecipes, getInventory, deleteRecipe, createSharedRecipe } from '@/lib/db';
 
 interface NutritionalInfo {
   calories: number;
@@ -90,14 +90,26 @@ function RecipesContent() {
     if (!user) return;
 
     try {
-      const recipesCollection = collection(db, 'recipes', user.uid, 'items');
-      const q = query(recipesCollection, where('userId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      const recipeList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const recipeList = await getRecipes(user.uid);
+      // Map DB recipe format to UI format
+      const mappedRecipes = recipeList.map(r => ({
+        id: r.id,
+        title: r.title,
+        description: r.description || '',
+        ingredients: r.ingredients as RecipeIngredient[],
+        instructions: Array.isArray(r.instructions) 
+          ? r.instructions.map((inst: any) => typeof inst === 'string' ? inst : inst.text)
+          : [],
+        prepTime: r.prep_time_minutes || 0,
+        cookTime: r.cook_time_minutes || 0,
+        servings: r.servings || 1,
+        difficulty: r.difficulty || 'medium',
+        cuisine: r.cuisine,
+        dietaryTags: r.dietary_tags,
+        nutrition: r.nutritional_info as NutritionalInfo | undefined,
+        generatedBy: r.is_ai_generated ? 'ai' : 'user',
       } as Recipe));
-      setRecipes(recipeList);
+      setRecipes(mappedRecipes);
     } catch (error) {
       console.error('Error loading recipes:', error);
       setError('Failed to load recipes');
@@ -114,10 +126,8 @@ function RecipesContent() {
 
     try {
       // Get user's inventory
-      const inventoryCollection = collection(db, 'inventory', user.uid, 'items');
-      const inventoryQuery = query(inventoryCollection, where('userId', '==', user.uid));
-      const inventorySnap = await getDocs(inventoryQuery);
-      const ingredients = inventorySnap.docs.map(d => d.data().name as string).filter(Boolean);
+      const inventoryItems = await getInventory(user.uid);
+      const ingredients = inventoryItems.map(item => item.name).filter(Boolean);
 
       if (ingredients.length === 0) {
         setError('Add items to your pantry first so we can suggest recipes.');
@@ -189,7 +199,7 @@ function RecipesContent() {
 
   async function handleDeleteRecipe(recipeId: string) {
     try {
-      await deleteDoc(doc(db, 'recipes', user!.uid, 'items', recipeId));
+      await deleteRecipe(recipeId);
       setRecipes(recipes.filter(recipe => recipe.id !== recipeId));
     } catch (error) {
       console.error('Error deleting recipe:', error);
@@ -581,23 +591,9 @@ function RecipesContent() {
             onCookWithAssistant={() => handleCookWithAssistant(selectedRecipe)}
             onIMadeThis={() => handleIMadeThis(selectedRecipe)}
             onShare={async () => {
+              if (!user) return;
               const shareId = crypto.randomUUID();
-              await setDoc(doc(db, 'sharedRecipes', shareId), {
-                userId: user?.uid,
-                title: selectedRecipe.title,
-                description: selectedRecipe.description,
-                ingredients: selectedRecipe.ingredients,
-                instructions: selectedRecipe.instructions,
-                prepTime: selectedRecipe.prepTime,
-                cookTime: selectedRecipe.cookTime,
-                servings: selectedRecipe.servings,
-                difficulty: selectedRecipe.difficulty,
-                cuisine: selectedRecipe.cuisine,
-                dietaryTags: selectedRecipe.dietaryTags,
-                nutrition: selectedRecipe.nutrition,
-                recipeType: selectedRecipe.recipeType,
-                species: selectedRecipe.species,
-              });
+              await createSharedRecipe(user.uid, selectedRecipe.id, shareId);
               const url = `${window.location.origin}/recipe?id=${shareId}`;
               await navigator.clipboard.writeText(url);
               setError('');
@@ -846,11 +842,12 @@ function RecipeDetailsModal({
 
     try {
       // Load user inventory for context
-      const invSnap = await getDocs(collection(db, 'inventory', user.uid, 'items'));
-      const inventoryItems = invSnap.docs.map(d => {
-        const data = d.data();
-        return { name: data.name, quantity: data.quantity, unit: data.unit };
-      });
+      const inventoryItems = await getInventory(user.uid);
+      const inventoryNames = inventoryItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit
+      }));
 
       const getSubstitution = httpsCallable(functions, 'getSubstitution');
       const result = await getSubstitution({
@@ -860,7 +857,7 @@ function RecipeDetailsModal({
         recipeTitle: recipe.title,
         recipeIngredients: recipe.ingredients,
         recipeInstructions: recipe.instructions,
-        inventoryItems,
+        inventoryItems: inventoryNames,
       });
 
       const data = result.data as { success: boolean; substitutions: SubstitutionOption[] };
@@ -1068,13 +1065,18 @@ function DeductionModal({
   useEffect(() => {
     async function loadInventoryAndMatch() {
       try {
-        const snapshot = await getDocs(collection(db, 'inventory', userId, 'items'));
-        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as { id: string; name: string; quantity: number; unit: string }));
-        setInventoryItems(items);
+        const items = await getInventory(userId);
+        const mappedItems = items.map(item => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit
+        }));
+        setInventoryItems(mappedItems);
 
         // Auto-match recipe ingredients to inventory items
         const matched = recipe.ingredients.map(ingredient => {
-          const match = items.find(item =>
+          const match = mappedItems.find(item =>
             item.name.toLowerCase().includes(ingredient.name.toLowerCase()) ||
             ingredient.name.toLowerCase().includes(item.name.toLowerCase())
           );

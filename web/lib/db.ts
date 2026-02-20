@@ -88,6 +88,15 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface SharedRecipe {
+  id: string;
+  share_id: string;
+  recipe_id: string;
+  user_id: string;
+  expires_at?: string;
+  created_at: string;
+}
+
 // ============================================================================
 // Inventory Operations
 // ============================================================================
@@ -418,6 +427,45 @@ export async function deleteChatHistory(userId: string): Promise<void> {
     .eq('user_id', userId);
   
   if (error) throw error;
+}
+
+// ============================================================================
+// Shared Recipe Operations
+// ============================================================================
+
+export async function createSharedRecipe(
+  userId: string,
+  recipeId: string,
+  shareId: string,
+  expiresAt?: string
+): Promise<SharedRecipe> {
+  const { data, error } = await supabase
+    .from('shared_recipes')
+    .insert({
+      user_id: userId,
+      recipe_id: recipeId,
+      share_id: shareId,
+      expires_at: expiresAt,
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getSharedRecipe(shareId: string): Promise<SharedRecipe | null> {
+  const { data, error } = await supabase
+    .from('shared_recipes')
+    .select('*')
+    .eq('share_id', shareId)
+    .single();
+  
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
 }
 
 // ============================================================================
