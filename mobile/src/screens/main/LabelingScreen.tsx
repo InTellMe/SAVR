@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Image as RNImage,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { functions, db } from '../../config/firebase';
-import { httpsCallable } from 'firebase/functions';
 import { pickImageFromCamera, pickImageFromLibrary } from '../../utils/imageUtils';
 import { uploadLabelingImage, getPublicUrl } from '../../utils/storage';
 import PolygonAnnotation from '../../components/PolygonAnnotation';
+import { callApi, callApiGet } from '../../utils/api';
 
 interface AnnotationObject {
   id: string;
@@ -103,29 +103,29 @@ export default function LabelingScreen() {
       const url = getPublicUrl('labeling-images', filePath);
 
       // Get image dimensions
-      const img = new Image();
-      img.src = url;
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
+      const { width, height } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        RNImage.getSize(
+          url,
+          (resolvedWidth, resolvedHeight) => resolve({ width: resolvedWidth, height: resolvedHeight }),
+          reject
+        );
       });
 
       // Create image document
-      const uploadImageFn = httpsCallable(functions, 'uploadLabelingImage');
-      const result = await uploadImageFn({
+      const result = await callApi('/labeling/upload', {
         imageUrl: url,
-        width: img.width,
-        height: img.height,
+        width,
+        height,
         source: 'photo',
         autoLabel: true,
       });
 
-      const data = result.data as { success: boolean; imageId: string };
+      const data = result as { success: boolean; imageId: string };
       if (data.success) {
         setImageUri(url);
         setImageId(data.imageId);
-        setImageWidth(img.width);
-        setImageHeight(img.height);
+        setImageWidth(width);
+        setImageHeight(height);
 
         // Wait for AI inference, then load annotations
         setTimeout(() => {
@@ -143,15 +143,31 @@ export default function LabelingScreen() {
     if (!user) return;
 
     try {
-      const getAnnotations = httpsCallable(functions, 'getImageAnnotations');
-      const result = await getAnnotations({ imageId: id });
-      const data = result.data as {
+      const data = await callApiGet(`/labeling/annotations?imageId=${encodeURIComponent(id)}`) as {
         success: boolean;
+        image?: { storagePathOriginal?: string; width?: number; height?: number };
         annotations: Array<{ objects: AnnotationObject[] }>;
+        categories?: Category[];
       };
 
       if (data.success && data.annotations.length > 0) {
         setAnnotations(data.annotations[0].objects);
+      }
+      if (Array.isArray(data.categories) && data.categories.length > 0) {
+        setCategories(
+          data.categories.map((category: any) => ({
+            id: category.id,
+            name: category.name,
+            color: category.color,
+          }))
+        );
+      }
+      if (data.image?.storagePathOriginal) {
+        setImageUri(data.image.storagePathOriginal);
+      }
+      if (data.image?.width && data.image?.height) {
+        setImageWidth(data.image.width);
+        setImageHeight(data.image.height);
       }
     } catch (error) {
       console.error('Failed to load annotations:', error);
@@ -163,14 +179,13 @@ export default function LabelingScreen() {
 
     setSaving(true);
     try {
-      const saveAnnotation = httpsCallable(functions, 'saveAnnotation');
-      const result = await saveAnnotation({
+      const result = await callApi('/labeling/save-annotation', {
         imageId,
         objects: annotations,
         status: 'submitted',
       });
 
-      const data = result.data as { success: boolean };
+      const data = result as { success: boolean };
       if (data.success) {
         Alert.alert('Success', 'Annotations saved successfully!');
         await loadImageAnnotations(imageId);
@@ -187,8 +202,7 @@ export default function LabelingScreen() {
 
     setLoading(true);
     try {
-      const triggerSegmentation = httpsCallable(functions, 'triggerSegmentation');
-      await triggerSegmentation({ imageId });
+      await callApi('/labeling/segment', { imageId });
 
       setTimeout(() => {
         loadImageAnnotations(imageId);

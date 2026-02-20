@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebase';
+import { chatWithAI } from '../../utils/api';
 
 interface Message {
   id: string;
@@ -54,12 +53,20 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      const chatWithAI = httpsCallable(functions, 'chatWithAI');
-      const response = await chatWithAI({ message: inputText });
+      const response = await chatWithAI({
+        messages: [
+          ...messages.slice(-10).map((message) => ({
+            role: message.sender === 'user' ? 'user' as const : 'assistant' as const,
+            content: message.text,
+          })),
+          { role: 'user', content: inputText },
+        ],
+        context: {},
+      });
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: (response.data as any).reply || 'Sorry, I could not process that.',
+        text: response.message || response.reply || 'Sorry, I could not process that.',
         sender: 'ai',
         timestamp: new Date(),
       };

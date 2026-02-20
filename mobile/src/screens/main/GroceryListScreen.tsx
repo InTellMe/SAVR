@@ -7,12 +7,26 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { GroceryList, GroceryItem } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { getGroceryLists, updateGroceryList } from '../../lib/db';
+
+interface DbGroceryItem {
+  id?: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  checked?: boolean;
+  category?: string;
+}
+
+interface DbGroceryList {
+  id: string;
+  title: string;
+  items: DbGroceryItem[];
+}
 
 export default function GroceryListScreen() {
   const { user } = useAuth();
@@ -27,14 +41,22 @@ export default function GroceryListScreen() {
     if (!user) return;
 
     try {
-      const q = query(
-        collection(db, 'groceryLists'),
-        where('userId', '==', user.uid)
-      );
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const listDoc = querySnapshot.docs[0];
-        setGroceryList({ id: listDoc.id, ...listDoc.data() } as GroceryList);
+      const lists = await getGroceryLists(user.id);
+      if (lists.length > 0) {
+        const list = lists[0] as DbGroceryList;
+        setGroceryList({
+          id: list.id,
+          name: list.title || 'Grocery List',
+          items: (list.items || []).map((item, index) => ({
+            id: item.id || `${list.id}-${index}`,
+            name: item.name,
+            quantity: item.quantity || 1,
+            unit: item.unit || 'item',
+            checked: Boolean(item.checked),
+            category: item.category || 'other',
+          })),
+          createdAt: new Date().toISOString(),
+        });
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to load grocery list');
@@ -51,9 +73,15 @@ export default function GroceryListScreen() {
     );
 
     try {
-      await updateDoc(doc(db, 'groceryLists', groceryList.id), {
-        items: updatedItems,
-      });
+      await updateGroceryList(groceryList.id, {
+        items: updatedItems.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          category: item.category,
+          checked: item.checked,
+        })),
+      } as any);
       setGroceryList({ ...groceryList, items: updatedItems });
     } catch (error) {
       Alert.alert('Error', 'Failed to update item');

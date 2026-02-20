@@ -1,18 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db, functions } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { MealPlan } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { httpsCallable } from 'firebase/functions';
+import { getMealPlans } from '../../lib/db';
+import { generateMealPlan } from '../../utils/api';
+
+interface MealPlanMeal {
+  date: string;
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack' | string;
+  recipe_title?: string;
+}
+
+interface LocalMealPlan {
+  id: string;
+  start_date: string;
+  meals: MealPlanMeal[];
+}
 
 export default function MealPlansScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
+  const [mealPlans, setMealPlans] = useState<LocalMealPlan[]>([]);
 
   useEffect(() => {
     loadMealPlans();
@@ -22,13 +32,8 @@ export default function MealPlansScreen() {
     if (!user) return;
 
     try {
-      const q = query(collection(db, 'mealPlans'), where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
-      const plans: MealPlan[] = [];
-      querySnapshot.forEach((doc) => {
-        plans.push({ id: doc.id, ...doc.data() } as MealPlan);
-      });
-      setMealPlans(plans);
+      const plans = await getMealPlans(user.id);
+      setMealPlans(plans as LocalMealPlan[]);
     } catch (error) {
       Alert.alert('Error', 'Failed to load meal plans');
     } finally {
@@ -41,7 +46,6 @@ export default function MealPlansScreen() {
 
     try {
       setGenerating(true);
-      const generateMealPlan = httpsCallable(functions, 'generateMealPlan');
       await generateMealPlan({ days: 7 });
       Alert.alert('Success', 'Meal plan generated successfully!');
       loadMealPlans();
@@ -66,7 +70,7 @@ export default function MealPlansScreen() {
             <View style={styles.dateContainer}>
               <Ionicons name="calendar" size={20} color="#ea580c" />
               <Text style={styles.date}>
-                {new Date(item.date).toLocaleDateString('en-US', {
+                {new Date(item.start_date).toLocaleDateString('en-US', {
                   weekday: 'long',
                   month: 'short',
                   day: 'numeric',
@@ -74,22 +78,28 @@ export default function MealPlansScreen() {
               </Text>
             </View>
             <View style={styles.meals}>
-              {item.meals.breakfast && (
+              {item.meals?.find((meal) => meal.meal_type === 'breakfast') && (
                 <View style={styles.mealItem}>
                   <Text style={styles.mealType}>🌅 Breakfast</Text>
-                  <Text style={styles.mealTitle}>{item.meals.breakfast.title}</Text>
+                  <Text style={styles.mealTitle}>
+                    {item.meals.find((meal) => meal.meal_type === 'breakfast')?.recipe_title || 'Planned meal'}
+                  </Text>
                 </View>
               )}
-              {item.meals.lunch && (
+              {item.meals?.find((meal) => meal.meal_type === 'lunch') && (
                 <View style={styles.mealItem}>
                   <Text style={styles.mealType}>☀️ Lunch</Text>
-                  <Text style={styles.mealTitle}>{item.meals.lunch.title}</Text>
+                  <Text style={styles.mealTitle}>
+                    {item.meals.find((meal) => meal.meal_type === 'lunch')?.recipe_title || 'Planned meal'}
+                  </Text>
                 </View>
               )}
-              {item.meals.dinner && (
+              {item.meals?.find((meal) => meal.meal_type === 'dinner') && (
                 <View style={styles.mealItem}>
                   <Text style={styles.mealType}>🌙 Dinner</Text>
-                  <Text style={styles.mealTitle}>{item.meals.dinner.title}</Text>
+                  <Text style={styles.mealTitle}>
+                    {item.meals.find((meal) => meal.meal_type === 'dinner')?.recipe_title || 'Planned meal'}
+                  </Text>
                 </View>
               )}
             </View>
