@@ -25,7 +25,7 @@ export default function PricingPage() {
     if (!user) {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('stripeSuccess') === 'true') {
-        router.push('/sign-in?redirect=/dashboard?stripeSuccess=true');
+        router.push('/sign-in?redirect=' + encodeURIComponent('/dashboard?stripeSuccess=true'));
       }
     }
   }, [user, router]);
@@ -51,7 +51,7 @@ export default function PricingPage() {
     const table = document.createElement('stripe-pricing-table');
     table.setAttribute('pricing-table-id', pricingTableId);
     table.setAttribute('publishable-key', publishableKey);
-    
+
     // Add a safety check for the UID
     if (user.uid) {
       table.setAttribute('client-reference-id', user.uid);

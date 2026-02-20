@@ -2,7 +2,8 @@
 
 import { useAuth, isProTier, hasActiveSubscription } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { hasRecentCheckoutIntent, clearCheckoutIntent } from '@/lib/checkout';
 
 export default function ProtectedRoute({
   children,
@@ -16,15 +17,31 @@ export default function ProtectedRoute({
   const searchParams = useSearchParams();
   const isActive = hasActiveSubscription(userData);
   const hasPro = isProTier(userData?.subscriptionTier);
-  
+
   // Check if user is returning from successful Stripe checkout
   const isReturningFromStripe = searchParams.get('stripeSuccess') === 'true';
+
+  // Also check localStorage for checkout intent (fallback when Stripe redirect
+  // URL doesn't include ?stripeSuccess=true)
+  // Initialize synchronously to avoid race condition with redirect logic
+  const [hasCheckoutIntent, setHasCheckoutIntent] = useState(() => hasRecentCheckoutIntent());
+
+  // Grace period: allow access if user just came from Stripe checkout
+  const inGracePeriod = isReturningFromStripe || hasCheckoutIntent;
+
+  // Clear checkout intent once subscription activates (webhook processed)
+  useEffect(() => {
+    if (isActive && hasCheckoutIntent) {
+      clearCheckoutIntent();
+      setHasCheckoutIntent(false);
+    }
+  }, [isActive, hasCheckoutIntent]);
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/sign-in');
-      } else if (!isActive && !isReturningFromStripe) {
+      } else if (!isActive && !inGracePeriod) {
         // User hasn't completed Stripe onboarding — send to pricing
         // BUT allow access if they just successfully paid (grace period for webhook processing)
         router.push('/pricing');
@@ -32,7 +49,7 @@ export default function ProtectedRoute({
         router.push('/pricing');
       }
     }
-  }, [user, userData, loading, router, requirePro, hasPro, isActive, isReturningFromStripe]);
+  }, [user, userData, loading, router, requirePro, hasPro, isActive, inGracePeriod]);
 
   if (loading) {
     return (
@@ -42,7 +59,7 @@ export default function ProtectedRoute({
     );
   }
 
-  if (!user || (!isActive && !isReturningFromStripe) || (requirePro && !hasPro)) {
+  if (!user || (!isActive && !inGracePeriod) || (requirePro && !hasPro)) {
     return null;
   }
 

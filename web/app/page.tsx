@@ -1,14 +1,36 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import VideoHero from '@/components/VideoHero';
 import { useAuth, hasActiveSubscription } from '@/contexts/AuthContext';
+import { trackCheckoutIntentIfReturning, hasRecentCheckoutIntent } from '@/lib/checkout';
 
 export default function Home() {
-  const { user, userData } = useAuth();
+  const { user, userData, loading } = useAuth();
   const hasActiveSub = hasActiveSubscription(userData);
+
+  // Detect if user is returning from Stripe Checkout and set the checkout intent flag
+  // This is more reliable than setting it on the pricing page before they actually checkout
+  useEffect(() => {
+    trackCheckoutIntentIfReturning();
+  }, []);
+
+  // Redirect to dashboard if user just completed Stripe checkout
+  // The Stripe Pricing Table redirects to savr.cam/ (root) after checkout,
+  // so we detect checkout intent via localStorage and send them to the dashboard
+  useEffect(() => {
+    if (loading || !user) return;
+
+    // If user already has an active subscription, let them browse the home page normally
+    if (hasActiveSub) return;
+
+    if (hasRecentCheckoutIntent()) {
+      window.location.href = '/dashboard?stripeSuccess=true';
+    }
+  }, [loading, user, hasActiveSub]);
 
   return (
     <div className="min-h-screen" style={{ background: '#000000' }}>
