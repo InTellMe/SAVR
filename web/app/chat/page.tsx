@@ -4,9 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect, useRef } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
 import { getChatHistory } from '@/lib/db';
+import { callApi } from '@/lib/api';
 
 interface Message {
   id: string;
@@ -77,18 +76,17 @@ function ChatContent() {
     setError('');
 
     try {
-      const chat = httpsCallable(functions, 'chat');
       const conversationHistory = [...messages.slice(-10), userMessage].map((m) => ({
         role: m.role,
         content: m.content,
       }));
 
-      const result = await chat({
-        message: userMessage.content,
-        conversationHistory,
+      const result = await callApi('/ai/chat', {
+        messages: conversationHistory,
+        context: {},
       });
 
-      const data = result.data as { success: boolean; response: string };
+      const data = result as { success: boolean; message: string };
       if (!data.success) {
         throw new Error('Chat failed');
       }
@@ -96,7 +94,7 @@ function ChatContent() {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response,
+        content: data.message,
         timestamp: new Date().toISOString(),
       };
 

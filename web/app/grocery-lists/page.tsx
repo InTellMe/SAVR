@@ -4,10 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { getGroceryLists, getRecipes, deleteGroceryList, updateGroceryList } from '@/lib/db';
+import { callApi } from '@/lib/api';
 
 interface GroceryItem {
   name: string;
@@ -105,12 +104,11 @@ function GroceryListsContent() {
     setError('');
 
     try {
-      const createGroceryList = httpsCallable(functions, 'createGroceryList');
-      const result = await createGroceryList({
+      const result = await callApi('/ai/create-grocery-list', {
         recipeIds: selectedRecipeIds,
       });
 
-      const data = result.data as {
+      const data = result as {
         success: boolean;
         listId: string;
         items: GroceryItem[];

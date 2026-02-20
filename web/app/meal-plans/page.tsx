@@ -4,10 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { getMealPlans, getInventory, deleteMealPlan } from '@/lib/db';
+import { callApi } from '@/lib/api';
 
 interface NutritionalInfo {
   calories: number;
@@ -106,8 +105,7 @@ function MealPlansContent() {
       const inventoryItems = await getInventory(user.uid);
       const ingredients = inventoryItems.map(item => item.name);
 
-      const createMealPlan = httpsCallable(functions, 'createMealPlan');
-      const result = await createMealPlan({
+      const result = await callApi('/ai/create-meal-plan', {
         days: formData.days,
         ingredients,
         preferences: {
@@ -117,7 +115,7 @@ function MealPlansContent() {
         },
       });
 
-      const data = result.data as {
+      const data = result as {
         success: boolean;
         mealPlanId: string;
         mealPlan: Omit<MealPlan, 'id'>;

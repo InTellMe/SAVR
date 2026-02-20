@@ -4,9 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
 import Script from 'next/script';
+import { callApi } from '@/lib/api';
 
 export default function PricingPage() {
   const { user, userData } = useAuth();
@@ -76,12 +75,9 @@ export default function PricingPage() {
     setError('');
 
     try {
-      const createStripePortal = httpsCallable(functions, 'createStripePortal');
-      const result = await createStripePortal({
-        returnUrl: `${window.location.origin}/settings`,
-      });
+      const result = await callApi('/stripe/portal', {});
 
-      const data = result.data as { success: boolean; url: string };
+      const data = result as { success: boolean; url: string };
       if (!data.success) {
         throw new Error('Portal creation failed');
       }

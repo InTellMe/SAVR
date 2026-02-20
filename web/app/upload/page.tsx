@@ -5,13 +5,13 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import ImageUpload from '@/components/ImageUpload';
 import { useAuth } from '@/contexts/AuthContext';
-import { functions, db } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { getInventory, addInventoryItem } from '@/lib/db';
 import { uploadImage, getPublicUrl } from '@/lib/storage';
+import { callApi } from '@/lib/api';
 
 interface ExtractedIngredient {
   name: string;
@@ -86,9 +86,8 @@ function UploadContent() {
 
       if (scanMode === 'receipt') {
         // Receipt scanning mode
-        const scanReceipt = httpsCallable(functions, 'scanReceipt');
-        const result = await scanReceipt({ imageUrl: url });
-        const data = result.data as {
+        const result = await callApi('/ai/scan-receipt', { imageUrl: url });
+        const data = result as {
           success: boolean;
           items: Array<{ name: string; quantity: number; unit: string; price?: number }>;
         };
@@ -109,9 +108,8 @@ function UploadContent() {
         setIngredients(mapped);
       } else {
         // Standard inventory scanning
-        const analyzeImage = httpsCallable(functions, 'analyzeImage');
-        const result = await analyzeImage({ imageUrl: url });
-        const data = result.data as { success: boolean; ingredients: Array<{ name: string; quantity: number; unit: string; confidence: number }> };
+        const result = await callApi('/ai/analyze-image', { imageUrl: url });
+        const data = result as { success: boolean; ingredients: Array<{ name: string; quantity: number; unit: string; confidence: number }> };
 
         if (!data.success || !data.ingredients) {
           throw new Error('Image analysis failed');
@@ -148,9 +146,8 @@ function UploadContent() {
     if (!user || creatingTransfer) return;
     setCreatingTransfer(true);
     try {
-      const createTransferSession = httpsCallable(functions, 'createTransferSession');
-      const result = await createTransferSession({});
-      const data = result.data as { success: boolean; sessionId: string };
+      const result = await callApi('/transfer/create-session', {});
+      const data = result as { success: boolean; sessionId: string };
 
       if (data.success) {
         setTransferSessionId(data.sessionId);
@@ -189,9 +186,8 @@ function UploadContent() {
     setError('');
     setImageUrl(url);
     try {
-      const analyzeImage = httpsCallable(functions, 'analyzeImage');
-      const result = await analyzeImage({ imageUrl: url });
-      const data = result.data as { success: boolean; ingredients: Array<{ name: string; quantity: number; unit: string; confidence: number }> };
+      const result = await callApi('/ai/analyze-image', { imageUrl: url });
+      const data = result as { success: boolean; ingredients: Array<{ name: string; quantity: number; unit: string; confidence: number }> };
       if (data.success && data.ingredients) {
         const mapped: ExtractedIngredient[] = data.ingredients.map(ing => ({
           ...ing,

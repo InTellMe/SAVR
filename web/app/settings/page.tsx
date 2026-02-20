@@ -4,10 +4,9 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useAuth, isProTier } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { getDataConsent, upsertDataConsent } from '@/lib/db';
+import { callApi } from '@/lib/api';
 
 export default function SettingsPage() {
   return (
@@ -78,12 +77,9 @@ function SettingsContent() {
     setError('');
 
     try {
-      const createStripePortal = httpsCallable(functions, 'createStripePortal');
-      const result = await createStripePortal({
-        returnUrl: `${window.location.origin}/settings`,
-      });
+      const result = await callApi('/stripe/portal', {});
 
-      const data = result.data as { success: boolean; url: string };
+      const data = result as { success: boolean; url: string };
       if (!data.success) {
         throw new Error('Portal creation failed');
       }

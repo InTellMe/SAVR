@@ -4,11 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
 import { useParams, useRouter } from 'next/navigation';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { getRecipe, getInventory } from '@/lib/db';
+import { callApi } from '@/lib/api';
 
 interface NutritionalInfo {
   calories: number;
@@ -217,16 +216,14 @@ export default function CookContent() {
     setChatLoading(true);
 
     try {
-      const chat = httpsCallable(functions, 'chat');
       const conversationHistory = [...chatMessages.slice(-10), userMsg].map(m => ({
         role: m.role,
         content: m.content,
       }));
 
-      const result = await chat({
-        message: userMsg.content,
-        conversationHistory,
-        contextData: {
+      const result = await callApi('/ai/chat', {
+        messages: conversationHistory,
+        context: {
           currentRecipe: {
             title: recipe.title,
             description: recipe.description,
@@ -238,12 +235,12 @@ export default function CookContent() {
         },
       });
 
-      const data = result.data as { success: boolean; response: string };
+      const data = result as { success: boolean; message: string };
       if (data.success) {
         setChatMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: data.response,
+          content: data.message,
         }]);
       }
     } catch (err) {
@@ -294,8 +291,7 @@ export default function CookContent() {
         }
       }
       if (deductions.length > 0) {
-        const deductInventory = httpsCallable(functions, 'deductInventory');
-        await deductInventory({ recipeId: recipe.id, deductions });
+        await callApi('/inventory/deduct', { recipeId: recipe.id, deductions });
       }
       setShowDeduction(false);
       router.push('/recipes');
