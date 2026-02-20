@@ -1,0 +1,86 @@
+name: API Integration Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/app/api/**'
+      - 'web/lib/**'
+  push:
+    branches: [main]
+    paths:
+      - 'web/app/api/**'
+      - 'web/lib/**'
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    environment: Testing
+
+    services:
+      postgres:
+        image: supabase/postgres:15.1.0.117
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Setup Supabase CLI
+        run: npm install -g supabase
+
+      - name: Start Supabase local services
+        run: supabase start
+
+      - name: Run database migrations
+        run: supabase db reset --local
+
+      - name: Run API integration tests
+        run: npm run test:api
+        working-directory: web
+        env:
+          SUPABASE_URL: http://localhost:54321
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY_TEST }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET_TEST }}
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+      - name: Generate API test coverage report
+        run: npm run test:coverage
+        working-directory: web
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./web/coverage/lcov.info
+          flags: api-tests
+          name: api-coverage
+        continue-on-error: true
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop

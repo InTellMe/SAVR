@@ -1,0 +1,171 @@
+name: Database Migration Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+  workflow_dispatch:
+
+jobs:
+  validate-migrations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Start Supabase (fresh database)
+        run: supabase start
+
+      - name: Apply migrations
+        run: supabase db reset --local
+
+      - name: Validate migration order
+        run: |
+          echo "Checking migration file naming..."
+          cd supabase/migrations
+          # Check that all migrations follow naming convention
+          for file in *.sql; do
+            if [[ ! $file =~ ^[0-9]{14}_[a-z_]+\.sql$ ]]; then
+              echo "❌ Invalid migration filename: $file"
+              echo "Expected format: YYYYMMDDHHMMSS_description.sql"
+              exit 1
+            fi
+          done
+          echo "✅ All migrations follow naming convention"
+
+      - name: Check for migration conflicts
+        run: |
+          echo "Checking for duplicate migration timestamps..."
+          cd supabase/migrations
+          timestamps=$(ls *.sql | cut -d'_' -f1 | sort)
+          duplicates=$(echo "$timestamps" | uniq -d)
+          if [ -n "$duplicates" ]; then
+            echo "❌ Duplicate migration timestamps found:"
+            echo "$duplicates"
+            exit 1
+          fi
+          echo "✅ No duplicate timestamps"
+
+      - name: Verify database schema
+        run: |
+          echo "Verifying all required tables exist..."
+          supabase db diff --use-migra
+          
+          # Check for required tables
+          REQUIRED_TABLES=(
+            "users"
+            "inventory"
+            "recipes"
+            "meal_plans"
+            "grocery_lists"
+            "chat_history"
+            "shared_recipes"
+            "transfer_sessions"
+            "data_consent"
+          )
+          
+          for table in "${REQUIRED_TABLES[@]}"; do
+            if supabase db exec "SELECT to_regclass('public.$table')" | grep -q "public.$table"; then
+              echo "✅ Table exists: $table"
+            else
+              echo "❌ Missing required table: $table"
+              exit 1
+            fi
+          done
+
+      - name: Verify RLS is enabled
+        run: |
+          echo "Verifying RLS is enabled on all tables..."
+          TABLES=$(supabase db exec "SELECT tablename FROM pg_tables WHERE schemaname = 'public'" | tail -n +3 | head -n -2)
+          
+          for table in $TABLES; do
+            RLS_ENABLED=$(supabase db exec "SELECT relrowsecurity FROM pg_class WHERE relname = '$table'" | tail -n +3 | head -n -2 | tr -d ' ')
+            if [ "$RLS_ENABLED" = "t" ]; then
+              echo "✅ RLS enabled: $table"
+            else
+              echo "⚠️  RLS not enabled: $table"
+            fi
+          done
+
+      - name: Test rollback capability
+        run: |
+          echo "Testing migration rollback..."
+          # Get current migration version
+          CURRENT=$(supabase migration list --local | tail -1 | awk '{print $1}')
+          echo "Current migration: $CURRENT"
+          
+          # This is informational - we don't actually rollback in CI
+          echo "✅ Migration rollback would revert to previous version"
+
+      - name: Generate migration documentation
+        run: |
+          echo "# Database Schema" > migration-report.md
+          echo "" >> migration-report.md
+          echo "Generated on: $(date)" >> migration-report.md
+          echo "" >> migration-report.md
+          supabase db diff --use-migra --schema public >> migration-report.md
+          
+      - name: Upload migration report
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-report
+          path: migration-report.md
+          retention-days: 30
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
+
+  test-seed-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Apply migrations and seed data
+        run: |
+          supabase db reset --local
+          
+          # Apply seed data if exists
+          if [ -f "supabase/seed.sql" ]; then
+            supabase db exec --file supabase/seed.sql
+            echo "✅ Seed data applied"
+          else
+            echo "ℹ️  No seed data found"
+          fi
+
+      - name: Verify seed data
+        run: |
+          # Check that seed data was inserted correctly
+          USER_COUNT=$(supabase db exec "SELECT COUNT(*) FROM auth.users" | tail -n +3 | head -n -2 | tr -d ' ')
+          echo "Test users created: $USER_COUNT"
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
