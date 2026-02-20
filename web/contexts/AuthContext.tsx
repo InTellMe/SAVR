@@ -1,44 +1,36 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import {
-  User,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-  sendPasswordResetEmail,
-} from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 export type SubscriptionTierName = 'basic' | 'pro';
 
 interface UserData {
-  uid: string;
+  id: string;
   email: string | null;
-  displayName?: string | null;
-  subscriptionTier: SubscriptionTierName | 'free' | 'plus' | 'premium'; // legacy: free/plus/premium from Firestore
-  subscriptionStatus?: string;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  stripeEmail?: string;
-  trialEndsAt?: Date | { seconds: number; nanoseconds: number }; // Firestore Timestamp or Date
-  trialEndingNotified?: boolean;
-  currentPeriodEnd?: Date | { seconds: number; nanoseconds: number };
-  cancelAtPeriodEnd?: boolean;
-  lastPaymentStatus?: string;
-  lastPaymentDate?: Date | { seconds: number; nanoseconds: number };
-  paymentActionRequired?: boolean;
+  display_name?: string | null;
+  subscription_tier: SubscriptionTierName | 'free' | 'plus' | 'premium'; // legacy: free/plus/premium
+  subscription_status?: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  stripe_email?: string;
+  trial_ends_at?: string; // ISO date string
+  trial_ending_notified?: boolean;
+  current_period_end?: string; // ISO date string
+  cancel_at_period_end?: boolean;
+  last_payment_status?: string;
+  last_payment_date?: string; // ISO date string
+  payment_action_required?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export function isProTier(tier: UserData['subscriptionTier'] | undefined): boolean {
+export function isProTier(tier: UserData['subscription_tier'] | undefined): boolean {
   return tier === 'pro' || tier === 'plus' || tier === 'premium';
 }
 
-export function isPaidTier(tier: UserData['subscriptionTier'] | undefined): boolean {
+export function isPaidTier(tier: UserData['subscription_tier'] | undefined): boolean {
   // All tiers are now paid (basic and pro) — this checks if user has ANY tier set
   return tier === 'basic' || tier === 'pro' || tier === 'plus' || tier === 'premium' || tier === 'free';
 }
@@ -46,7 +38,7 @@ export function isPaidTier(tier: UserData['subscriptionTier'] | undefined): bool
 export function hasActiveSubscription(userData: UserData | null): boolean {
   if (!userData) return false;
   // User must have completed Stripe onboarding (status is 'active' or 'trialing')
-  const status = userData.subscriptionStatus;
+  const status = userData.subscription_status;
   return status === 'active' || status === 'trialing';
 }
 
@@ -73,124 +65,144 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let unsubscribeSnapshot: (() => void) | null = null;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-
-      // Clean up previous Firestore listener when user changes
-      if (unsubscribeSnapshot) {
-        unsubscribeSnapshot();
-        unsubscribeSnapshot = null;
-      }
-
-      if (firebaseUser) {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-
-        // Ensure the user document exists (first sign-up)
-        // STRICT CHECK: Only create if document doesn't exist
-        // Never overwrite existing subscription data to prevent race conditions with webhook
-        try {
-          const userDoc = await getDoc(userDocRef);
-          if (!userDoc.exists()) {
-            // New user - create with default data
-            const newUserData: UserData = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              subscriptionTier: 'basic',
-              subscriptionStatus: 'pending',
-            };
-            await setDoc(userDocRef, {
-              ...newUserData,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            });
-          }
-          // If user exists, do NOT update - let webhook handle subscription status
-        } catch (error) {
-          console.error('Failed to ensure user document exists:', error);
-        }
-
-        // Listen for real-time updates so webhook changes (subscription activation,
-        // upgrades, cancellations) are reflected immediately without a page refresh.
-        unsubscribeSnapshot = onSnapshot(
-          userDocRef,
-          (snapshot) => {
-            if (snapshot.exists()) {
-              const data = snapshot.data() as UserData;
-              setUserData(data);
-
-              // Clear checkout intent flag once subscription is confirmed active
-              // This means the Stripe webhook has processed and Firestore is updated
-              if (data.subscriptionStatus === 'active' || data.subscriptionStatus === 'trialing') {
-                try {
-                  localStorage.removeItem('savr_checkout_pending');
-                } catch {
-                  // non-critical
-                }
-              }
-            } else {
-              setUserData({
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName,
-                subscriptionTier: 'basic',
-                subscriptionStatus: 'pending',
-              });
-            }
-            setLoading(false);
-          },
-          (error) => {
-            console.error('Firestore snapshot error:', error);
-            setUserData({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              subscriptionTier: 'basic',
-              subscriptionStatus: 'pending',
-            });
-            setLoading(false);
-          }
-        );
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserData(session.user.id);
       } else {
-        setUserData(null);
         setLoading(false);
       }
     });
 
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserData(session.user.id);
+        } else {
+          setUserData(null);
+          setLoading(false);
+        }
+
+        // Clear checkout intent flag once subscription is confirmed active
+        if (event === 'SIGNED_IN' && userData?.subscription_status === 'active' || userData?.subscription_status === 'trialing') {
+          try {
+            localStorage.removeItem('savr_checkout_pending');
+          } catch {
+            // non-critical
+          }
+        }
+      }
+    );
+
+    // Set up realtime subscription for user data changes (webhook updates)
+    let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupRealtimeSubscription = (userId: string) => {
+      realtimeChannel = supabase
+        .channel(`user_${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `id=eq.${userId}`,
+          },
+          (payload) => {
+            setUserData(payload.new as UserData);
+            // Clear checkout intent flag once subscription is confirmed active
+            const newData = payload.new as UserData;
+            if (newData.subscription_status === 'active' || newData.subscription_status === 'trialing') {
+              try {
+                localStorage.removeItem('savr_checkout_pending');
+              } catch {
+                // non-critical
+              }
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    const fetchUserData = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user data:', error);
+          // User might not exist yet - this is okay for new sign-ups
+          // The trigger will create the user record
+          setUserData(null);
+        } else if (data) {
+          setUserData(data as UserData);
+          setupRealtimeSubscription(userId);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     return () => {
-      unsubscribeAuth();
-      if (unsubscribeSnapshot) {
-        unsubscribeSnapshot();
+      subscription.unsubscribe();
+      if (realtimeChannel) {
+        realtimeChannel.unsubscribe();
       }
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
   };
 
   const signUp = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) throw error;
   };
 
   const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.addScope('profile');
-    provider.addScope('email');
-    provider.setCustomParameters({
-      prompt: 'select_account'
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
     });
-    await signInWithPopup(auth, provider);
+    if (error) throw error;
   };
 
   const resetPassword = async (email: string) => {
-    await sendPasswordResetEmail(auth, email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    if (error) throw error;
   };
 
   const logout = async () => {
-    await signOut(auth);
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   const value = {
