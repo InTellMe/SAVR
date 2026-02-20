@@ -40,7 +40,7 @@ Missing GitHub Secrets for Stripe configuration:
 3. Copy the **Pricing table ID** (starts with `prctbl_`)
 
 **Step 3: Add GitHub Secrets**
-1. Go to: https://github.com/InTellMe/SAVR/settings/secrets/actions
+1. Go to: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
 2. Click on **"Production"** environment (not repository secrets)
 3. Add these two secrets:
    - Name: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, Value: (your publishable key)
@@ -52,7 +52,7 @@ git commit --allow-empty -m "Trigger deployment with Stripe config"
 git push origin main
 ```
 
-Or go to: https://github.com/InTellMe/SAVR/actions and click "Re-run all jobs"
+Or go to: https://github.com/GooseyPrime/SAVR/actions and click "Re-run all jobs"
 
 ## 🧪 Verification Steps
 
@@ -135,7 +135,7 @@ All sensitive keys remain on the server. The changes are **security-safe**.
 
 **Issue**: Pricing table still not showing after following all steps
 1. Check browser console for errors (F12 → Console tab)
-2. Check GitHub Actions logs: https://github.com/InTellMe/SAVR/actions
+2. Check GitHub Actions logs: https://github.com/GooseyPrime/SAVR/actions
 3. Verify both secrets are in **Production** environment (not repository)
 4. Make sure you triggered a redeploy after adding secrets
 5. Clear browser cache and try in incognito mode

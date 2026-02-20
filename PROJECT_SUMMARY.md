@@ -429,7 +429,7 @@ npm run ios          # Run on iOS
 
 ## 🤝 Contribution Guidelines
 
-This is a proprietary SaaS product by InTellMe. Internal team only.
+This is a proprietary SaaS product by GooseyPrime. Internal team only.
 
 ### Code Style
 
@@ -447,9 +447,9 @@ This is a proprietary SaaS product by InTellMe. Internal team only.
 
 ## 📞 Support & Contact
 
-- **Repository**: https://github.com/InTellMe/SAVR
+- **Repository**: https://github.com/GooseyPrime/SAVR
 - **Production URL**: https://savr.cam (pending deployment)
-- **Company**: InTellMe
+- **Company**: GooseyPrime
 - **Principles**: Integrity, Transparency, Independence, Progress
 
 ## 🙏 Acknowledgments
@@ -464,7 +464,7 @@ Built with:
 
 ## 📄 License
 
-Proprietary - © 2026 InTellMe. All rights reserved.
+Proprietary - © 2026 GooseyPrime. All rights reserved.
 
 ---
 

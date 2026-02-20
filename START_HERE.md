@@ -27,7 +27,7 @@
 | **Full Investigation** | [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md) |
 | **Visual Diagrams** | [DEPLOYMENT_FLOW.md](DEPLOYMENT_FLOW.md) |
 | **Executive Summary** | [INVESTIGATION_SUMMARY.md](INVESTIGATION_SUMMARY.md) |
-| **Add Secrets Now** | https://github.com/InTellMe/SAVR/settings/secrets/actions |
+| **Add Secrets Now** | https://github.com/GooseyPrime/SAVR/settings/secrets/actions |
 
 ---
 
@@ -94,7 +94,7 @@ GitHub Actions Deployment System
 ```
 
 ### Where to Add Secrets
-🔗 https://github.com/InTellMe/SAVR/settings/secrets/actions
+🔗 https://github.com/GooseyPrime/SAVR/settings/secrets/actions
 
 ---
 

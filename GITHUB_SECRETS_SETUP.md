@@ -7,7 +7,7 @@
 ## Prerequisites
 
 Before configuring secrets, ensure you have:
-- [ ] Admin access to the InTellMe/SAVR repository
+- [ ] Admin access to the GooseyPrime/SAVR repository
 - [ ] Access to Firebase Console for your project
 - [ ] Firebase CLI installed: `npm install -g firebase-tools`
 - [ ] Stripe Dashboard access (for Stripe keys)
@@ -22,13 +22,13 @@ Before configuring secrets, ensure you have:
 The workflow requires an environment named exactly `Production` (with capital P).
 
 ### For Firebase Deployment Secrets (Environment-scoped):
-1. Navigate to: https://github.com/InTellMe/SAVR/settings/environments (replace with your org)
+1. Navigate to: https://github.com/GooseyPrime/SAVR/settings/environments
 2. Or: Repository → Settings → Environments
 3. Create or select the `Production` environment (exact name, capital P)
 4. Click "Add secret" or "Environment secrets" to add secrets to this environment
 
 ### For Mobile Build Secrets (Repository-level):
-1. Navigate to: https://github.com/InTellMe/SAVR/settings/secrets/actions (replace with your org)
+1. Navigate to: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
 2. Or: Repository → Settings → Secrets and variables → Actions → Repository secrets
 
 ---
@@ -303,7 +303,7 @@ You should see:
 ## Step 9: Trigger a Deployment
 
 ### Option A: Re-run Failed Workflow
-1. Go to: https://github.com/InTellMe/SAVR/actions
+1. Go to: https://github.com/GooseyPrime/SAVR/actions
 2. Click on the most recent "Firebase Deploy" run
 3. Click "Re-run all jobs"
 
@@ -321,7 +321,7 @@ Make any small change to a file on main branch (or merge a PR), which will autom
 ## Step 10: Verify Deployment
 
 1. **Watch the workflow**:
-   - Go to: https://github.com/InTellMe/SAVR/actions
+   - Go to: https://github.com/GooseyPrime/SAVR/actions
    - Click on the running "Firebase Deploy" workflow
    - Verify it progresses through steps (not startup_failure anymore)
 

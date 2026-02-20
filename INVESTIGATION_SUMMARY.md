@@ -150,7 +150,7 @@ Jobs: 0 (none executed)
 ## Testing After Fix
 
 ### Step 1: Verify Workflow Succeeds
-1. Go to: https://github.com/InTellMe/SAVR/actions
+1. Go to: https://github.com/GooseyPrime/SAVR/actions
 2. Check latest "Firebase Deploy" workflow
 3. Should see: ✅ Green checkmark (not ❌ red X)
 4. Should see: Multiple jobs executed (not 0)

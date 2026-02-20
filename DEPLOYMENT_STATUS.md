@@ -93,7 +93,7 @@ These secrets are **required at build time** for the Next.js static export:
 ### Option 1: Configure GitHub Secrets (Required for Automated Deployment)
 
 1. **Go to Repository Settings**
-   - Navigate to: `https://github.com/InTellMe/SAVR/settings/secrets/actions`
+   - Navigate to: `https://github.com/GooseyPrime/SAVR/settings/secrets/actions`
    - Or: Repository → Settings → Secrets and variables → Actions
 
 2. **Add each required secret:**
@@ -162,7 +162,7 @@ If you need to deploy immediately while configuring secrets:
 After configuring secrets and triggering a deployment:
 
 1. **Check GitHub Actions tab:**
-   - Go to: `https://github.com/InTellMe/SAVR/actions`
+   - Go to: `https://github.com/GooseyPrime/SAVR/actions`
    - Look for "Firebase Deploy" workflow
    - Verify status changes from `startup_failure` to `in_progress` or `success`
 
@@ -237,7 +237,7 @@ All `NEXT_PUBLIC_*` secrets are embedded in the client-side bundle and **are not
 - **Troubleshooting Guide**: `DEPLOYMENT_TROUBLESHOOTING.md` in repository root
 - **GitHub Actions Workflow**: `.github/workflows/firebase-deploy.yml`
 - **Firebase Console**: https://console.firebase.google.com
-- **GitHub Actions**: https://github.com/InTellMe/SAVR/actions
+- **GitHub Actions**: https://github.com/GooseyPrime/SAVR/actions
 
 ---
 

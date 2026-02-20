@@ -473,7 +473,7 @@ firebase deploy --only functions:analyzeImage
 For deployment issues, contact:
 
 - Firebase Support: https://firebase.google.com/support
-- InTellMe Dev Team: internal
+- GooseyPrime Dev Team: internal
 
 ---
 

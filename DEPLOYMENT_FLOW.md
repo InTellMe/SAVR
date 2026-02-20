@@ -113,7 +113,7 @@ Step 1: Get Credentials
 └─── Set APP_URL → https://savr.cam
 
 Step 2: Add to GitHub
-└─── Navigate to: github.com/InTellMe/SAVR/settings/secrets/actions
+└─── Navigate to: github.com/GooseyPrime/SAVR/settings/secrets/actions
      └─── Add each secret (10 total)
 
 Step 3: Trigger Deployment
@@ -215,8 +215,8 @@ Feb 7, 2026
 
 ## Quick Links
 
-- **Add Secrets**: https://github.com/InTellMe/SAVR/settings/secrets/actions
-- **View Workflows**: https://github.com/InTellMe/SAVR/actions
+- **Add Secrets**: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
+- **View Workflows**: https://github.com/GooseyPrime/SAVR/actions
 - **Firebase Console**: https://console.firebase.google.com
 - **Stripe Dashboard**: https://dashboard.stripe.com
 

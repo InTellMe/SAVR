@@ -1,4 +1,4 @@
-# SAVR by InTellMe
+# SAVR by GooseyPrime
 
 SAVR is an AI-powered food management platform that helps you manage your pantry inventory, generate recipes, plan meals, and create grocery lists. Built as a Firebase-hosted React/Next.js web application focusing on a web-based MVP where users upload photos of their pantry and fridge to manage inventory.
 
@@ -98,7 +98,7 @@ Any breaking changes to these interfaces will break the build pipeline and must 
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/InTellMe/SAVR.git
+git clone https://github.com/GooseyPrime/SAVR.git
 cd SAVR
 ```
 
@@ -468,22 +468,22 @@ See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for detailed setup instru
 
 ## 🤝 Contributing
 
-This is a proprietary SaaS application by InTellMe. Internal team contributions only.
+This is a proprietary SaaS application by GooseyPrime. Internal team contributions only.
 
 ## 📄 License
 
-Proprietary - © 2026 InTellMe. All rights reserved.
+Proprietary - © 2026 GooseyPrime. All rights reserved.
 
 ## 🔗 Links
 
 - **Production**: https://savr.cam
-- **InTellMe**: https://intellmeai.com
+- **Repository**: https://github.com/GooseyPrime/SAVR
 - **Documentation**: See `/web/docs` and `/mobile/docs`
 
 ## 💬 Support
 
-For issues or questions, contact the InTellMe development team.
+For issues or questions, contact the GooseyPrime development team.
 
 ---
 
-Built with ❤️ by InTellMe - Integrity, Transparency, Independence, Progress
+Built with ❤️ by GooseyPrime

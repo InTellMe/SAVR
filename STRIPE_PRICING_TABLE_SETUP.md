@@ -106,7 +106,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 ### For GitHub Actions (Production)
 
-Update these GitHub Secrets at: https://github.com/InTellMe/SAVR/settings/secrets/actions
+Update these GitHub Secrets at: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
 
 **Add new secret**:
 - Name: `NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID`
