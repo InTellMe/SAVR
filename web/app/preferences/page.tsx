@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getUserProfile, updateUserProfile } from '@/lib/db';
 
 const CUISINE_OPTIONS = [
   'Italian', 'Mexican', 'Chinese', 'Japanese', 'Korean', 'Thai',
@@ -72,17 +71,14 @@ function PreferencesContent() {
     async function loadPreferences() {
       if (!user) return;
       try {
-        const prefDoc = await getDoc(doc(db, 'users', user.uid));
-        if (prefDoc.exists()) {
-          const data = prefDoc.data();
-          if (data.preferences) {
-            setPreferences({
-              cuisines: data.preferences.cuisines || [],
-              diets: data.preferences.diets || [],
-              restrictions: data.preferences.restrictions || [],
-              additionalNotes: data.preferences.additionalNotes || '',
-            });
-          }
+        const userProfile = await getUserProfile(user.uid);
+        if (userProfile?.preferences) {
+          setPreferences({
+            cuisines: userProfile.preferences.cuisines || [],
+            diets: userProfile.preferences.diets || [],
+            restrictions: userProfile.preferences.restrictions || [],
+            additionalNotes: userProfile.preferences.additionalNotes || '',
+          });
         }
       } catch (err) {
         console.error('Error loading preferences:', err);
@@ -99,11 +95,7 @@ function PreferencesContent() {
     setError('');
     setSaved(false);
     try {
-      await setDoc(
-        doc(db, 'users', user.uid),
-        { preferences, updatedAt: new Date() },
-        { merge: true }
-      );
+      await updateUserProfile(user.uid, { preferences });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {

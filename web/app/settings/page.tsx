@@ -5,9 +5,9 @@ import Navbar from '@/components/Navbar';
 import { useAuth, isProTier } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, functions } from '@/lib/firebase';
+import { functions } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
+import { getDataConsent, upsertDataConsent } from '@/lib/db';
 
 export default function SettingsPage() {
   return (
@@ -32,13 +32,12 @@ function SettingsContent() {
     async function loadConsent() {
       if (!user) return;
       try {
-        const snap = await getDoc(doc(db, 'dataConsent', user.uid));
-        if (snap.exists()) {
-          const data = snap.data();
+        const data = await getDataConsent(user.uid);
+        if (data) {
           setConsent({
-            imageTraining: data.imageTraining ?? false,
-            interactionAnalytics: data.interactionAnalytics ?? false,
-            consentDate: data.updatedAt?.toDate?.()?.toLocaleDateString() ?? data.updatedAt,
+            imageTraining: data.data_usage_for_training ?? false,
+            interactionAnalytics: data.analytics_tracking ?? false,
+            consentDate: new Date(data.updated_at).toLocaleDateString(),
           });
         }
       } catch (err) {
@@ -55,12 +54,12 @@ function SettingsContent() {
     const updated = { ...consent, [field]: value };
     setConsent(updated);
     try {
-      await setDoc(doc(db, 'dataConsent', user.uid), {
-        userId: user.uid,
-        imageTraining: updated.imageTraining,
-        interactionAnalytics: updated.interactionAnalytics,
-        updatedAt: new Date(),
-      }, { merge: true });
+      await upsertDataConsent(user.uid, {
+        marketing_emails: false, // Default value
+        data_usage_for_training: updated.imageTraining,
+        analytics_tracking: updated.interactionAnalytics,
+        consent_version: '1.0',
+      });
     } catch (err) {
       console.error('Failed to save consent:', err);
       setConsent({ ...consent, [field]: !value }); // revert on failure

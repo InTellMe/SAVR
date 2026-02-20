@@ -4,11 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '@/lib/firebase';
+import { functions } from '@/lib/firebase';
 import { useParams, useRouter } from 'next/navigation';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { getRecipe, getInventory } from '@/lib/db';
 
 interface NutritionalInfo {
   calories: number;
@@ -110,9 +110,25 @@ export default function CookContent() {
   async function loadRecipe() {
     if (!user || !recipeId) return;
     try {
-      const recipeDoc = await getDoc(doc(db, 'recipes', recipeId));
-      if (recipeDoc.exists()) {
-        setRecipe({ id: recipeDoc.id, ...recipeDoc.data() } as Recipe);
+      const recipeData = await getRecipe(recipeId);
+      if (recipeData) {
+        setRecipe({
+          id: recipeData.id,
+          userId: recipeData.user_id,
+          title: recipeData.title,
+          description: recipeData.description || '',
+          ingredients: recipeData.ingredients as Array<{ name: string; quantity: number; unit: string }>,
+          instructions: Array.isArray(recipeData.instructions)
+            ? recipeData.instructions.map((inst: any) => typeof inst === 'string' ? inst : inst.text)
+            : [],
+          prepTime: recipeData.prep_time_minutes || 0,
+          cookTime: recipeData.cook_time_minutes || 0,
+          servings: recipeData.servings || 1,
+          difficulty: recipeData.difficulty || 'medium',
+          cuisine: recipeData.cuisine,
+          dietaryTags: recipeData.dietary_tags,
+          nutrition: recipeData.nutritional_info as NutritionalInfo | undefined,
+        });
       }
     } catch (err) {
       console.error('Error loading recipe:', err);
@@ -247,10 +263,13 @@ export default function CookContent() {
     setShowDeduction(true);
     // Load inventory for deduction
     try {
-      const itemsCollection = collection(db, 'inventory', user.uid, 'items');
-      const q = query(itemsCollection, where('userId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      setInventory(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as InventoryItem)));
+      const items = await getInventory(user.uid);
+      setInventory(items.map(item => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+      })));
     } catch (err) {
       console.error('Error loading inventory:', err);
     }

@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '@/lib/firebase';
+import { functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { getMealPlans, getInventory, deleteMealPlan } from '@/lib/db';
 
 interface NutritionalInfo {
   calories: number;
@@ -71,14 +71,23 @@ function MealPlansContent() {
     if (!user) return;
 
     try {
-      const plansCollection = collection(db, 'mealPlans', user.uid, 'plans');
-      const q = query(plansCollection, where('userId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      const plans = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const plans = await getMealPlans(user.uid);
+      const mappedPlans = plans.map(plan => ({
+        id: plan.id,
+        name: plan.title,
+        startDate: plan.start_date,
+        endDate: plan.end_date,
+        meals: (plan.meals || []).map((meal: any) => ({
+          date: meal.date,
+          mealType: meal.meal_type,
+          recipeId: meal.recipe_id,
+          recipeName: meal.recipe_title || '',
+          nutrition: meal.nutrition,
+        })),
+        dailyNutritionSummary: [],
+        createdAt: plan.created_at,
       } as MealPlan));
-      setMealPlans(plans);
+      setMealPlans(mappedPlans);
     } catch (error) {
       console.error('Error loading meal plans:', error);
       setError('Failed to load meal plans');
@@ -94,10 +103,8 @@ function MealPlansContent() {
     setError('');
 
     try {
-      const inventoryCollection = collection(db, 'inventory', user.uid, 'items');
-      const inventoryQuery = query(inventoryCollection, where('userId', '==', user.uid));
-      const inventorySnap = await getDocs(inventoryQuery);
-      const ingredients = inventorySnap.docs.map(doc => doc.data().name as string);
+      const inventoryItems = await getInventory(user.uid);
+      const ingredients = inventoryItems.map(item => item.name);
 
       const createMealPlan = httpsCallable(functions, 'createMealPlan');
       const result = await createMealPlan({
@@ -139,7 +146,7 @@ function MealPlansContent() {
 
   async function handleDeletePlan(planId: string) {
     try {
-      await deleteDoc(doc(db, 'mealPlans', user!.uid, 'plans', planId));
+      await deleteMealPlan(planId);
       setMealPlans(mealPlans.filter(plan => plan.id !== planId));
     } catch (error) {
       console.error('Error deleting meal plan:', error);

@@ -6,9 +6,8 @@ import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { trackCheckoutIntentIfReturning } from '@/lib/checkout';
+import { getInventory, getRecipes, getMealPlans } from '@/lib/db';
 
 export default function DashboardPage() {
   return (
@@ -41,17 +40,16 @@ function DashboardContent() {
       if (!user) return;
 
       try {
-        // Query subcollections directly — matches Firestore structure and security rules
-        const [inventorySnap, recipeSnap, mealPlanSnap] = await Promise.all([
-          getDocs(collection(db, 'inventory', user.uid, 'items')),
-          getDocs(collection(db, 'recipes', user.uid, 'items')),
-          getDocs(collection(db, 'mealPlans', user.uid, 'plans')),
+        const [inventory, recipes, mealPlans] = await Promise.all([
+          getInventory(user.uid),
+          getRecipes(user.uid),
+          getMealPlans(user.uid),
         ]);
 
         setStats({
-          inventoryCount: inventorySnap.size,
-          recipeCount: recipeSnap.size,
-          mealPlanCount: mealPlanSnap.size,
+          inventoryCount: inventory.length,
+          recipeCount: recipes.length,
+          mealPlanCount: mealPlans.length,
         });
       } catch (error) {
         console.error('Error loading stats:', error);

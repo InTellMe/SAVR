@@ -4,10 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '@/lib/firebase';
+import { functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { getGroceryLists, getRecipes, deleteGroceryList, updateGroceryList } from '@/lib/db';
 
 interface GroceryItem {
   name: string;
@@ -56,14 +56,20 @@ function GroceryListsContent() {
     if (!user) return;
 
     try {
-      const listsCollection = collection(db, 'groceryLists', user.uid, 'lists');
-      const q = query(listsCollection, where('userId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      const groceryLists = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const groceryLists = await getGroceryLists(user.uid);
+      const mappedLists = groceryLists.map(list => ({
+        id: list.id,
+        name: list.title,
+        items: (list.items || []).map((item: any) => ({
+          name: item.name || '',
+          quantity: item.quantity || 0,
+          unit: item.unit || '',
+          category: item.category || '',
+          checked: item.checked || false,
+        })),
+        createdAt: list.created_at,
       } as GroceryList));
-      setLists(groceryLists);
+      setLists(mappedLists);
     } catch (error) {
       console.error('Error loading grocery lists:', error);
       setError('Failed to load grocery lists');
@@ -76,17 +82,12 @@ function GroceryListsContent() {
     if (!user) return;
 
     try {
-      const recipesCollection = collection(db, 'recipes', user.uid, 'items');
-      const q = query(recipesCollection, where('userId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      const recipeList = snapshot.docs.map(
-        (docSnap) =>
-          ({
-            id: docSnap.id,
-            title: (docSnap.data() as any).title as string,
-          }) as SimpleRecipe
-      );
-      setRecipes(recipeList);
+      const recipeList = await getRecipes(user.uid);
+      const simpleRecipes = recipeList.map(recipe => ({
+        id: recipe.id,
+        title: recipe.title,
+      } as SimpleRecipe));
+      setRecipes(simpleRecipes);
     } catch (err) {
       console.error('Error loading recipes for grocery lists:', err);
     }
@@ -135,7 +136,7 @@ function GroceryListsContent() {
 
   async function handleDeleteList(listId: string) {
     try {
-      await deleteDoc(doc(db, 'groceryLists', user!.uid, 'lists', listId));
+      await deleteGroceryList(listId);
       setLists(lists.filter(list => list.id !== listId));
     } catch (error) {
       console.error('Error deleting grocery list:', error);
@@ -151,8 +152,15 @@ function GroceryListsContent() {
       const updatedItems = [...list.items];
       updatedItems[itemIndex].checked = !updatedItems[itemIndex].checked;
 
-      await updateDoc(doc(db, 'groceryLists', user!.uid, 'lists', listId), {
-        items: updatedItems,
+      await updateGroceryList(listId, { 
+        items: updatedItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          category: item.category,
+          checked: item.checked,
+          notes: item.notes,
+        }))
       });
 
       setLists(lists.map(l => l.id === listId ? { ...l, items: updatedItems } : l));
