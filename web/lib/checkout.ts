@@ -16,7 +16,14 @@ export function hasRecentCheckoutIntent(): boolean {
   try {
     const pending = localStorage.getItem(CHECKOUT_FLAG_KEY);
     if (!pending) return false;
-    const elapsed = Date.now() - parseInt(pending, 10);
+    
+    const timestamp = parseInt(pending, 10);
+    const now = Date.now();
+    
+    // Reject future timestamps to prevent manipulation
+    if (timestamp > now) return false;
+    
+    const elapsed = now - timestamp;
     return elapsed >= 0 && elapsed < CHECKOUT_GRACE_PERIOD_MS;
   } catch {
     return false;
