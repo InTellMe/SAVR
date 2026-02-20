@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, FlatList, StyleSheet, Alert, TouchableOpacity, Text, RefreshControl } from 'react-native';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Recipe } from '../../types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,8 +7,8 @@ import { MainStackParamList } from '../../navigation/MainNavigator';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import RecipeCard from '../../components/RecipeCard';
 import { Ionicons } from '@expo/vector-icons';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebase';
+import { getRecipes, getInventory } from '../../lib/db';
+import { generateRecipes } from '../../utils/api';
 
 type RecipesScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'MainTabs'>;
 
@@ -33,14 +31,8 @@ export default function RecipesScreen({ navigation }: RecipesScreenProps) {
     if (!user) return;
 
     try {
-      const itemsRef = collection(db, 'recipes', user.uid, 'items');
-      const q = query(itemsRef, where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
-      const recipeList: Recipe[] = [];
-      querySnapshot.forEach((docSnap) => {
-        recipeList.push({ id: docSnap.id, ...docSnap.data() } as Recipe);
-      });
-      setRecipes(recipeList);
+      const recipeList = await getRecipes(user.id);
+      setRecipes(recipeList as any);
     } catch (error) {
       Alert.alert('Error', 'Failed to load recipes');
     } finally {

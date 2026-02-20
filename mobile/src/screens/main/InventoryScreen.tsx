@@ -10,22 +10,29 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { InventoryItem } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ImagePickerComponent from '../../components/ImagePickerComponent';
 import { uploadImage } from '../../utils/imageUtils';
+import { getInventory, addInventoryItem, deleteInventoryItem } from '../../lib/db';
+import { analyzeImage } from '../../utils/api';
+
+interface LocalInventoryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  image_url?: string;
+}
 
 export default function InventoryScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [items, setItems] = useState<LocalInventoryItem[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [imageUri, setImageUri] = useState<string>('');
   const [newItem, setNewItem] = useState({
@@ -43,12 +50,7 @@ export default function InventoryScreen() {
     if (!user) return;
 
     try {
-      const q = query(collection(db, 'inventory'), where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
-      const inventoryItems: InventoryItem[] = [];
-      querySnapshot.forEach((docSnap) => {
-        inventoryItems.push({ id: docSnap.id, ...docSnap.data() } as InventoryItem);
-      });
+      const inventoryItems = await getInventory(user.id);
       setItems(inventoryItems);
     } catch (error) {
       Alert.alert('Error', 'Failed to load inventory');
@@ -90,24 +92,20 @@ export default function InventoryScreen() {
       const uri = result.assets[0].uri;
 
       // Upload the image first
-      const imageUrl = await uploadImage(uri, user.uid, `scan_${Date.now()}`);
+      const imageUrl = await uploadImage(uri, user.id, `scan_${Date.now()}`);
 
-      // Call the AI analysis cloud function
-      const analyzeImage = httpsCallable(functions, 'analyzeImage');
-      const response = await analyzeImage({ imageUrl });
-      const data = response.data as { success: boolean; ingredients: Array<{ name: string; quantity: number; unit: string; confidence: number }> };
+      // Call the AI analysis API route
+      const data = await analyzeImage(imageUrl);
 
-      if (data.success && data.ingredients.length > 0) {
+      if (data.success && data.ingredients && data.ingredients.length > 0) {
         // Add each detected ingredient to inventory
-        const addPromises = data.ingredients.map((ingredient) =>
-          addDoc(collection(db, 'inventory'), {
-            userId: user.uid,
+        const addPromises = data.ingredients.map((ingredient: any) =>
+          addInventoryItem(user.id, {
             name: ingredient.name,
-            quantity: ingredient.quantity,
+            quantity: ingredient.quantity || 1,
             unit: ingredient.unit || 'units',
             category: 'scanned',
-            imageUrl,
-            addedAt: new Date(),
+            image_url: imageUrl,
           })
         );
         await Promise.all(addPromises);
@@ -139,17 +137,15 @@ export default function InventoryScreen() {
 
       if (imageUri) {
         const itemId = Date.now().toString();
-        imageUrl = await uploadImage(imageUri, user.uid, itemId);
+        imageUrl = await uploadImage(imageUri, user.id, itemId);
       }
 
-      await addDoc(collection(db, 'inventory'), {
-        userId: user.uid,
+      await addInventoryItem(user.id, {
         name: newItem.name,
         quantity: parseFloat(newItem.quantity),
         unit: newItem.unit || 'units',
         category: newItem.category || 'other',
-        imageUrl,
-        addedAt: new Date(),
+        image_url: imageUrl,
       });
 
       setModalVisible(false);
@@ -174,7 +170,7 @@ export default function InventoryScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteDoc(doc(db, 'inventory', itemId));
+              await deleteInventoryItem(itemId);
               loadInventory();
             } catch (error) {
               Alert.alert('Error', 'Failed to delete item');
