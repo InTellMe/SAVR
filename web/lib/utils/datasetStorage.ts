@@ -52,7 +52,7 @@ export async function uploadImageFile(
 ): Promise<string> {
   const path = getImageStoragePath(uid, imageId);
   
-  const { data, error } = await getSupabase().storage
+  const { error } = await getSupabase().storage
     .from(LABELING_BUCKET)
     .upload(path, fileBuffer, {
       contentType,
