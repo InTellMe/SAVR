@@ -1,4 +1,4 @@
-# InTellMe Microservice Template
+# GooseyPrime Microservice Template
 
 Use this template to scaffold new microservice projects.
 
@@ -9,7 +9,7 @@ Use this template to scaffold new microservice projects.
 npx create-next-app@latest my-service --typescript --tailwind --app
 
 # Or clone this template
-gh repo create InTellMe/my-service --template InTellMe/microservice-template
+gh repo create GooseyPrime/my-service --template GooseyPrime/microservice-template
 ```
 
 ## Project Structure
@@ -403,4 +403,4 @@ railway up
 
 ---
 
-*Template maintained by the InTellMe development team.*
+*Template maintained by the GooseyPrime development team.*

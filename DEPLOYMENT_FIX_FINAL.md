@@ -212,7 +212,7 @@ If you encounter issues during migration:
 - Review: [DEPLOYMENT_TROUBLESHOOTING.md](DEPLOYMENT_TROUBLESHOOTING.md)
 - Check logs: `firebase functions:log`
 - Debug mode: `firebase deploy --debug`
-- Contact: InTellMe development team
+- Contact: GooseyPrime development team
 
 ---
 

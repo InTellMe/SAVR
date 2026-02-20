@@ -293,4 +293,4 @@ Proprietary - All rights reserved
 For issues or questions:
 
 - Email: support@SAVR.cam
-- GitHub Issues: [Create an issue](https://github.com/InTellMe/SAVR/issues)
+- GitHub Issues: [Create an issue](https://github.com/GooseyPrime/SAVR/issues)

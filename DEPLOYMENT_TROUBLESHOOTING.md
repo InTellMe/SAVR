@@ -331,4 +331,4 @@ Environment variables are not configured for Firebase Functions or the web appli
 If you encounter issues not covered here:
 1. Check Firebase logs: `firebase functions:log`
 2. Run with debug mode: `firebase deploy --debug`
-3. Contact the InTellMe development team
+3. Contact the GooseyPrime development team

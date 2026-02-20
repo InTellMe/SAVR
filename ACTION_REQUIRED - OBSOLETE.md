@@ -14,7 +14,7 @@
 
 ### You Need To Do This NOW:
 
-1. **Go here**: https://github.com/InTellMe/SAVR/settings/secrets/actions
+1. **Go here**: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
 
 2. **Add 10 secrets** (see list below)
 
@@ -91,7 +91,7 @@ firebase login:ci
 ### Trigger a Deployment:
 
 **Option 1**: Re-run the failed workflow
-- https://github.com/InTellMe/SAVR/actions
+- https://github.com/GooseyPrime/SAVR/actions
 - Click latest "Firebase Deploy" run → "Re-run all jobs"
 
 **Option 2**: Push an empty commit
@@ -101,7 +101,7 @@ git push origin main
 ```
 
 ### Verify Success:
-1. Watch workflow at: https://github.com/InTellMe/SAVR/actions
+1. Watch workflow at: https://github.com/GooseyPrime/SAVR/actions
 2. Should see green ✅ instead of red ❌
 3. Check your website - PR #46 features should appear
 4. Test: Navigate to `/faq` on your site
@@ -165,6 +165,6 @@ Since deployments are broken, these features are NOT live:
 
 **⏱️ TIME TO FIX**: ~5 minutes (if you have Firebase/Stripe access), +2 minutes for mobile secrets
 
-**🔗 START HERE**: https://github.com/InTellMe/SAVR/settings/secrets/actions
+**🔗 START HERE**: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
 
 **📖 DETAILED GUIDE**: See `GITHUB_SECRETS_SETUP.md` for complete setup instructions including mobile app secrets

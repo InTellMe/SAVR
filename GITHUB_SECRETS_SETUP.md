@@ -7,7 +7,7 @@
 ## Prerequisites
 
 Before configuring secrets, ensure you have:
-- [ ] Admin access to the InTellMe/SAVR repository
+- [ ] Admin access to the GooseyPrime/SAVR repository
 - [ ] Access to Firebase Console for your project
 - [ ] Firebase CLI installed: `npm install -g firebase-tools`
 - [ ] Stripe Dashboard access (for Stripe keys)
@@ -18,7 +18,17 @@ Before configuring secrets, ensure you have:
 
 ## Step 1: Access GitHub Secrets
 
-1. Navigate to: https://github.com/InTellMe/SAVR/settings/secrets/actions
+**Important**: This guide uses GitHub **Environments** for the Firebase deployment secrets.
+The workflow requires an environment named exactly `Production` (with capital P).
+
+### For Firebase Deployment Secrets (Environment-scoped):
+1. Navigate to: https://github.com/GooseyPrime/SAVR/settings/environments
+2. Or: Repository → Settings → Environments
+3. Create or select the `Production` environment (exact name, capital P)
+4. Click "Add secret" or "Environment secrets" to add secrets to this environment
+
+### For Mobile Build Secrets (Repository-level):
+1. Navigate to: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
 2. Or: Repository → Settings → Secrets and variables → Actions → Repository secrets
 
 ---
@@ -135,13 +145,28 @@ To automatically submit builds to Google Play Store:
 
 ## Step 7: Add All Secrets to GitHub
 
-For each secret below, in GitHub:
-1. Click "New repository secret"
-2. Enter the **Name** (exactly as shown, case-sensitive)
-3. Paste the **Value**
+**IMPORTANT: Firebase deployment secrets must be added to the `Production` Environment, NOT repository secrets!**
+
+### Adding Environment Secrets (for Firebase Deployment)
+
+For Firebase-related secrets (Steps 2-11 below):
+1. Go to: Repository → Settings → Environments → `Production`
+2. Click "Add secret" under "Environment secrets"
+3. Enter the **Name** (exactly as shown, case-sensitive)
+4. Paste the **Value**
+5. Click "Add secret"
+
+### Adding Repository Secrets (for Mobile Builds)
+
+For Mobile-related secrets (Steps 12-13 below):
+1. Go to: Repository → Settings → Secrets and variables → Actions → Repository secrets
+2. Click "New repository secret"
+3. Enter the **Name** and **Value**
 4. Click "Add secret"
 
-### 🔥 Firebase Deployment Secrets
+---
+
+### 🔥 Firebase Deployment Secrets (Add to Production Environment)
 
 #### Secret 1: FIREBASE_TOKEN (if using Method A from Step 2)
 - **Name**: `FIREBASE_TOKEN`
@@ -230,7 +255,7 @@ These Firebase config values are **public** and will be visible in browser JavaS
 - **Used by**: `firebase-deploy.yml` workflow
 - **Sensitive**: ❌ No - public config
 
-### 📱 Mobile Build & Submission Secrets
+### 📱 Mobile Build & Submission Secrets (Add to Repository Secrets)
 
 #### Secret 12: EXPO_TOKEN
 - **Name**: `EXPO_TOKEN`
@@ -248,10 +273,13 @@ These Firebase config values are **public** and will be visible in browser JavaS
 
 ## Step 8: Verify All Secrets Are Added
 
-After adding all secrets, you should see **13 secrets** listed in GitHub:
+After adding all secrets, verify they are correctly configured:
 
-### Firebase Deployment (11 secrets)
-- ✅ FIREBASE_TOKEN
+### In the Production Environment (11 Firebase secrets)
+Navigate to: Repository → Settings → Environments → Production → Environment secrets
+
+You should see:
+- ✅ FIREBASE_TOKEN (or FIREBASE_SERVICE_ACCOUNT_JSON)
 - ✅ FIREBASE_PROJECT_ID
 - ✅ NEXT_PUBLIC_FIREBASE_API_KEY
 - ✅ NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
@@ -263,7 +291,10 @@ After adding all secrets, you should see **13 secrets** listed in GitHub:
 - ✅ NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID
 - ✅ NEXT_PUBLIC_APP_URL
 
-### Mobile Build & Submission (2 additional secrets)
+### In Repository Secrets (2 Mobile secrets)
+Navigate to: Repository → Settings → Secrets and variables → Actions → Repository secrets
+
+You should see:
 - ✅ EXPO_TOKEN
 - ✅ GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
 
@@ -272,7 +303,7 @@ After adding all secrets, you should see **13 secrets** listed in GitHub:
 ## Step 9: Trigger a Deployment
 
 ### Option A: Re-run Failed Workflow
-1. Go to: https://github.com/InTellMe/SAVR/actions
+1. Go to: https://github.com/GooseyPrime/SAVR/actions
 2. Click on the most recent "Firebase Deploy" run
 3. Click "Re-run all jobs"
 
@@ -290,7 +321,7 @@ Make any small change to a file on main branch (or merge a PR), which will autom
 ## Step 10: Verify Deployment
 
 1. **Watch the workflow**:
-   - Go to: https://github.com/InTellMe/SAVR/actions
+   - Go to: https://github.com/GooseyPrime/SAVR/actions
    - Click on the running "Firebase Deploy" workflow
    - Verify it progresses through steps (not startup_failure anymore)
 
@@ -310,10 +341,12 @@ Make any small change to a file on main branch (or merge a PR), which will autom
 ## Troubleshooting
 
 ### Still Getting startup_failure?
+- **Verify Environment Name**: Ensure you added Firebase secrets to the `Production` Environment (capital P), NOT to repository secrets
 - Double-check all secret names are **exactly** as shown (case-sensitive)
 - Ensure no extra spaces in secret values
 - Verify you have admin access to the repository
 - For mobile builds, verify EXPO_TOKEN is valid (check at https://expo.dev)
+- Check that the workflow file has `environment: Production` in the deploy job
 
 ### Workflow starts but fails during build?
 - Good news: secrets are working!

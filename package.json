@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/InTellMe/SAVR.git"
+    "url": "https://github.com/GooseyPrime/SAVR.git"
   },
   "keywords": [
     "firebase",
@@ -19,6 +19,6 @@
     "ai",
     "meal-planning"
   ],
-  "author": "InTellMe",
+  "author": "GooseyPrime",
   "license": "MIT"
 }

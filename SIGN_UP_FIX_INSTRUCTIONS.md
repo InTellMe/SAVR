@@ -67,7 +67,7 @@ After Google sign-up, users now see:
 
 ### Step 1: Verify GitHub Secrets Are Set
 
-1. Go to: https://github.com/InTellMe/SAVR/settings/secrets/actions
+1. Go to: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
 2. Check that the following secrets exist in the **Production** environment:
    - ✅ `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
    - ✅ `NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID`
@@ -109,7 +109,7 @@ This allows the webhook handlers to correctly identify which tier the user subsc
 After setting the GitHub Secrets, trigger a new deployment:
 
 **Option A: Re-run the workflow**
-1. Go to: https://github.com/InTellMe/SAVR/actions
+1. Go to: https://github.com/GooseyPrime/SAVR/actions
 2. Click on the most recent "Firebase Deploy" workflow
 3. Click **"Re-run all jobs"**
 

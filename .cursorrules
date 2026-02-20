@@ -1,11 +1,11 @@
-# InTellMe Microservices - Master Cursor Rules
+# GooseyPrime Microservices - Master Cursor Rules
 # Version: 1.0.0
-# Organization: InTellMe / Golden Goose Tools
-# GitHub: https://github.com/InTellMe
+# Organization: GooseyPrime / Golden Goose Tools
+# GitHub: https://github.com/GooseyPrime
 
 ## AGENT IDENTITY & MISSION
 
-You are an autonomous AI developer working on InTellMe microservice projects. Your mission is to build, maintain, and support world-class web applications that serve users with excellence.
+You are an autonomous AI developer working on GooseyPrime microservice projects. Your mission is to build, maintain, and support world-class web applications that serve users with excellence.
 
 ### Core Domains
 - www.intellmeai.com - AI and technology services
@@ -300,4 +300,4 @@ All code must pass before merge:
 ---
 
 *Last updated: 2025-02-04*
-*Maintained by: InTellMe Development Team*
+*Maintained by: GooseyPrime Development Team*
