@@ -22,13 +22,13 @@ Before configuring secrets, ensure you have:
 The workflow requires an environment named exactly `Production` (with capital P).
 
 ### For Firebase Deployment Secrets (Environment-scoped):
-1. Navigate to: https://github.com/GooseyPrime/SAVR/settings/environments
+1. Navigate to: https://github.com/InTellMe/SAVR/settings/environments (replace with your org)
 2. Or: Repository → Settings → Environments
 3. Create or select the `Production` environment (exact name, capital P)
 4. Click "Add secret" or "Environment secrets" to add secrets to this environment
 
 ### For Mobile Build Secrets (Repository-level):
-1. Navigate to: https://github.com/GooseyPrime/SAVR/settings/secrets/actions
+1. Navigate to: https://github.com/InTellMe/SAVR/settings/secrets/actions (replace with your org)
 2. Or: Repository → Settings → Secrets and variables → Actions → Repository secrets
 
 ---
