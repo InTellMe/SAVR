@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, FlatList, StyleSheet, Alert, TouchableOpacity, Text, RefreshControl } from 'react-native';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Recipe } from '../../types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,13 +7,40 @@ import { MainStackParamList } from '../../navigation/MainNavigator';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import RecipeCard from '../../components/RecipeCard';
 import { Ionicons } from '@expo/vector-icons';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebase';
+import { getRecipes, getInventory } from '../../lib/db';
+import { generateRecipes } from '../../utils/api';
 
 type RecipesScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'MainTabs'>;
 
 interface RecipesScreenProps {
   navigation: RecipesScreenNavigationProp;
+}
+
+function mapDbRecipeToMobile(recipe: any): Recipe {
+  const normalizedInstructions = Array.isArray(recipe.instructions)
+    ? recipe.instructions.map((instruction: any) =>
+        typeof instruction === 'string'
+          ? instruction
+          : instruction?.text || String(instruction ?? '')
+      )
+    : [];
+
+  return {
+    id: recipe.id,
+    title: recipe.title || 'Untitled Recipe',
+    description: recipe.description || '',
+    ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+    instructions: normalizedInstructions,
+    prepTime: recipe.prep_time_minutes ?? recipe.prep_time,
+    cookTime: recipe.cook_time_minutes ?? recipe.cook_time ?? 0,
+    servings: recipe.servings ?? 1,
+    difficulty: recipe.difficulty,
+    cuisine: recipe.cuisine,
+    dietaryTags: recipe.dietary_tags,
+    imageUrl: recipe.image_url,
+    createdAt: recipe.created_at,
+    recipeType: 'human',
+  };
 }
 
 export default function RecipesScreen({ navigation }: RecipesScreenProps) {
@@ -33,14 +58,8 @@ export default function RecipesScreen({ navigation }: RecipesScreenProps) {
     if (!user) return;
 
     try {
-      const itemsRef = collection(db, 'recipes', user.uid, 'items');
-      const q = query(itemsRef, where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
-      const recipeList: Recipe[] = [];
-      querySnapshot.forEach((docSnap) => {
-        recipeList.push({ id: docSnap.id, ...docSnap.data() } as Recipe);
-      });
-      setRecipes(recipeList);
+      const recipeList = await getRecipes(user.id);
+      setRecipes(recipeList.map(mapDbRecipeToMobile));
     } catch (error) {
       Alert.alert('Error', 'Failed to load recipes');
     } finally {
@@ -59,19 +78,16 @@ export default function RecipesScreen({ navigation }: RecipesScreenProps) {
 
     try {
       setGenerating(true);
-      const invRef = collection(db, 'inventory', user.uid, 'items');
-      const invSnap = await getDocs(query(invRef, where('userId', '==', user.uid)));
-      const ingredients = invSnap.docs.map((d) => d.data().name as string).filter(Boolean);
+      const inventoryItems = await getInventory(user.id);
+      const ingredients = inventoryItems.map((item) => item.name).filter(Boolean);
       if (ingredients.length === 0) {
         Alert.alert('No ingredients', 'Add items to your pantry first.');
         setGenerating(false);
         return;
       }
-      const createRecipe = httpsCallable(functions, 'createRecipe');
-      await createRecipe({
+      await generateRecipes({
         ingredients,
-        recipeType: 'human',
-        preferences: { difficulty: 'medium' },
+        preferences: { difficulty: 'medium' }
       });
       Alert.alert('Success', 'Recipe generated!');
       loadRecipes();

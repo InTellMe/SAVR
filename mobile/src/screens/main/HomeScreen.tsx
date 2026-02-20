@@ -10,10 +10,9 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainStackParamList } from '../../navigation/MainNavigator';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { getInventory, getRecipes, getMealPlans } from '../../lib/db';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'MainTabs'>;
 
@@ -35,20 +34,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     if (!user) return;
 
     try {
-      const inventorySnap = await getDocs(
-        query(collection(db, 'inventory'), where('userId', '==', user.uid))
-      );
-      const recipesSnap = await getDocs(
-        query(collection(db, 'recipes'), where('userId', '==', user.uid))
-      );
-      const mealPlansSnap = await getDocs(
-        query(collection(db, 'mealPlans'), where('userId', '==', user.uid))
-      );
+      const [inventory, recipes, mealPlans] = await Promise.all([
+        getInventory(user.id),
+        getRecipes(user.id),
+        getMealPlans(user.id),
+      ]);
 
       setStats({
-        inventoryCount: inventorySnap.size,
-        recipesCount: recipesSnap.size,
-        mealPlansCount: mealPlansSnap.size,
+        inventoryCount: inventory.length,
+        recipesCount: recipes.length,
+        mealPlansCount: mealPlans.length,
       });
     } catch (error) {
       console.error('Error loading stats:', error);

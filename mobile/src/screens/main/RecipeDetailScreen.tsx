@@ -1,18 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 import { Recipe } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { MainStackParamList } from '../../navigation/MainNavigator';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { Ionicons } from '@expo/vector-icons';
+import { getRecipe } from '../../lib/db';
 
 type RecipeDetailScreenRouteProp = RouteProp<MainStackParamList, 'RecipeDetail'>;
 
 interface RecipeDetailScreenProps {
   route: RecipeDetailScreenRouteProp;
+}
+
+function mapDbRecipeToMobile(recipe: any): Recipe {
+  const normalizedInstructions = Array.isArray(recipe.instructions)
+    ? recipe.instructions.map((instruction: any) =>
+        typeof instruction === 'string'
+          ? instruction
+          : instruction?.text || String(instruction ?? '')
+      )
+    : [];
+
+  return {
+    id: recipe.id,
+    title: recipe.title || 'Untitled Recipe',
+    description: recipe.description || '',
+    ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+    instructions: normalizedInstructions,
+    prepTime: recipe.prep_time_minutes ?? recipe.prep_time,
+    cookTime: recipe.cook_time_minutes ?? recipe.cook_time ?? 0,
+    servings: recipe.servings ?? 1,
+    difficulty: recipe.difficulty,
+    cuisine: recipe.cuisine,
+    dietaryTags: recipe.dietary_tags,
+    imageUrl: recipe.image_url,
+    createdAt: recipe.created_at,
+    recipeType: 'human',
+  };
 }
 
 export default function RecipeDetailScreen({ route }: RecipeDetailScreenProps) {
@@ -23,15 +49,14 @@ export default function RecipeDetailScreen({ route }: RecipeDetailScreenProps) {
 
   useEffect(() => {
     loadRecipe();
-  }, [recipeId, user?.uid]);
+  }, [recipeId, user?.id]);
 
   const loadRecipe = async () => {
     if (!user) return;
     try {
-      const recipeRef = doc(db, 'recipes', user.uid, 'items', recipeId);
-      const recipeDoc = await getDoc(recipeRef);
-      if (recipeDoc.exists()) {
-        setRecipe({ id: recipeDoc.id, ...recipeDoc.data() } as Recipe);
+      const dbRecipe = await getRecipe(recipeId);
+      if (dbRecipe) {
+        setRecipe(mapDbRecipeToMobile(dbRecipe));
       }
     } catch (error) {
       console.error('Error loading recipe:', error);
