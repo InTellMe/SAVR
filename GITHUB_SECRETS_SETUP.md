@@ -8,8 +8,8 @@
 
 Before configuring secrets, ensure you have:
 - [ ] Admin access to the GooseyPrime/SAVR repository
-- [ ] Access to Firebase Console for your project
-- [ ] Firebase CLI installed: `npm install -g firebase-tools`
+- [ ] Access to Vercel account and project
+- [ ] Access to Supabase Dashboard for your project
 - [ ] Stripe Dashboard access (for Stripe keys)
 - [ ] Expo account (for mobile builds): https://expo.dev
 - [ ] Google Play Console access (for Android app submission)
@@ -18,10 +18,10 @@ Before configuring secrets, ensure you have:
 
 ## Step 1: Access GitHub Secrets
 
-**Important**: This guide uses GitHub **Environments** for the Firebase deployment secrets.
+**Important**: This guide uses GitHub **Environments** for deployment secrets.
 The workflow requires an environment named exactly `Production` (with capital P).
 
-### For Firebase Deployment Secrets (Environment-scoped):
+### For Deployment Secrets (Environment-scoped):
 1. Navigate to: https://github.com/GooseyPrime/SAVR/settings/environments
 2. Or: Repository → Settings → Environments
 3. Create or select the `Production` environment (exact name, capital P)
@@ -33,76 +33,34 @@ The workflow requires an environment named exactly `Production` (with capital P)
 
 ---
 
-## Step 2: Choose Firebase Authentication Method
+## Step 2: Get Vercel Configuration
 
-The Firebase Deploy workflow supports two authentication methods. **Choose ONE**:
+### Vercel Token
+1. Go to https://vercel.com/account/tokens
+2. Create a new token with full access
+3. Copy the token - you'll need it as `VERCEL_TOKEN`
 
-### Method A: Token-Based Authentication (Recommended for Quick Setup)
+### Vercel Organization and Project IDs
+1. Go to your Vercel project settings → General
+2. Copy the **Organization ID** - you'll need it as `VERCEL_ORG_ID`
+3. Copy the **Project ID** - you'll need it as `VERCEL_PROJECT_ID`
 
-The `FIREBASE_TOKEN` provides quick authentication for CI/CD deployments.
-
-```bash
-# Install Firebase CLI if not already installed
-npm install -g firebase-tools
-
-# Login and generate CI token
-firebase login:ci
-```
-
-**Output will look like:**
-```
-Visit this URL on this device to log in:
-https://accounts.google.com/o/oauth2/auth...
-
-Waiting for authentication...
-
-✔  Success! Use this token to login on a CI server:
-
-1//0gABCDEFGHIJKLMNOPQRSTUVWXYZ...
-```
-
-**Copy the token** (the long string starting with `1//0g...`) for later use.
-
-### Method B: Service Account Authentication (Recommended for Production)
-
-Service account JSON provides more secure, granular authentication for production CI/CD.
-
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Select your SAVR project
-3. Click the gear icon (⚙️) → Project Settings → Service Accounts
-4. Click "Generate new private key"
-5. Confirm by clicking "Generate key"
-6. A JSON file will be downloaded to your computer
-7. Open the JSON file with a text editor
-8. **Copy the entire JSON content** (not the file path) - you'll add it as `FIREBASE_SERVICE_ACCOUNT_JSON` secret
-
-**Important**: Keep this JSON file secure and never commit it to version control.
-
-**You only need ONE of these methods** - the workflow will automatically detect which one is available.
+Alternatively, run `vercel link` in your web directory and check `.vercel/project.json`
 
 ---
 
-## Step 3: Get Firebase Configuration Values
+## Step 3: Get Supabase Configuration Values
 
-1. Go to [Firebase Console](https://console.firebase.google.com)
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
 2. Select your SAVR project
-3. Click the gear icon (⚙️) → Project Settings
-4. Scroll down to "Your apps" section
-5. Click on your Web app (or add one if none exists)
-6. You'll see a config object like this:
-
-```javascript
-const firebaseConfig = {
-  apiKey: "AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef123456"
-};
-```
-
-**Note down each value** - you'll need them in Step 5.
+3. Navigate to: Project Settings → API
+4. You'll see:
+   - **Project URL** - use as `NEXT_PUBLIC_SUPABASE_URL`
+   - **Anon/Public key** - use as `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - **Service Role key** - use as `SUPABASE_SERVICE_ROLE_KEY` (⚠️ Keep secret!)
+5. For migrations:
+   - **Project Ref** (from dashboard URL, e.g., `abcdefghijk`) - use as `SUPABASE_PROJECT_REF`
+   - **Database Password** (set when creating project) - use as `SUPABASE_DB_PASSWORD`
 
 ---
 
@@ -111,6 +69,7 @@ const firebaseConfig = {
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Navigate to: Developers → API keys
 3. Copy the **Publishable key** (starts with `pk_live_` for production or `pk_test_` for testing)
+4. Copy the **Pricing Table ID** from: Products → Pricing Tables (starts with `prctbl_...`)
 
 ---
 
@@ -127,7 +86,19 @@ The mobile build workflow requires an Expo access token.
 
 ---
 
-## Step 6: Get Google Play Service Account Key (for Mobile Submission)
+## Step 6: Get Google OAuth Client IDs (for Mobile)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to: APIs & Services → Credentials
+3. Create OAuth 2.0 Client IDs for:
+   - Web application (for general use)
+   - iOS application
+   - Android application
+4. Copy each client ID - you'll need them for mobile builds
+
+---
+
+## Step 7: Get Google Play Service Account Key (for Mobile Submission)
 
 To automatically submit builds to Google Play Store:
 
@@ -143,13 +114,13 @@ To automatically submit builds to Google Play Store:
 
 ---
 
-## Step 7: Add All Secrets to GitHub
+## Step 8: Add All Secrets to GitHub
 
-**IMPORTANT: Firebase deployment secrets must be added to the `Production` Environment, NOT repository secrets!**
+**IMPORTANT: Deployment secrets must be added to the `Production` Environment, NOT repository secrets!**
 
-### Adding Environment Secrets (for Firebase Deployment)
+### Adding Environment Secrets (for Deployments)
 
-For Firebase-related secrets (Steps 2-11 below):
+For deployment-related secrets:
 1. Go to: Repository → Settings → Environments → `Production`
 2. Click "Add secret" under "Environment secrets"
 3. Enter the **Name** (exactly as shown, case-sensitive)
@@ -158,7 +129,7 @@ For Firebase-related secrets (Steps 2-11 below):
 
 ### Adding Repository Secrets (for Mobile Builds)
 
-For Mobile-related secrets (Steps 12-13 below):
+For Mobile-related secrets:
 1. Go to: Repository → Settings → Secrets and variables → Actions → Repository secrets
 2. Click "New repository secret"
 3. Enter the **Name** and **Value**
@@ -166,76 +137,74 @@ For Mobile-related secrets (Steps 12-13 below):
 
 ---
 
-### 🔥 Firebase Deployment Secrets (Add to Production Environment)
+### 🚀 Vercel Deployment Secrets (Add to Production Environment)
 
-#### Secret 1: FIREBASE_TOKEN (if using Method A from Step 2)
-- **Name**: `FIREBASE_TOKEN`
-- **Value**: Token from Step 2, Method A (the long string starting with `1//0g...`)
-- **Used by**: `firebase-deploy.yml` workflow
+#### Secret 1: VERCEL_TOKEN
+- **Name**: `VERCEL_TOKEN`
+- **Value**: Token from Step 2 (Vercel account tokens page)
+- **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
 - **Sensitive**: ✅ Yes - keep private
-- **Required**: ⚠️ Only if NOT using FIREBASE_SERVICE_ACCOUNT_JSON
+- **Required**: ✅ Yes
 
-#### Secret 1B: FIREBASE_SERVICE_ACCOUNT_JSON (if using Method B from Step 2)
-- **Name**: `FIREBASE_SERVICE_ACCOUNT_JSON`
-- **Value**: Complete JSON content from Step 2, Method B (entire service account key file)
-- **Used by**: `firebase-deploy.yml` workflow
+#### Secret 2: VERCEL_ORG_ID
+- **Name**: `VERCEL_ORG_ID`
+- **Value**: Organization ID from Vercel project settings
+- **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
+- **Sensitive**: ⚠️ Project identifier
+- **Required**: ✅ Yes
+
+#### Secret 3: VERCEL_PROJECT_ID
+- **Name**: `VERCEL_PROJECT_ID`
+- **Value**: Project ID from Vercel project settings
+- **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
+- **Sensitive**: ⚠️ Project identifier
+- **Required**: ✅ Yes
+
+### 🗄️ Supabase Configuration (Add to Production Environment)
+
+#### Secret 4: NEXT_PUBLIC_SUPABASE_URL
+- **Name**: `NEXT_PUBLIC_SUPABASE_URL`
+- **Value**: Project URL from Supabase Dashboard → Project Settings → API
+- **Used by**: `vercel-deploy.yml`, `preview-deploy.yml`, and `mobile-build.yml` workflows
+- **Sensitive**: ❌ No - public config (Supabase URL is designed to be public)
+- **Required**: ✅ Yes
+
+#### Secret 5: NEXT_PUBLIC_SUPABASE_ANON_KEY
+- **Name**: `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Value**: Anon/Public key from Supabase Dashboard → Project Settings → API
+- **Used by**: `vercel-deploy.yml`, `preview-deploy.yml`, and `mobile-build.yml` workflows
+- **Sensitive**: ❌ No - public config (Anon key is designed to be public, protected by RLS)
+- **Required**: ✅ Yes
+
+#### Secret 6: SUPABASE_SERVICE_ROLE_KEY
+- **Name**: `SUPABASE_SERVICE_ROLE_KEY`
+- **Value**: Service Role key from Supabase Dashboard → Project Settings → API
+- **Used by**: Backend API routes and server-side operations
+- **Sensitive**: ✅ Yes - keep private! (bypasses RLS)
+- **Required**: ✅ Yes
+
+#### Secret 7: SUPABASE_PROJECT_REF
+- **Name**: `SUPABASE_PROJECT_REF`
+- **Value**: Project reference ID from Supabase Dashboard URL (e.g., `abcdefghijk`)
+- **Used by**: `vercel-deploy.yml` for database migrations
+- **Sensitive**: ⚠️ Project identifier
+- **Required**: ✅ Yes (for migrations)
+
+#### Secret 8: SUPABASE_DB_PASSWORD
+- **Name**: `SUPABASE_DB_PASSWORD`
+- **Value**: Database password set when creating the Supabase project
+- **Used by**: `vercel-deploy.yml` for database migrations
 - **Sensitive**: ✅ Yes - keep private
-- **Required**: ⚠️ Only if NOT using FIREBASE_TOKEN
-- **Note**: If both are configured, the workflow will prefer FIREBASE_SERVICE_ACCOUNT_JSON
+- **Required**: ✅ Yes (for migrations)
 
-#### Secret 2: FIREBASE_PROJECT_ID
-- **Name**: `FIREBASE_PROJECT_ID`
-- **Value**: Your Firebase project ID (e.g., `savr-production-123`)
-- **Used by**: `firebase-deploy.yml` workflow
-- **Sensitive**: ⚠️ Project identifier (typically not sensitive but should be in secrets)
-
-### 🔧 Firebase Configuration (Public - Safe for Client-Side)
-
-These Firebase config values are **public** and will be visible in browser JavaScript and mobile apps. They are safe to expose.
-
-#### Secret 3: NEXT_PUBLIC_FIREBASE_API_KEY
-- **Name**: `NEXT_PUBLIC_FIREBASE_API_KEY`
-- **Value**: `apiKey` from Firebase config in Step 3
-- **Used by**: Both `firebase-deploy.yml` and `mobile-build.yml` workflows
-- **Sensitive**: ❌ No - public config (Firebase API key is designed to be public)
-
-#### Secret 4: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-- **Name**: `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- **Value**: `authDomain` from Firebase config in Step 3
-- **Used by**: Both `firebase-deploy.yml` and `mobile-build.yml` workflows
-- **Sensitive**: ❌ No - public config
-
-#### Secret 5: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-- **Name**: `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- **Value**: `projectId` from Firebase config in Step 3
-- **Used by**: Both `firebase-deploy.yml` and `mobile-build.yml` workflows
-- **Sensitive**: ❌ No - public config
-
-#### Secret 6: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-- **Name**: `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- **Value**: `storageBucket` from Firebase config in Step 3
-- **Used by**: Both `firebase-deploy.yml` and `mobile-build.yml` workflows
-- **Sensitive**: ❌ No - public config
-
-#### Secret 7: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-- **Name**: `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- **Value**: `messagingSenderId` from Firebase config in Step 3
-- **Used by**: Both `firebase-deploy.yml` and `mobile-build.yml` workflows
-- **Sensitive**: ❌ No - public config
-
-#### Secret 8: NEXT_PUBLIC_FIREBASE_APP_ID
-- **Name**: `NEXT_PUBLIC_FIREBASE_APP_ID`
-- **Value**: `appId` from Firebase config in Step 3
-- **Used by**: Both `firebase-deploy.yml` and `mobile-build.yml` workflows
-- **Sensitive**: ❌ No - public config
-
-### 💳 Stripe Configuration
+### 💳 Stripe Configuration (Add to Production Environment)
 
 #### Secret 9: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 - **Name**: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - **Value**: Stripe publishable key from Step 4 (starts with `pk_live_` or `pk_test_`)
-- **Used by**: `firebase-deploy.yml` workflow
+- **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
 - **Sensitive**: ❌ No - public config (Stripe publishable keys are designed to be public)
+- **Required**: ✅ Yes
 
 #### Secret 10: NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID
 - **Name**: `NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID`
@@ -244,67 +213,111 @@ These Firebase config values are **public** and will be visible in browser JavaS
   1. Go to [Stripe Dashboard → Products → Pricing Tables](https://dashboard.stripe.com/products/pricing-tables)
   2. Create or select your pricing table
   3. Copy the Pricing Table ID from the embed code
-- **Used by**: `firebase-deploy.yml` workflow
+- **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
 - **Sensitive**: ❌ No - public config
+- **Required**: ✅ Yes
 
-### 🌐 Application Configuration
+#### Secret 11: STRIPE_SECRET_KEY
+- **Name**: `STRIPE_SECRET_KEY`
+- **Value**: Stripe secret key from Stripe Dashboard → Developers → API keys
+- **Used by**: Backend API routes for payment processing
+- **Sensitive**: ✅ Yes - keep private!
+- **Required**: ✅ Yes
 
-#### Secret 11: NEXT_PUBLIC_APP_URL
+#### Secret 12: STRIPE_WEBHOOK_SECRET
+- **Name**: `STRIPE_WEBHOOK_SECRET`
+- **Value**: Webhook signing secret from Stripe Dashboard → Developers → Webhooks
+- **Used by**: Backend API routes for webhook verification
+- **Sensitive**: ✅ Yes - keep private!
+- **Required**: ✅ Yes
+
+### 🌐 Application Configuration (Add to Production Environment)
+
+#### Secret 13: NEXT_PUBLIC_APP_URL
 - **Name**: `NEXT_PUBLIC_APP_URL`
 - **Value**: Your production URL (e.g., `https://savr.cam`)
-- **Used by**: `firebase-deploy.yml` workflow
+- **Used by**: `vercel-deploy.yml` workflow
 - **Sensitive**: ❌ No - public config
+- **Required**: ✅ Yes
 
 ### 📱 Mobile Build & Submission Secrets (Add to Repository Secrets)
 
-#### Secret 12: EXPO_TOKEN
+#### Secret 14: EXPO_TOKEN
 - **Name**: `EXPO_TOKEN`
 - **Value**: Expo access token from Step 5
 - **Used by**: `mobile-build.yml` workflow
 - **Sensitive**: ✅ Yes - keep private
+- **Required**: ✅ Yes
 
-#### Secret 13: GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
+#### Secret 15: EXPO_PUBLIC_GOOGLE_CLIENT_ID
+- **Name**: `EXPO_PUBLIC_GOOGLE_CLIENT_ID`
+- **Value**: Google OAuth Web Client ID from Step 6
+- **Used by**: `mobile-build.yml` workflow
+- **Sensitive**: ❌ No - public config
+- **Required**: ✅ Yes (for Google Sign-In)
+
+#### Secret 16: EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+- **Name**: `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
+- **Value**: Google OAuth iOS Client ID from Step 6
+- **Used by**: `mobile-build.yml` workflow
+- **Sensitive**: ❌ No - public config
+- **Required**: ✅ Yes (for Google Sign-In on iOS)
+
+#### Secret 17: EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+- **Name**: `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
+- **Value**: Google OAuth Android Client ID from Step 6
+- **Used by**: `mobile-build.yml` workflow
+- **Sensitive**: ❌ No - public config
+- **Required**: ✅ Yes (for Google Sign-In on Android)
+
+#### Secret 18: GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
 - **Name**: `GOOGLE_PLAY_SERVICE_ACCOUNT_KEY`
-- **Value**: Complete JSON contents of the Google Play service account key file from Step 6
+- **Value**: Complete JSON contents of the Google Play service account key file from Step 7
 - **Used by**: `mobile-build.yml` workflow (exported as `GOOGLE_SERVICE_ACCOUNT_KEY` in submission step)
 - **Sensitive**: ✅ Yes - keep private (contains credentials for Google Play API access)
+- **Required**: ✅ Yes (for automatic app submission)
 
 ---
 
-## Step 8: Verify All Secrets Are Added
+## Step 9: Verify All Secrets Are Added
 
 After adding all secrets, verify they are correctly configured:
 
-### In the Production Environment (11 Firebase secrets)
+### In the Production Environment (13 deployment secrets)
 Navigate to: Repository → Settings → Environments → Production → Environment secrets
 
 You should see:
-- ✅ FIREBASE_TOKEN (or FIREBASE_SERVICE_ACCOUNT_JSON)
-- ✅ FIREBASE_PROJECT_ID
-- ✅ NEXT_PUBLIC_FIREBASE_API_KEY
-- ✅ NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-- ✅ NEXT_PUBLIC_FIREBASE_PROJECT_ID
-- ✅ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-- ✅ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-- ✅ NEXT_PUBLIC_FIREBASE_APP_ID
+- ✅ VERCEL_TOKEN
+- ✅ VERCEL_ORG_ID
+- ✅ VERCEL_PROJECT_ID
+- ✅ NEXT_PUBLIC_SUPABASE_URL
+- ✅ NEXT_PUBLIC_SUPABASE_ANON_KEY
+- ✅ SUPABASE_SERVICE_ROLE_KEY
+- ✅ SUPABASE_PROJECT_REF
+- ✅ SUPABASE_DB_PASSWORD
 - ✅ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 - ✅ NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID
+- ✅ STRIPE_SECRET_KEY
+- ✅ STRIPE_WEBHOOK_SECRET
 - ✅ NEXT_PUBLIC_APP_URL
 
-### In Repository Secrets (2 Mobile secrets)
+### In Repository Secrets (5 Mobile secrets)
 Navigate to: Repository → Settings → Secrets and variables → Actions → Repository secrets
 
 You should see:
 - ✅ EXPO_TOKEN
+- ✅ EXPO_PUBLIC_GOOGLE_CLIENT_ID
+- ✅ EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+- ✅ EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
 - ✅ GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
 
 ---
 
-## Step 9: Trigger a Deployment
+## Step 10: Trigger a Deployment
 
 ### Option A: Re-run Failed Workflow
 1. Go to: https://github.com/GooseyPrime/SAVR/actions
-2. Click on the most recent "Firebase Deploy" run
+2. Click on the most recent workflow run
 3. Click "Re-run all jobs"
 
 ### Option B: Push a Change
@@ -318,12 +331,12 @@ Make any small change to a file on main branch (or merge a PR), which will autom
 
 ---
 
-## Step 10: Verify Deployment
+## Step 11: Verify Deployment
 
 1. **Watch the workflow**:
    - Go to: https://github.com/GooseyPrime/SAVR/actions
-   - Click on the running "Firebase Deploy" workflow
-   - Verify it progresses through steps (not startup_failure anymore)
+   - Click on the running workflow (Vercel Deployment or CI)
+   - Verify it progresses through steps successfully
 
 2. **Check for success**:
    - Wait for workflow to complete
@@ -331,17 +344,15 @@ Make any small change to a file on main branch (or merge a PR), which will autom
 
 3. **Test production site**:
    - Visit your production URL
-   - Check for PR #46 features:
-     - Navigate to `/faq` - new FAQ page should load
-     - Check pricing page - should show "Start 5-Day Free Trial"
-     - Test the subscription flow
+   - Verify the site is working correctly
+   - Test authentication and subscription features
 
 ---
 
 ## Troubleshooting
 
 ### Still Getting startup_failure?
-- **Verify Environment Name**: Ensure you added Firebase secrets to the `Production` Environment (capital P), NOT to repository secrets
+- **Verify Environment Name**: Ensure you added deployment secrets to the `Production` Environment (capital P), NOT to repository secrets
 - Double-check all secret names are **exactly** as shown (case-sensitive)
 - Ensure no extra spaces in secret values
 - Verify you have admin access to the repository
@@ -352,18 +363,20 @@ Make any small change to a file on main branch (or merge a PR), which will autom
 - Good news: secrets are working!
 - Check the workflow logs for specific error messages
 - Common issues:
-  - Invalid Firebase token (regenerate with `firebase login:ci`)
-  - Incorrect project ID
+  - Invalid Vercel token (regenerate from Vercel dashboard)
+  - Incorrect Vercel organization or project ID
   - Build errors in code (check build logs)
-  - For mobile: Invalid EXPO_TOKEN or missing Firebase config
+  - For mobile: Invalid EXPO_TOKEN or missing Supabase config
 
-### Cannot find firebase project?
-- Verify `FIREBASE_PROJECT_ID` matches your actual Firebase project ID
-- In Firebase Console, check: Project Settings → General → Project ID
+### Cannot connect to Vercel?
+- Verify `VERCEL_TOKEN` is valid and has not expired
+- Verify `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` match your Vercel project
+- Check that the Vercel project is linked to the correct GitHub repository
 
 ### Mobile build fails?
 - Verify EXPO_TOKEN is valid (test with `eas whoami`)
-- Check that all NEXT_PUBLIC_FIREBASE_* secrets are correctly set
+- Check that all NEXT_PUBLIC_SUPABASE_* secrets are correctly set
+- Verify Google OAuth client IDs are configured for the correct Google Cloud project
 - For submission failures: verify GOOGLE_PLAY_SERVICE_ACCOUNT_KEY contains valid JSON
 - Ensure the service account has proper permissions in Google Play Console
 
@@ -375,25 +388,32 @@ Make any small change to a file on main branch (or merge a PR), which will autom
 
 **Public Configuration (Safe to Expose)**:
 - **NEXT_PUBLIC_* secrets**: These are **intentionally public** and will be visible in browser JavaScript and compiled mobile apps. They are safe to use client-side.
-  - Firebase config values (API key, auth domain, project ID, etc.) are designed by Google to be public
+  - Supabase URL and Anon Key are designed by Supabase to be public (protected by Row Level Security)
   - Stripe publishable key is designed to be public
   - App URL is public information
-- These values are protected by Firebase security rules and Stripe's backend validation
+- **EXPO_PUBLIC_* secrets**: Similar to NEXT_PUBLIC_*, these are public and safe to expose in mobile apps
+- These values are protected by backend security rules, RLS policies, and API validation
 
 **Sensitive Secrets (Keep Private)**:
-- **FIREBASE_TOKEN**: CI/CD deployment token - never share or commit to code
+- **VERCEL_TOKEN**: Deployment token - never share or commit to code
+- **SUPABASE_SERVICE_ROLE_KEY**: Bypasses RLS - highly sensitive
+- **SUPABASE_DB_PASSWORD**: Database access - highly sensitive
+- **STRIPE_SECRET_KEY**: Payment processing - highly sensitive
+- **STRIPE_WEBHOOK_SECRET**: Webhook verification - highly sensitive
 - **EXPO_TOKEN**: Expo account access token - keep private
 - **GOOGLE_PLAY_SERVICE_ACCOUNT_KEY**: Contains credentials for Google Play API - highly sensitive
 
 ### Secret Rotation
 If you need to rotate secrets (e.g., if a token is compromised):
-1. Generate new token/key from the source (Firebase, Expo, Google Play Console)
+1. Generate new token/key from the source (Vercel, Supabase, Stripe, Expo, Google Play Console)
 2. In GitHub Secrets, click the secret name
 3. Click "Update secret"
 4. Paste new value and save
-5. For FIREBASE_TOKEN: `firebase login:ci`
-6. For EXPO_TOKEN: Generate new token at https://expo.dev/accounts/[account]/settings/access-tokens
-7. For GOOGLE_PLAY_SERVICE_ACCOUNT_KEY: Create new service account and revoke old one
+5. For specific secrets:
+   - **VERCEL_TOKEN**: Generate new token at https://vercel.com/account/tokens
+   - **SUPABASE_SERVICE_ROLE_KEY**: Rotate in Supabase Dashboard → Project Settings → API
+   - **EXPO_TOKEN**: Generate new token at https://expo.dev/accounts/[account]/settings/access-tokens
+   - **GOOGLE_PLAY_SERVICE_ACCOUNT_KEY**: Create new service account and revoke old one
 
 ---
 
@@ -401,19 +421,21 @@ If you need to rotate secrets (e.g., if a token is compromised):
 
 Use this checklist to verify setup:
 
-### Firebase Deployment Setup
-- [ ] Installed Firebase CLI
-- [ ] Generated Firebase token with `firebase login:ci`
-- [ ] Collected all Firebase config values from Console
-- [ ] Got Stripe publishable key
-- [ ] Added all 10 Firebase deployment secrets to GitHub repository
+### Web Deployment Setup
+- [ ] Created Vercel account and project
+- [ ] Collected Vercel token, org ID, and project ID
+- [ ] Collected all Supabase config values from Dashboard
+- [ ] Got Stripe publishable key and pricing table ID
+- [ ] Added all 13 deployment secrets to GitHub Production environment
 
 ### Mobile Build Setup (if deploying mobile app)
 - [ ] Created Expo account at https://expo.dev
 - [ ] Generated EXPO_TOKEN and added to GitHub secrets
+- [ ] Set up Google OAuth client IDs for Web, iOS, and Android
 - [ ] Set up Google Play Console and service account
 - [ ] Downloaded and added GOOGLE_PLAY_SERVICE_ACCOUNT_KEY to GitHub secrets
-- [ ] Verified all NEXT_PUBLIC_FIREBASE_* secrets are set (used by both web and mobile)
+- [ ] Verified all NEXT_PUBLIC_SUPABASE_* secrets are set (used by mobile builds)
+- [ ] Verified all EXPO_PUBLIC_GOOGLE_* secrets are set
 
 ### Verification
 - [ ] Verified all secret names are correct (case-sensitive)
@@ -429,38 +451,50 @@ Use this checklist to verify setup:
 
 | Secret Name | Used By | Source | Sensitive | Example Format |
 |------------|---------|--------|-----------|----------------|
-| **FIREBASE_TOKEN** | firebase-deploy.yml | `firebase login:ci` | ✅ Yes | `1//0gABCD...` |
-| **FIREBASE_PROJECT_ID** | firebase-deploy.yml | Firebase Console | ⚠️ ID | `savr-prod-123` |
+| **VERCEL_TOKEN** | vercel-deploy.yml, preview-deploy.yml | Vercel Dashboard | ✅ Yes | `ABCxyz123...` |
+| **VERCEL_ORG_ID** | vercel-deploy.yml, preview-deploy.yml | Vercel Project Settings | ⚠️ ID | `team_abc123` |
+| **VERCEL_PROJECT_ID** | vercel-deploy.yml, preview-deploy.yml | Vercel Project Settings | ⚠️ ID | `prj_abc123xyz` |
+| **NEXT_PUBLIC_SUPABASE_URL** | All workflows | Supabase Dashboard | ❌ No | `https://abc.supabase.co` |
+| **NEXT_PUBLIC_SUPABASE_ANON_KEY** | All workflows | Supabase Dashboard | ❌ No | `eyJhbGc...` |
+| **SUPABASE_SERVICE_ROLE_KEY** | Backend API | Supabase Dashboard | ✅ Yes | `eyJhbGc...` |
+| **SUPABASE_PROJECT_REF** | vercel-deploy.yml (migrations) | Supabase Dashboard URL | ⚠️ ID | `abcdefghijk` |
+| **SUPABASE_DB_PASSWORD** | vercel-deploy.yml (migrations) | Supabase setup | ✅ Yes | `yourpassword` |
+| **NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** | vercel-deploy.yml, preview-deploy.yml | Stripe Dashboard | ❌ No | `pk_live_...` or `pk_test_...` |
+| **NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID** | vercel-deploy.yml, preview-deploy.yml | Stripe Dashboard | ❌ No | `prctbl_...` |
+| **STRIPE_SECRET_KEY** | Backend API | Stripe Dashboard | ✅ Yes | `sk_live_...` or `sk_test_...` |
+| **STRIPE_WEBHOOK_SECRET** | Backend API | Stripe Dashboard | ✅ Yes | `whsec_...` |
+| **NEXT_PUBLIC_APP_URL** | vercel-deploy.yml | Your Domain | ❌ No | `https://savr.cam` |
 | **EXPO_TOKEN** | mobile-build.yml | Expo Dashboard | ✅ Yes | `abc123...` |
+| **EXPO_PUBLIC_GOOGLE_CLIENT_ID** | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
+| **EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID** | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
+| **EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID** | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
 | **GOOGLE_PLAY_SERVICE_ACCOUNT_KEY** | mobile-build.yml (submit) | Google Play Console | ✅ Yes | `{"type":"service_account",...}` |
-| **NEXT_PUBLIC_FIREBASE_API_KEY** | Both workflows | Firebase Web Config | ❌ No | `AIzaSyABC...` |
-| **NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN** | Both workflows | Firebase Web Config | ❌ No | `project.firebaseapp.com` |
-| **NEXT_PUBLIC_FIREBASE_PROJECT_ID** | Both workflows | Firebase Web Config | ❌ No | `savr-prod-123` |
-| **NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET** | Both workflows | Firebase Web Config | ❌ No | `project.appspot.com` |
-| **NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID** | Both workflows | Firebase Web Config | ❌ No | `123456789012` |
-| **NEXT_PUBLIC_FIREBASE_APP_ID** | Both workflows | Firebase Web Config | ❌ No | `1:123:web:abc` |
-| **NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** | firebase-deploy.yml | Stripe Dashboard | ❌ No | `pk_live_...` or `pk_test_...` |
-| **NEXT_PUBLIC_APP_URL** | firebase-deploy.yml | Your Domain | ❌ No | `https://savr.cam` |
 
-**Total: 12 GitHub Secrets Required**
+**Total: 18 GitHub Secrets Required**
 
 ### Workflow-Specific Secret Mapping
 
-**firebase-deploy.yml** (Web App Deployment):
-- Requires 10 secrets: FIREBASE_TOKEN, FIREBASE_PROJECT_ID, and all 8 NEXT_PUBLIC_* vars
+**vercel-deploy.yml** (Web App Production Deployment):
+- Requires 13 secrets: Vercel (3), Supabase (5), Stripe (4), App URL (1)
+
+**preview-deploy.yml** (Web App Preview Deployment):
+- Requires 8 secrets: Vercel (3), Supabase (2), Stripe (2), preview URL (1)
 
 **mobile-build.yml** (Mobile App Build & Submit):
-- Requires 8 secrets for builds: EXPO_TOKEN + 6 NEXT_PUBLIC_FIREBASE_* vars (API_KEY, AUTH_DOMAIN, PROJECT_ID, STORAGE_BUCKET, MESSAGING_SENDER_ID, APP_ID)
+- Requires 8 secrets for builds: EXPO_TOKEN + Supabase (2) + Google OAuth (3)
 - Additional 1 secret for submission: GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
-- **Note**: Mobile workflow uses `EXPO_PUBLIC_*` prefix in environment variables, but sources values from `NEXT_PUBLIC_*` GitHub secrets
+- **Note**: Mobile workflow uses `EXPO_PUBLIC_*` prefix in environment variables for Supabase, sourcing from `NEXT_PUBLIC_*` GitHub secrets
+
+**ci.yml** (Continuous Integration):
+- No secrets required (only runs linting and type checking)
 
 ---
 
 ## Need Help?
 
 - **Deployment docs**: See `DEPLOYMENT.md` in repository root
-- **Troubleshooting**: See `DEPLOYMENT_TROUBLESHOOTING.md`
-- **Firebase docs**: https://firebase.google.com/docs/cli
+- **Vercel docs**: https://vercel.com/docs
+- **Supabase docs**: https://supabase.com/docs
 - **GitHub Actions docs**: https://docs.github.com/en/actions
 - **Expo EAS docs**: https://docs.expo.dev/build/introduction/
 
@@ -468,26 +502,23 @@ Use this checklist to verify setup:
 
 ## Appendix: Runtime Environment Variables
 
-These environment variables are **NOT** GitHub secrets. They are configured directly in Firebase Functions and local development environments.
+These environment variables are **NOT** GitHub secrets. They are configured in Vercel dashboard and local development environments.
 
-### Firebase Functions Environment Variables
+### Vercel Environment Variables
 
-Configure these in Firebase using:
-```bash
-firebase functions:config:set key="value"
-```
-
-Or add to your local `.env` file (based on `.env.example`):
+Configure these in Vercel Dashboard → Project Settings → Environment Variables:
 
 | Variable Name | Required | Sensitive | Description | Example |
 |--------------|----------|-----------|-------------|---------|
 | **OPENAI_API_KEY** | ✅ Yes | ✅ Yes | OpenAI API key for GPT-4 and Vision | `sk-...` |
-| **GOOGLE_CLOUD_VISION_API_KEY** | ❌ Optional | ✅ Yes | Google Vision API fallback | `AIza...` |
+| **SUPABASE_SERVICE_ROLE_KEY** | ✅ Yes | ✅ Yes | Supabase service role key (bypasses RLS) | `eyJhbGc...` |
 | **STRIPE_SECRET_KEY** | ✅ Yes | ✅ Yes | Stripe secret key for payments | `sk_live_...` or `sk_test_...` |
 | **STRIPE_WEBHOOK_SECRET** | ✅ Yes | ✅ Yes | Stripe webhook signing secret | `whsec_...` |
+| **NEXT_PUBLIC_SUPABASE_URL** | ✅ Yes | ❌ No | Supabase project URL | `https://abc.supabase.co` |
+| **NEXT_PUBLIC_SUPABASE_ANON_KEY** | ✅ Yes | ❌ No | Supabase anon/public key | `eyJhbGc...` |
+| **NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** | ✅ Yes | ❌ No | Stripe Publishable Key | `pk_live_...` or `pk_test_...` |
 | **NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID** | ✅ Yes | ❌ No | Stripe Pricing Table ID for subscription UI | `prctbl_...` |
-| **NEXT_PUBLIC_APP_URL** | ✅ Yes | ❌ No | Base URL for Stripe redirects | `https://savr.cam` |
-| **All NEXT_PUBLIC_FIREBASE_*** | ✅ Yes | ❌ No | Firebase config (inherited from build) | See above |
+| **NEXT_PUBLIC_APP_URL** | ✅ Yes | ❌ No | Base URL for redirects | `https://savr.cam` |
 
 **Note**: The NEXT_PUBLIC_* variables are also needed at build time (via GitHub secrets) and are automatically included in the deployed application.
 
@@ -497,12 +528,8 @@ Configure these in `mobile/.env` (based on `mobile/.env.example`):
 
 | Variable Name | Required | Sensitive | Description | Example |
 |--------------|----------|-----------|-------------|---------|
-| **EXPO_PUBLIC_FIREBASE_API_KEY** | ✅ Yes | ❌ No | Firebase API key (maps to NEXT_PUBLIC) | `AIzaSyABC...` |
-| **EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN** | ✅ Yes | ❌ No | Firebase auth domain | `project.firebaseapp.com` |
-| **EXPO_PUBLIC_FIREBASE_PROJECT_ID** | ✅ Yes | ❌ No | Firebase project ID | `savr-prod-123` |
-| **EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET** | ✅ Yes | ❌ No | Firebase storage bucket | `project.appspot.com` |
-| **EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID** | ✅ Yes | ❌ No | Firebase messaging sender ID | `123456789012` |
-| **EXPO_PUBLIC_FIREBASE_APP_ID** | ✅ Yes | ❌ No | Firebase app ID | `1:123:web:abc` |
+| **EXPO_PUBLIC_SUPABASE_URL** | ✅ Yes | ❌ No | Supabase project URL (maps to NEXT_PUBLIC) | `https://abc.supabase.co` |
+| **EXPO_PUBLIC_SUPABASE_ANON_KEY** | ✅ Yes | ❌ No | Supabase anon key (maps to NEXT_PUBLIC) | `eyJhbGc...` |
 | **EXPO_PUBLIC_GOOGLE_CLIENT_ID** | ✅ Yes | ❌ No | Google OAuth Web Client ID | `*.apps.googleusercontent.com` |
 | **EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID** | ✅ Yes | ❌ No | Google OAuth iOS Client ID | `*.apps.googleusercontent.com` |
 | **EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID** | ✅ Yes | ❌ No | Google OAuth Android Client ID | `*.apps.googleusercontent.com` |
@@ -527,16 +554,14 @@ Configure these in `mobile/.env` (based on `mobile/.env.example`):
    # Edit mobile/.env with your values
    ```
 
-3. **Firebase Functions** (`/functions`):
+3. **Backend API** (Vercel serverless functions):
    ```bash
-   # Set via Firebase CLI
-   firebase functions:config:set openai.api_key="your_key"
-   
-   # Or for local development, functions will read from root .env file
+   # Configure environment variables in Vercel dashboard
+   # Or use .env.local for local development
    ```
 
 ---
 
 **Last Updated**: February 2026  
-**Version**: 2.0.0  
-**Coverage**: Web deployment + Mobile build & submission
+**Version**: 3.0.0  
+**Coverage**: Vercel + Supabase deployment + Mobile build & submission
