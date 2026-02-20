@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+import { uploadImage, getPublicUrl } from '@/lib/storage';
 
 type SessionStatus = 'loading' | 'active' | 'expired' | 'completed' | 'error';
 
@@ -61,10 +61,9 @@ export default function TransferContent() {
       const userId = sessionDoc.data().userId;
 
       for (const file of Array.from(files)) {
-        const path = `users/${userId}/transfers/${token}/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
+        // Upload to Supabase Storage
+        const filePath = await uploadImage('inventory-images', userId, file);
+        const url = getPublicUrl('inventory-images', filePath);
 
         await updateDoc(doc(db, 'transferSessions', token), {
           imageUrls: arrayUnion(url),

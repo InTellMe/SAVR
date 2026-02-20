@@ -6,10 +6,10 @@ import Navbar from '@/components/Navbar';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { httpsCallable } from 'firebase/functions';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { functions, storage } from '@/lib/firebase';
+import { functions } from '@/lib/firebase';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { getRecipes, getInventory, deleteRecipe, createSharedRecipe } from '@/lib/db';
+import { uploadImage, getPublicUrl } from '@/lib/storage';
 
 interface NutritionalInfo {
   calories: number;
@@ -240,10 +240,9 @@ function RecipesContent() {
     setError('');
 
     try {
-      const path = `users/${user.uid}/uploads/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      // Upload to Supabase Storage
+      const filePath = await uploadImage('recipe-images', user.uid, file);
+      const url = getPublicUrl('recipe-images', filePath);
 
       const importRecipeFn = httpsCallable(functions, 'importRecipe');
       const result = await importRecipeFn({ imageUrl: url });

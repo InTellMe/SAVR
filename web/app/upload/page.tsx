@@ -5,14 +5,13 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import ImageUpload from '@/components/ImageUpload';
 import { useAuth } from '@/contexts/AuthContext';
-import { storage, functions, db } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { functions, db } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
-import { httpsCallable as httpsCallableFn } from 'firebase/functions';
 import QRCode from 'qrcode';
 import { getInventory, addInventoryItem } from '@/lib/db';
+import { uploadImage, getPublicUrl } from '@/lib/storage';
 
 interface ExtractedIngredient {
   name: string;
@@ -80,10 +79,9 @@ function UploadContent() {
     setImageUrl(null);
 
     try {
-      const path = `users/${user.uid}/uploads/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      // Upload to Supabase Storage
+      const filePath = await uploadImage('inventory-images', user.uid, file);
+      const url = getPublicUrl('inventory-images', filePath);
       setImageUrl(url);
 
       if (scanMode === 'receipt') {

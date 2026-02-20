@@ -9,10 +9,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { functions, storage, db } from '../../config/firebase';
+import { functions, db } from '../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { pickImageFromCamera, pickImageFromLibrary } from '../../utils/imageUtils';
+import { uploadLabelingImage, getPublicUrl } from '../../utils/storage';
 import PolygonAnnotation from '../../components/PolygonAnnotation';
 
 interface AnnotationObject {
@@ -97,15 +97,10 @@ export default function LabelingScreen() {
 
     setLoading(true);
     try {
-      // Convert URI to blob
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
-      // Upload to Firebase Storage
-      const path = `images/${user.uid}/${Date.now()}.jpg`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, blob);
-      const url = await getDownloadURL(storageRef);
+      // Upload to Supabase Storage
+      const fileName = `${Date.now()}.jpg`;
+      const filePath = await uploadLabelingImage(uri, fileName);
+      const url = getPublicUrl('labeling-images', filePath);
 
       // Get image dimensions
       const img = new Image();
@@ -116,8 +111,8 @@ export default function LabelingScreen() {
       });
 
       // Create image document
-      const uploadImage = httpsCallable(functions, 'uploadLabelingImage');
-      const result = await uploadImage({
+      const uploadImageFn = httpsCallable(functions, 'uploadLabelingImage');
+      const result = await uploadImageFn({
         imageUrl: url,
         width: img.width,
         height: img.height,
