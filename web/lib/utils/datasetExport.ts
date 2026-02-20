@@ -1,5 +1,4 @@
-import type { Query } from 'firebase-admin/firestore';
-import { db } from './firebase';
+import { createClient } from '@supabase/supabase-js';
 import {
   ImageDocument,
   AnnotationDocument,
@@ -9,8 +8,13 @@ import {
   CocoAnnotation,
   CocoCategory,
   LabelStatus,
-} from '../types';
+} from '../types/functions';
 import { calculatePolygonArea, calculateBoundingBox } from '../services/segmentation';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 interface ExportFilters {
   labelStatus?: LabelStatus[];
@@ -23,37 +27,64 @@ interface ExportFilters {
  * Export dataset to COCO format
  */
 export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDataset> {
-  // Build Firestore query
-  let query: Query = db.collection('images') as Query;
+  // Build Supabase query
+  let query = supabase
+    .from('images')
+    .select('*');
 
   if (filters.ownerUid) {
-    query = query.where('ownerUid', '==', filters.ownerUid);
+    query = query.eq('uploaded_by', filters.ownerUid);
   }
 
   if (filters.labelStatus && filters.labelStatus.length > 0) {
-    query = query.where('labelStatus', 'in', filters.labelStatus);
+    query = query.in('label_status', filters.labelStatus);
   }
 
   if (filters.startDate) {
-    query = query.where('createdAt', '>=', filters.startDate);
+    query = query.gte('created_at', filters.startDate.toISOString());
   }
 
   if (filters.endDate) {
-    query = query.where('createdAt', '<=', filters.endDate);
+    query = query.lte('created_at', filters.endDate.toISOString());
   }
 
-  const imagesSnapshot = await query.get();
-  const images: ImageDocument[] = imagesSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as ImageDocument[];
+  const { data: imagesData, error: imagesError } = await query;
+  
+  if (imagesError) {
+    throw new Error(`Failed to fetch images: ${imagesError.message}`);
+  }
+
+  const images: ImageDocument[] = (imagesData || []).map(item => ({
+    id: item.id,
+    ownerUid: item.uploaded_by,
+    source: item.source as 'photo' | 'video_frame',
+    videoId: item.video_id,
+    frameIndex: item.frame_index,
+    storagePathOriginal: item.storage_path,
+    thumbnailPath: item.thumbnail_path,
+    width: item.width,
+    height: item.height,
+    createdAt: new Date(item.created_at),
+    updatedAt: new Date(item.updated_at),
+    labelStatus: item.label_status as ImageDocument['labelStatus'],
+    currentAnnotationId: item.current_annotation_id,
+  }));
 
   // Get all categories
-  const categoriesSnapshot = await db.collection('categories').get();
-  const categories: CategoryDocument[] = categoriesSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as CategoryDocument[];
+  const { data: categoriesData, error: categoriesError } = await supabase
+    .from('categories')
+    .select('*');
+
+  if (categoriesError) {
+    throw new Error(`Failed to fetch categories: ${categoriesError.message}`);
+  }
+
+  const categories: CategoryDocument[] = (categoriesData || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    color: item.color,
+    metadata: item.metadata,
+  }));
 
   // Create category ID mapping (COCO requires contiguous integer IDs)
   const categoryIdMap = new Map<string, number>();
@@ -74,17 +105,34 @@ export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDa
 
   for (const image of images) {
     // Get approved annotation (prefer user-approved, fallback to latest)
-    const annotationsSnapshot = await db
-      .collection('annotations')
-      .where('imageId', '==', image.id)
-      .orderBy('version', 'desc')
-      .get();
+    const { data: annotationsData, error: annotationsError } = await supabase
+      .from('annotations')
+      .select('*')
+      .eq('image_id', image.id)
+      .order('version', { ascending: false });
+
+    if (annotationsError) {
+      console.error(`Failed to fetch annotations for image ${image.id}:`, annotationsError);
+      continue;
+    }
+
+    const annotations: AnnotationDocument[] = (annotationsData || []).map(item => ({
+      id: item.id,
+      imageId: item.image_id,
+      version: item.version,
+      source: item.source as 'ai' | 'user',
+      parentAnnotationId: item.parent_annotation_id,
+      status: item.status as AnnotationDocument['status'],
+      createdByUid: item.created_by_uid,
+      createdAt: new Date(item.created_at),
+      updatedAt: new Date(item.updated_at),
+      objects: item.objects,
+    }));
 
     let approvedAnnotation: AnnotationDocument | null = null;
 
     // Prefer user-approved annotation
-    for (const doc of annotationsSnapshot.docs) {
-      const ann = { id: doc.id, ...doc.data() } as AnnotationDocument;
+    for (const ann of annotations) {
       if (ann.source === 'user' && ann.status === 'approved') {
         approvedAnnotation = ann;
         break;
@@ -92,11 +140,8 @@ export async function exportToCocoFormat(filters: ExportFilters): Promise<CocoDa
     }
 
     // Fallback to latest annotation if no approved user annotation
-    if (!approvedAnnotation && !annotationsSnapshot.empty) {
-      approvedAnnotation = {
-        id: annotationsSnapshot.docs[0].id,
-        ...annotationsSnapshot.docs[0].data(),
-      } as AnnotationDocument;
+    if (!approvedAnnotation && annotations.length > 0) {
+      approvedAnnotation = annotations[0];
     }
 
     if (!approvedAnnotation || approvedAnnotation.objects.length === 0) {
