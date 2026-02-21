@@ -4,11 +4,11 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'supabase/migrations/**'
+      - 'npx supabase/migrations/**'
   push:
     branches: [main]
     paths:
-      - 'supabase/migrations/**'
+      - 'npx supabase/migrations/**'
   workflow_dispatch:
 
 jobs:
@@ -25,18 +25,18 @@ jobs:
           node-version: "20"
 
       - name: Install Supabase CLI
-        run: npm install -g supabase
+        run: npm install -g npx supabase
 
       - name: Start Supabase (fresh database)
-        run: supabase start
+        run: npx supabase start
 
       - name: Apply migrations
-        run: supabase db reset --local
+        run: npx supabase db reset --local
 
       - name: Validate migration order
         run: |
           echo "Checking migration file naming..."
-          cd supabase/migrations
+          cd npx supabase/migrations
           # Check that all migrations follow naming convention
           for file in *.sql; do
             if [[ ! $file =~ ^[0-9]{14}_[a-z_]+\.sql$ ]]; then
@@ -50,7 +50,7 @@ jobs:
       - name: Check for migration conflicts
         run: |
           echo "Checking for duplicate migration timestamps..."
-          cd supabase/migrations
+          cd npx supabase/migrations
           timestamps=$(ls *.sql | cut -d'_' -f1 | sort)
           duplicates=$(echo "$timestamps" | uniq -d)
           if [ -n "$duplicates" ]; then
@@ -63,7 +63,7 @@ jobs:
       - name: Verify database schema
         run: |
           echo "Verifying all required tables exist..."
-          supabase db diff --use-migra
+          npx supabase db diff --use-migra
           
           # Check for required tables
           REQUIRED_TABLES=(
@@ -79,7 +79,7 @@ jobs:
           )
           
           for table in "${REQUIRED_TABLES[@]}"; do
-            if supabase db exec "SELECT to_regclass('public.$table')" | grep -q "public.$table"; then
+            if npx supabase db exec "SELECT to_regclass('public.$table')" | grep -q "public.$table"; then
               echo "✅ Table exists: $table"
             else
               echo "❌ Missing required table: $table"
@@ -90,10 +90,10 @@ jobs:
       - name: Verify RLS is enabled
         run: |
           echo "Verifying RLS is enabled on all tables..."
-          TABLES=$(supabase db exec "SELECT tablename FROM pg_tables WHERE schemaname = 'public'" | tail -n +3 | head -n -2)
+          TABLES=$(npx supabase db exec "SELECT tablename FROM pg_tables WHERE schemaname = 'public'" | tail -n +3 | head -n -2)
           
           for table in $TABLES; do
-            RLS_ENABLED=$(supabase db exec "SELECT relrowsecurity FROM pg_class WHERE relname = '$table'" | tail -n +3 | head -n -2 | tr -d ' ')
+            RLS_ENABLED=$(npx supabase db exec "SELECT relrowsecurity FROM pg_class WHERE relname = '$table'" | tail -n +3 | head -n -2 | tr -d ' ')
             if [ "$RLS_ENABLED" = "t" ]; then
               echo "✅ RLS enabled: $table"
             else
@@ -105,7 +105,7 @@ jobs:
         run: |
           echo "Testing migration rollback..."
           # Get current migration version
-          CURRENT=$(supabase migration list --local | tail -1 | awk '{print $1}')
+          CURRENT=$(npx supabase migration list --local | tail -1 | awk '{print $1}')
           echo "Current migration: $CURRENT"
           
           # This is informational - we don't actually rollback in CI
@@ -117,7 +117,7 @@ jobs:
           echo "" >> migration-report.md
           echo "Generated on: $(date)" >> migration-report.md
           echo "" >> migration-report.md
-          supabase db diff --use-migra --schema public >> migration-report.md
+          npx supabase db diff --use-migra --schema public >> migration-report.md
           
       - name: Upload migration report
         uses: actions/upload-artifact@v4
@@ -128,7 +128,7 @@ jobs:
 
       - name: Stop Supabase
         if: always()
-        run: supabase stop
+        run: npx supabase stop
 
   test-seed-data:
     runs-on: ubuntu-latest
@@ -143,18 +143,18 @@ jobs:
           node-version: "20"
 
       - name: Install Supabase CLI
-        run: npm install -g supabase
+        run: npm install -g npx supabase
 
       - name: Start Supabase
-        run: supabase start
+        run: npx supabase start
 
       - name: Apply migrations and seed data
         run: |
-          supabase db reset --local
+          npx supabase db reset --local
           
           # Apply seed data if exists
-          if [ -f "supabase/seed.sql" ]; then
-            supabase db exec --file supabase/seed.sql
+          if [ -f "npx supabase/seed.sql" ]; then
+            npx supabase db exec --file npx supabase/seed.sql
             echo "✅ Seed data applied"
           else
             echo "ℹ️  No seed data found"
@@ -163,9 +163,9 @@ jobs:
       - name: Verify seed data
         run: |
           # Check that seed data was inserted correctly
-          USER_COUNT=$(supabase db exec "SELECT COUNT(*) FROM auth.users" | tail -n +3 | head -n -2 | tr -d ' ')
+          USER_COUNT=$(npx supabase db exec "SELECT COUNT(*) FROM auth.users" | tail -n +3 | head -n -2 | tr -d ' ')
           echo "Test users created: $USER_COUNT"
 
       - name: Stop Supabase
         if: always()
-        run: supabase stop
+        run: npx supabase stop
