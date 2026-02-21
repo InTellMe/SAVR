@@ -311,7 +311,7 @@ For deployment-related secrets (Supabase, Stripe, etc.):
 
 After adding all secrets, verify they are correctly configured:
 
-### In Repository Secrets (11 secrets)
+### In Repository Secrets (12 secrets)
 Navigate to: Repository → Settings → Secrets and variables → Actions → Repository secrets
 
 You should see:
