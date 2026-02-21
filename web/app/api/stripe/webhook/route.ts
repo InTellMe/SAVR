@@ -1,23 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-01-28.clover',
-});
-
-// Create Supabase client with service role key for admin operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getStripeInstance } from '@/lib/stripe';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
+  let stripe: Stripe;
+  let supabaseAdmin: any;
+
+  // Initialize Stripe and Supabase at runtime
+  try {
+    stripe = getStripeInstance();
+    supabaseAdmin = getSupabaseAdmin();
+  } catch (error) {
+    console.error('Configuration error:', error);
+    return NextResponse.json(
+      { error: 'Service configuration error' },
+      { status: 500 }
+    );
+  }
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
 
   if (!signature) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 });
+  }
+
+  // Validate webhook secret at runtime
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET is not configured');
+    return NextResponse.json(
+      { error: 'Webhook configuration error' },
+      { status: 500 }
+    );
   }
 
   let event: Stripe.Event;
@@ -26,7 +41,7 @@ export async function POST(request: NextRequest) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      webhookSecret
     );
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
@@ -40,7 +55,7 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed':
       case 'checkout.session.async_payment_succeeded': {
         const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutCompleted(session);
+        await handleCheckoutCompleted(session, stripe, supabaseAdmin);
         break;
       }
 
@@ -49,32 +64,32 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.resumed':
       case 'customer.subscription.pending_update_applied': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionUpdated(subscription);
+        await handleSubscriptionUpdated(subscription, stripe, supabaseAdmin);
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionDeleted(subscription);
+        await handleSubscriptionDeleted(subscription, stripe, supabaseAdmin);
         break;
       }
 
       case 'customer.subscription.paused': {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionPaused(subscription);
+        await handleSubscriptionPaused(subscription, stripe, supabaseAdmin);
         break;
       }
 
       case 'invoice.payment_succeeded':
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice;
-        await handlePaymentSucceeded(invoice);
+        await handlePaymentSucceeded(invoice, stripe, supabaseAdmin);
         break;
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        await handlePaymentFailed(invoice);
+        await handlePaymentFailed(invoice, stripe, supabaseAdmin);
         break;
       }
 
@@ -91,7 +106,11 @@ export async function POST(request: NextRequest) {
 
 // Helper functions
 
-async function findUserByCustomerId(customerId: string): Promise<string | null> {
+async function findUserByCustomerId(
+  customerId: string,
+  stripe: Stripe,
+  supabaseAdmin: any
+): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from('users')
     .select('id')
@@ -127,7 +146,10 @@ async function findUserByCustomerId(customerId: string): Promise<string | null> 
   return data.id;
 }
 
-async function getTierFromPrice(priceId: string): Promise<'basic' | 'pro'> {
+async function getTierFromPrice(
+  priceId: string,
+  stripe: Stripe
+): Promise<'basic' | 'pro'> {
   try {
     const price = await stripe.prices.retrieve(priceId);
 
@@ -149,7 +171,11 @@ async function getTierFromPrice(priceId: string): Promise<'basic' | 'pro'> {
   }
 }
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+async function handleCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  stripe: Stripe,
+  supabaseAdmin: any
+) {
   console.log(`Processing checkout.session.completed for ${session.id}`);
 
   const userId = session.client_reference_id || session.metadata?.userId;
@@ -183,7 +209,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     const priceId = subscription.items.data[0]?.price.id;
     if (priceId) {
-      updates.subscription_tier = await getTierFromPrice(priceId);
+      updates.subscription_tier = await getTierFromPrice(priceId, stripe);
     }
     updates.subscription_status = subscription.status;
   }
@@ -196,9 +222,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log(`✅ Linked checkout to user ${userId}`);
 }
 
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+async function handleSubscriptionUpdated(
+  subscription: Stripe.Subscription,
+  stripe: Stripe,
+  supabaseAdmin: any
+) {
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
-  const userId = await findUserByCustomerId(customerId!);
+  const userId = await findUserByCustomerId(customerId!, stripe, supabaseAdmin);
 
   if (!userId) {
     console.error(`No user found for customer ${customerId}`);
@@ -206,7 +236,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   }
 
   const priceId = subscription.items.data[0]?.price.id;
-  const tier = priceId ? await getTierFromPrice(priceId) : 'basic';
+  const tier = priceId ? await getTierFromPrice(priceId, stripe) : 'basic';
 
   const periodEnd = subscription.items?.data?.[0]?.current_period_end;
   const trialEnd = subscription.trial_end;
@@ -227,9 +257,13 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   console.log(`✅ Updated subscription for user ${userId}: ${subscription.status}, tier ${tier}`);
 }
 
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+async function handleSubscriptionDeleted(
+  subscription: Stripe.Subscription,
+  stripe: Stripe,
+  supabaseAdmin: any
+) {
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
-  const userId = await findUserByCustomerId(customerId!);
+  const userId = await findUserByCustomerId(customerId!, stripe, supabaseAdmin);
 
   if (!userId) return;
 
@@ -246,9 +280,13 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log(`✅ Subscription deleted for user ${userId}`);
 }
 
-async function handleSubscriptionPaused(subscription: Stripe.Subscription) {
+async function handleSubscriptionPaused(
+  subscription: Stripe.Subscription,
+  stripe: Stripe,
+  supabaseAdmin: any
+) {
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
-  const userId = await findUserByCustomerId(customerId!);
+  const userId = await findUserByCustomerId(customerId!, stripe, supabaseAdmin);
 
   if (!userId) return;
 
@@ -263,9 +301,13 @@ async function handleSubscriptionPaused(subscription: Stripe.Subscription) {
   console.log(`✅ Subscription paused for user ${userId}`);
 }
 
-async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
+async function handlePaymentSucceeded(
+  invoice: Stripe.Invoice,
+  stripe: Stripe,
+  supabaseAdmin: any
+) {
   const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
-  const userId = await findUserByCustomerId(customerId!);
+  const userId = await findUserByCustomerId(customerId!, stripe, supabaseAdmin);
 
   if (!userId) return;
 
@@ -282,9 +324,13 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log(`✅ Payment succeeded for user ${userId}`);
 }
 
-async function handlePaymentFailed(invoice: Stripe.Invoice) {
+async function handlePaymentFailed(
+  invoice: Stripe.Invoice,
+  stripe: Stripe,
+  supabaseAdmin: any
+) {
   const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
-  const userId = await findUserByCustomerId(customerId!);
+  const userId = await findUserByCustomerId(customerId!, stripe, supabaseAdmin);
 
   if (!userId) return;
 

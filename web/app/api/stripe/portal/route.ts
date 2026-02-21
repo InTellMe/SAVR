@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { authenticateRequest } from '@/lib/middleware';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-01-28.clover',
-});
+import { getStripeInstance } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
+  let stripe: Stripe;
+
+  // Initialize Stripe at runtime
+  try {
+    stripe = getStripeInstance();
+  } catch (error) {
+    console.error('Stripe configuration error:', error);
+    return NextResponse.json(
+      { error: 'Payment service configuration error' },
+      { status: 500 }
+    );
+  }
+
   try {
     // Authenticate the user
     const auth = await authenticateRequest(request);

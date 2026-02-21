@@ -87,3 +87,45 @@ export const supabase = createClient(supabaseUrlValue, supabaseAnonKeyValue, {
     detectSessionInUrl: true,
   },
 });
+
+// Admin client with service role key (lazy initialization for server-side only)
+let supabaseAdminInstance: any = null;
+
+/**
+ * Get or create a Supabase admin client with service role key.
+ * This provides elevated privileges for server-side operations.
+ * Uses lazy initialization to prevent build-time errors.
+ * 
+ * @throws {Error} If SUPABASE_SERVICE_ROLE_KEY is not set at runtime
+ * @returns {SupabaseClient} Supabase client with service role privileges
+ */
+export function getSupabaseAdmin(): any {
+  // Return cached instance if already created
+  if (supabaseAdminInstance) {
+    return supabaseAdminInstance;
+  }
+
+  // Validate environment variables at runtime
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error(
+      'SUPABASE_SERVICE_ROLE_KEY is not configured. Please set this environment variable in your Vercel project settings.'
+    );
+  }
+
+  if (!supabaseUrl) {
+    throw new Error(
+      'NEXT_PUBLIC_SUPABASE_URL is not configured. Please set this environment variable in your Vercel project settings.'
+    );
+  }
+
+  // Create and cache the admin client
+  supabaseAdminInstance = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  return supabaseAdminInstance;
+}

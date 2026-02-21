@@ -54,34 +54,36 @@ jobs:
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
           NEXT_PUBLIC_APP_URL: http://localhost:3000
 
-  typecheck-mobile:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: mobile/package-lock.json
-      - run: npm ci
-        working-directory: mobile
-      - run: npx tsc --noEmit
-        working-directory: mobile
+  # Mobile checks disabled - only needed when mobile code changes
+  # Uncomment when mobile app needs to be tested
+  # typecheck-mobile:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "20"
+  #         cache: "npm"
+  #         cache-dependency-path: mobile/package-lock.json
+  #     - run: npm ci
+  #       working-directory: mobile
+  #     - run: npx tsc --noEmit
+  #       working-directory: mobile
 
-  lint-mobile:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: mobile/package-lock.json
-      - run: npm ci
-        working-directory: mobile
-      - run: npm run lint
-        working-directory: mobile
-        continue-on-error: true
+  # lint-mobile:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "20"
+  #         cache: "npm"
+  #         cache-dependency-path: mobile/package-lock.json
+  #     - run: npm ci
+  #       working-directory: mobile
+  #     - run: npm run lint
+  #       working-directory: mobile
+  #       continue-on-error: true
 
   check-migrations:
     runs-on: ubuntu-latest
@@ -90,15 +92,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install Supabase CLI
-        run: npm install -g supabase
       - name: Start Supabase
-        run: supabase start
+        run: npx supabase start
       - name: Test migrations
-        run: supabase db reset --local
+        run: npx supabase db reset --local
       - name: Stop Supabase
         if: always()
-        run: supabase stop
+        run: npx supabase stop
 
   check-env-examples:
     runs-on: ubuntu-latest

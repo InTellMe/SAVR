@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '../supabase';
 import { ImageDocument, AnnotationDocument, CategoryDocument } from '../types/functions';
  
 /**
@@ -6,10 +6,10 @@ import { ImageDocument, AnnotationDocument, CategoryDocument } from '../types/fu
  * Handles image/video storage, thumbnails, and mask storage
  */
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Use lazy initialization for Supabase admin client
+function getSupabase() {
+  return getSupabaseAdmin();
+}
 
 const LABELING_BUCKET = 'labeling-images';
  
@@ -52,7 +52,7 @@ export async function uploadImageFile(
 ): Promise<string> {
   const path = getImageStoragePath(uid, imageId);
   
-  const { data, error } = await supabase.storage
+  const { error } = await getSupabase().storage
     .from(LABELING_BUCKET)
     .upload(path, fileBuffer, {
       contentType,
@@ -79,7 +79,7 @@ export async function generateAndUploadThumbnail(
   // For now, we'll just upload the original as thumbnail (can be optimized later)
   const path = getThumbnailStoragePath(imageId);
   
-  const { data, error } = await supabase.storage
+  const { error } = await getSupabase().storage
     .from(LABELING_BUCKET)
     .upload(path, imageBuffer, {
       contentType: 'image/jpeg',
@@ -107,7 +107,7 @@ export async function createImageDocument(
   frameIndex?: number,
   thumbnailPath?: string
 ): Promise<ImageDocument> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('images')
     .insert({
       id: imageId,
@@ -151,7 +151,7 @@ export async function createImageDocument(
  * Get image document from Supabase
  */
 export async function getImageDocument(imageId: string): Promise<ImageDocument | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('images')
     .select('*')
     .eq('id', imageId)
@@ -193,7 +193,7 @@ export async function updateImageLabelStatus(
     updateData.current_annotation_id = currentAnnotationId;
   }
 
-  const { error } = await supabase
+  const { error } = await getSupabase()
     .from('images')
     .update(updateData)
     .eq('id', imageId);
@@ -215,7 +215,7 @@ export async function createAnnotationDocument(
   status: AnnotationDocument['status'] = 'draft'
 ): Promise<AnnotationDocument> {
   // Get current max version for this image
-  const { data: existingAnnotations } = await supabase
+  const { data: existingAnnotations } = await getSupabase()
     .from('annotations')
     .select('version')
     .eq('image_id', imageId)
@@ -226,7 +226,7 @@ export async function createAnnotationDocument(
     ? existingAnnotations[0].version + 1 
     : 1;
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('annotations')
     .insert({
       image_id: imageId,
@@ -262,7 +262,7 @@ export async function createAnnotationDocument(
  * Get annotations for an image
  */
 export async function getImageAnnotations(imageId: string): Promise<AnnotationDocument[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('annotations')
     .select('*')
     .eq('image_id', imageId)
@@ -272,7 +272,7 @@ export async function getImageAnnotations(imageId: string): Promise<AnnotationDo
     throw new Error(`Failed to get annotations: ${error.message}`);
   }
 
-  return (data || []).map(item => ({
+  return (data || []).map((item: any) => ({
     id: item.id,
     imageId: item.image_id,
     version: item.version,
@@ -290,7 +290,7 @@ export async function getImageAnnotations(imageId: string): Promise<AnnotationDo
  * Get latest annotation for an image
  */
 export async function getLatestAnnotation(imageId: string): Promise<AnnotationDocument | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('annotations')
     .select('*')
     .eq('image_id', imageId)
@@ -326,7 +326,7 @@ export async function getOrCreateCategory(
   metadata?: Record<string, unknown>
 ): Promise<CategoryDocument> {
   // Try to get existing category
-  const { data: existing } = await supabase
+  const { data: existing } = await getSupabase()
     .from('categories')
     .select('*')
     .eq('id', categoryId)
@@ -342,7 +342,7 @@ export async function getOrCreateCategory(
   }
 
   // Create new category
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('categories')
     .insert({
       id: categoryId,
@@ -369,7 +369,7 @@ export async function getOrCreateCategory(
  * Get all categories
  */
 export async function getAllCategories(): Promise<CategoryDocument[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('categories')
     .select('*');
 
@@ -377,7 +377,7 @@ export async function getAllCategories(): Promise<CategoryDocument[]> {
     throw new Error(`Failed to get categories: ${error.message}`);
   }
 
-  return (data || []).map(item => ({
+  return (data || []).map((item: any) => ({
     id: item.id,
     name: item.name,
     color: item.color,
@@ -395,7 +395,7 @@ export async function getImageSignedUrl(storagePath: string, expiresIn: number =
   const bucket = parts[0] === LABELING_BUCKET ? parts.shift()! : LABELING_BUCKET;
   const path = parts.join('/');
 
-  const { data, error } = await supabase.storage
+  const { data, error } = await getSupabase().storage
     .from(bucket)
     .createSignedUrl(path, expiresIn);
 
