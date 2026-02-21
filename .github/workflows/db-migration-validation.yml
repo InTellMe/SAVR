@@ -4,11 +4,11 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'npx supabase/migrations/**'
+      - 'supabase/migrations/**'
   push:
     branches: [main]
     paths:
-      - 'npx supabase/migrations/**'
+      - 'supabase/migrations/**'
   workflow_dispatch:
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
           node-version: "20"
 
       - name: Install Supabase CLI
-        run: npm install -g npx supabase
+        run: # Supabase CLI is now used via npx - no global install needed
 
       - name: Start Supabase (fresh database)
         run: npx supabase start
@@ -36,7 +36,7 @@ jobs:
       - name: Validate migration order
         run: |
           echo "Checking migration file naming..."
-          cd npx supabase/migrations
+          cd supabase/migrations
           # Check that all migrations follow naming convention
           for file in *.sql; do
             if [[ ! $file =~ ^[0-9]{14}_[a-z_]+\.sql$ ]]; then
@@ -50,7 +50,7 @@ jobs:
       - name: Check for migration conflicts
         run: |
           echo "Checking for duplicate migration timestamps..."
-          cd npx supabase/migrations
+          cd supabase/migrations
           timestamps=$(ls *.sql | cut -d'_' -f1 | sort)
           duplicates=$(echo "$timestamps" | uniq -d)
           if [ -n "$duplicates" ]; then
@@ -105,7 +105,7 @@ jobs:
         run: |
           echo "Testing migration rollback..."
           # Get current migration version
-          CURRENT=$(npx supabase migration list --local | tail -1 | awk '{print $1}')
+          CURRENT=$(supabase migration list --local | tail -1 | awk '{print $1}')
           echo "Current migration: $CURRENT"
           
           # This is informational - we don't actually rollback in CI
@@ -143,7 +143,7 @@ jobs:
           node-version: "20"
 
       - name: Install Supabase CLI
-        run: npm install -g npx supabase
+        run: # Supabase CLI is now used via npx - no global install needed
 
       - name: Start Supabase
         run: npx supabase start
@@ -153,8 +153,8 @@ jobs:
           npx supabase db reset --local
           
           # Apply seed data if exists
-          if [ -f "npx supabase/seed.sql" ]; then
-            npx supabase db exec --file npx supabase/seed.sql
+          if [ -f "supabase/seed.sql" ]; then
+            npx supabase db exec --file supabase/seed.sql
             echo "✅ Seed data applied"
           else
             echo "ℹ️  No seed data found"

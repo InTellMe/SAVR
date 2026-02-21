@@ -112,7 +112,7 @@ jobs:
           node-version: "20"
 
       - name: Install Supabase CLI
-        run: npm install -g npx supabase
+        run: # Supabase CLI is now used via npx - no global install needed
 
       - name: Start Supabase
         run: npx supabase start
@@ -125,7 +125,7 @@ jobs:
       - name: Test RLS policies
         run: |
           # Run RLS policy tests if they exist
-          if [ -f "npx supabase/tests/rls-policies.test.sql" ]; then
+          if [ -f "supabase/tests/rls-policies.test.sql" ]; then
             npx supabase test db
           else
             echo "No RLS policy tests found - skipping"
