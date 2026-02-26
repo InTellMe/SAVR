@@ -217,6 +217,29 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Frumefni Project CTA */}
+      <section className="relative py-16 md:py-20">
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="rounded-2xl p-8 md:p-10 text-center" style={{ background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(0, 212, 255, 0.06))', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+            <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(168, 85, 247, 0.12)' }}>
+              <svg className="w-7 h-7 md:w-8 md:h-8 text-[#a855f7]" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+              </svg>
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">
+              Become Part of the Contact
+            </h3>
+            <p className="text-base md:text-lg leading-relaxed mb-6 max-w-2xl mx-auto" style={{ color: '#9ca3c2' }}>
+              Support Frumefni: The Elemental Contact—an exploration of human connection 
+              at the 2026 Iceland Eclipse. Help make this groundbreaking artistic and research project possible.
+            </p>
+            <Link href="/support-frumefni" className="btn-primary text-base sm:text-lg inline-block">
+              Learn More & Support
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="relative py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(168, 85, 247, 0.06))' }} />
@@ -280,6 +303,9 @@ export default function Home() {
             <div className="flex items-center gap-8">
               <Link href="/pricing" className="text-sm text-[#6b7294] hover:text-[#00d4ff] transition-colors">
                 Pricing
+              </Link>
+              <Link href="/support-frumefni" className="text-sm text-[#6b7294] hover:text-[#00d4ff] transition-colors">
+                Support Frumefni
               </Link>
               <Link href="/faq" className="text-sm text-[#6b7294] hover:text-[#00d4ff] transition-colors">
                 FAQ
