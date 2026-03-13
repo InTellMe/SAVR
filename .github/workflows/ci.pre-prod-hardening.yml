@@ -49,11 +49,10 @@ jobs:
       - run: npm run build
         working-directory: web
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID: ${{ secrets.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy_key
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
 
   # Mobile checks disabled - only needed when mobile code changes
   # Uncomment when mobile app needs to be tested
@@ -120,3 +119,4 @@ jobs:
             exit 1
           fi
           echo "✅ No hardcoded secrets detected"
+

@@ -43,10 +43,8 @@ if (isProduction && !isServerSide && !hasRealSupabaseConfig) {
   );
 }
 
-// Allow dummy config in development and during CI/test builds where envs may be intentionally dummy.
-const isCI = process.env.CI === 'true';
-const isTestEnv = process.env.NODE_ENV === 'test';
-const ALLOW_DUMMY_CONFIG = isDevelopment || isServerSide || isCI || isTestEnv;
+// Allow dummy config in development and during server-side prerendering (static export build)
+const ALLOW_DUMMY_CONFIG = isDevelopment || isServerSide;
 
 const getSupabaseConfigValue = (
   value: string | undefined,
@@ -131,3 +129,4 @@ export function getSupabaseAdmin(): any {
 
   return supabaseAdminInstance;
 }
+

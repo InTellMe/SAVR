@@ -488,32 +488,21 @@ ${context?.dietaryPreferences?.length ? `The user follows these dietary preferen
     ...conversationHistory,
     { role: 'user', content: message },
   ];
-  try {
-    const completion = await callOpenAIWithFallback(
-      {
-        model: process.env.OPENAI_MODEL_CHAT_PRIMARY || 'gpt-4o',
-        messages,
-        max_tokens: 1000,
-        temperature: 0.7,
-      },
-      {
-        primaryModel: process.env.OPENAI_MODEL_CHAT_PRIMARY || 'gpt-4o',
-        fallbackModel: process.env.OPENAI_MODEL_CHAT_FALLBACK || 'gpt-4o-mini',
-      }
-    );
+  const completion = await callOpenAIWithFallback(
+    {
+      model: process.env.OPENAI_MODEL_CHAT_PRIMARY || 'gpt-4o',
+      messages,
+      max_tokens: 1000,
+      temperature: 0.7,
+    },
+    {
+      primaryModel: process.env.OPENAI_MODEL_CHAT_PRIMARY || 'gpt-4o',
+      fallbackModel: process.env.OPENAI_MODEL_CHAT_FALLBACK || 'gpt-4o-mini',
+    }
+  );
 
-    const content = extractContentFromCompletion(completion);
-    return content || 'I apologize, but I could not generate a response.';
-  } catch (error) {
-    console.error('Chat assistant failed for SAVR Chef conversation:', {
-      error,
-      hasContext: !!context,
-      hasInventory: !!context?.inventory?.length,
-      hasRecipe: !!context?.currentRecipe,
-      hasDietaryPreferences: !!context?.dietaryPreferences?.length,
-    });
-    return 'I ran into a temporary issue generating a response. Please try again in a moment.';
-  }
+  const content = extractContentFromCompletion(completion);
+  return content || 'I apologize, but I could not generate a response.';
 }
 
 // Ingredient substitution with inventory and recipe context awareness
@@ -778,3 +767,4 @@ Only include food items, not bags, tax, totals, or non-food products. Only retur
     'extractFromReceipt'
   );
 }
+

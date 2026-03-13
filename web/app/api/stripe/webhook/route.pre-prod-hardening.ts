@@ -176,10 +176,7 @@ async function handleCheckoutCompleted(
   stripe: Stripe,
   supabaseAdmin: any
 ) {
-  console.log(`Processing checkout.session.completed for ${session.id}`, {
-    customer: session.customer,
-    subscription: session.subscription,
-  });
+  console.log(`Processing checkout.session.completed for ${session.id}`);
 
   const userId = session.client_reference_id || session.metadata?.userId;
   if (!userId) {
@@ -222,11 +219,7 @@ async function handleCheckoutCompleted(
     .update(updates)
     .eq('id', userId);
 
-  console.log(`✅ Linked checkout to user ${userId}`, {
-    customerId,
-    subscriptionId,
-    subscriptionStatus: updates.subscription_status,
-  });
+  console.log(`✅ Linked checkout to user ${userId}`);
 }
 
 async function handleSubscriptionUpdated(
@@ -354,3 +347,4 @@ async function handlePaymentFailed(
 
   console.log(`❌ Payment failed for user ${userId}`);
 }
+
