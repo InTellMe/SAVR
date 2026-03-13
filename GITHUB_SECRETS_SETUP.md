@@ -116,32 +116,40 @@ To automatically submit builds to Google Play Store:
 
 ## Step 8: Add All Secrets to GitHub
 
-**IMPORTANT: Deployment secrets must be added to the `Production` Environment, NOT repository secrets!**
+**IMPORTANT: Different secrets go in different locations!**
 
-### Adding Environment Secrets (for Deployments)
+- **Vercel secrets** (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID) → **Repository Secrets** (used by both production and preview deployments)
+- **Supabase & Stripe secrets** → **Production Environment Secrets** (for production deployments only)
+- **Mobile build secrets** → **Repository Secrets** (for mobile builds)
 
-For deployment-related secrets:
+### Adding Repository Secrets
+
+For Vercel and Mobile secrets:
+1. Go to: Repository → Settings → Secrets and variables → Actions → Repository secrets
+2. Click "New repository secret"
+3. Enter the **Name** (exactly as shown, case-sensitive)
+4. Paste the **Value**
+5. Click "Add secret"
+
+### Adding Environment Secrets (for Production Deployments)
+
+For deployment-related secrets (Supabase, Stripe, etc.):
 1. Go to: Repository → Settings → Environments → `Production`
 2. Click "Add secret" under "Environment secrets"
 3. Enter the **Name** (exactly as shown, case-sensitive)
 4. Paste the **Value**
 5. Click "Add secret"
 
-### Adding Repository Secrets (for Mobile Builds)
-
-For Mobile-related secrets:
-1. Go to: Repository → Settings → Secrets and variables → Actions → Repository secrets
-2. Click "New repository secret"
-3. Enter the **Name** and **Value**
-4. Click "Add secret"
-
 ---
 
-### 🚀 Vercel Deployment Secrets (Add to Production Environment)
+### 🚀 Vercel Deployment Secrets (Add to Repository Secrets)
+
+**Why Repository Secrets?** These are used by both production (`vercel-deploy.yml`) and preview (`preview-deploy.yml`) workflows. The preview workflow doesn't use an environment, so these must be repository-level secrets.
 
 #### Secret 1: VERCEL_TOKEN
 - **Name**: `VERCEL_TOKEN`
 - **Value**: Token from Step 2 (Vercel account tokens page)
+- **Location**: Repository Secrets
 - **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
 - **Sensitive**: ✅ Yes - keep private
 - **Required**: ✅ Yes
@@ -149,6 +157,7 @@ For Mobile-related secrets:
 #### Secret 2: VERCEL_ORG_ID
 - **Name**: `VERCEL_ORG_ID`
 - **Value**: Organization ID from Vercel project settings
+- **Location**: Repository Secrets
 - **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
 - **Sensitive**: ⚠️ Project identifier
 - **Required**: ✅ Yes
@@ -156,52 +165,67 @@ For Mobile-related secrets:
 #### Secret 3: VERCEL_PROJECT_ID
 - **Name**: `VERCEL_PROJECT_ID`
 - **Value**: Project ID from Vercel project settings
+- **Location**: Repository Secrets
 - **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
 - **Sensitive**: ⚠️ Project identifier
 - **Required**: ✅ Yes
 
-### 🗄️ Supabase Configuration (Add to Production Environment)
+### 🗄️ Supabase Configuration
+
+**Note:** Supabase public keys (NEXT_PUBLIC_*) need to be in BOTH locations:
+- **Production Environment** (for production deployments with `vercel-deploy.yml`)
+- **Repository Secrets** (for preview deployments with `preview-deploy.yml` and mobile builds with `mobile-build.yml`)
 
 #### Secret 4: NEXT_PUBLIC_SUPABASE_URL
 - **Name**: `NEXT_PUBLIC_SUPABASE_URL`
 - **Value**: Project URL from Supabase Dashboard → Project Settings → API
-- **Used by**: `vercel-deploy.yml`, `preview-deploy.yml`, and `mobile-build.yml` workflows
+- **Location**: Production Environment AND Repository Secrets
+- **Used by**: All deployment workflows (`vercel-deploy.yml`, `preview-deploy.yml`, `mobile-build.yml`)
 - **Sensitive**: ❌ No - public config (Supabase URL is designed to be public)
 - **Required**: ✅ Yes
 
 #### Secret 5: NEXT_PUBLIC_SUPABASE_ANON_KEY
 - **Name**: `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - **Value**: Anon/Public key from Supabase Dashboard → Project Settings → API
-- **Used by**: `vercel-deploy.yml`, `preview-deploy.yml`, and `mobile-build.yml` workflows
+- **Location**: Production Environment AND Repository Secrets
+- **Used by**: All deployment workflows (`vercel-deploy.yml`, `preview-deploy.yml`, `mobile-build.yml`)
 - **Sensitive**: ❌ No - public config (Anon key is designed to be public, protected by RLS)
 - **Required**: ✅ Yes
 
 #### Secret 6: SUPABASE_SERVICE_ROLE_KEY
 - **Name**: `SUPABASE_SERVICE_ROLE_KEY`
 - **Value**: Service Role key from Supabase Dashboard → Project Settings → API
-- **Used by**: Backend API routes and server-side operations
+- **Location**: Production Environment only
+- **Used by**: Backend API routes and server-side operations (production only)
 - **Sensitive**: ✅ Yes - keep private! (bypasses RLS)
 - **Required**: ✅ Yes
 
 #### Secret 7: SUPABASE_PROJECT_REF
 - **Name**: `SUPABASE_PROJECT_REF`
 - **Value**: Project reference ID from Supabase Dashboard URL (e.g., `abcdefghijk`)
-- **Used by**: `vercel-deploy.yml` for database migrations
+- **Location**: Production Environment only
+- **Used by**: `vercel-deploy.yml` for database migrations (production only)
 - **Sensitive**: ⚠️ Project identifier
 - **Required**: ✅ Yes (for migrations)
 
 #### Secret 8: SUPABASE_DB_PASSWORD
 - **Name**: `SUPABASE_DB_PASSWORD`
 - **Value**: Database password set when creating the Supabase project
-- **Used by**: `vercel-deploy.yml` for database migrations
+- **Location**: Production Environment only
+- **Used by**: `vercel-deploy.yml` for database migrations (production only)
 - **Sensitive**: ✅ Yes - keep private
 - **Required**: ✅ Yes (for migrations)
 
-### 💳 Stripe Configuration (Add to Production Environment)
+### 💳 Stripe Configuration
+
+**Note:** Stripe public keys (NEXT_PUBLIC_*) need to be in BOTH locations:
+- **Production Environment** (for production deployments)
+- **Repository Secrets** (for preview deployments)
 
 #### Secret 9: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 - **Name**: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - **Value**: Stripe publishable key from Step 4 (starts with `pk_live_` or `pk_test_`)
+- **Location**: Production Environment AND Repository Secrets
 - **Used by**: `vercel-deploy.yml` and `preview-deploy.yml` workflows
 - **Sensitive**: ❌ No - public config (Stripe publishable keys are designed to be public)
 - **Required**: ✅ Yes
@@ -209,6 +233,7 @@ For Mobile-related secrets:
 #### Secret 10: NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID
 - **Name**: `NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID`
 - **Value**: Stripe Pricing Table ID (starts with `prctbl_...`)
+- **Location**: Production Environment AND Repository Secrets
 - **How to get**:
   1. Go to [Stripe Dashboard → Products → Pricing Tables](https://dashboard.stripe.com/products/pricing-tables)
   2. Create or select your pricing table
@@ -220,23 +245,26 @@ For Mobile-related secrets:
 #### Secret 11: STRIPE_SECRET_KEY
 - **Name**: `STRIPE_SECRET_KEY`
 - **Value**: Stripe secret key from Stripe Dashboard → Developers → API keys
-- **Used by**: Backend API routes for payment processing
+- **Location**: Production Environment only
+- **Used by**: Backend API routes for payment processing (production only)
 - **Sensitive**: ✅ Yes - keep private!
 - **Required**: ✅ Yes
 
 #### Secret 12: STRIPE_WEBHOOK_SECRET
 - **Name**: `STRIPE_WEBHOOK_SECRET`
 - **Value**: Webhook signing secret from Stripe Dashboard → Developers → Webhooks
-- **Used by**: Backend API routes for webhook verification
+- **Location**: Production Environment only
+- **Used by**: Backend API routes for webhook verification (production only)
 - **Sensitive**: ✅ Yes - keep private!
 - **Required**: ✅ Yes
 
-### 🌐 Application Configuration (Add to Production Environment)
+### 🌐 Application Configuration
 
 #### Secret 13: NEXT_PUBLIC_APP_URL
 - **Name**: `NEXT_PUBLIC_APP_URL`
 - **Value**: Your production URL (e.g., `https://savr.cam`)
-- **Used by**: `vercel-deploy.yml` workflow
+- **Location**: Production Environment only
+- **Used by**: `vercel-deploy.yml` workflow (production only)
 - **Sensitive**: ❌ No - public config
 - **Required**: ✅ Yes
 
@@ -283,8 +311,8 @@ For Mobile-related secrets:
 
 After adding all secrets, verify they are correctly configured:
 
-### In the Production Environment (13 deployment secrets)
-Navigate to: Repository → Settings → Environments → Production → Environment secrets
+### In Repository Secrets (12 secrets)
+Navigate to: Repository → Settings → Secrets and variables → Actions → Repository secrets
 
 You should see:
 - ✅ VERCEL_TOKEN
@@ -292,24 +320,30 @@ You should see:
 - ✅ VERCEL_PROJECT_ID
 - ✅ NEXT_PUBLIC_SUPABASE_URL
 - ✅ NEXT_PUBLIC_SUPABASE_ANON_KEY
-- ✅ SUPABASE_SERVICE_ROLE_KEY
-- ✅ SUPABASE_PROJECT_REF
-- ✅ SUPABASE_DB_PASSWORD
 - ✅ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 - ✅ NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID
-- ✅ STRIPE_SECRET_KEY
-- ✅ STRIPE_WEBHOOK_SECRET
-- ✅ NEXT_PUBLIC_APP_URL
-
-### In Repository Secrets (5 Mobile secrets)
-Navigate to: Repository → Settings → Secrets and variables → Actions → Repository secrets
-
-You should see:
 - ✅ EXPO_TOKEN
 - ✅ EXPO_PUBLIC_GOOGLE_CLIENT_ID
 - ✅ EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
 - ✅ EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
 - ✅ GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
+
+### In Production Environment (10 secrets)
+Navigate to: Repository → Settings → Environments → Production → Environment secrets
+
+You should see:
+- ✅ NEXT_PUBLIC_SUPABASE_URL (duplicate of repository secret)
+- ✅ NEXT_PUBLIC_SUPABASE_ANON_KEY (duplicate of repository secret)
+- ✅ SUPABASE_SERVICE_ROLE_KEY
+- ✅ SUPABASE_PROJECT_REF
+- ✅ SUPABASE_DB_PASSWORD
+- ✅ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (duplicate of repository secret)
+- ✅ NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID (duplicate of repository secret)
+- ✅ STRIPE_SECRET_KEY
+- ✅ STRIPE_WEBHOOK_SECRET
+- ✅ NEXT_PUBLIC_APP_URL
+
+**Note:** Some secrets appear in both locations because they're used by different workflows with different scopes.
 
 ---
 
@@ -352,12 +386,15 @@ Make any small change to a file on main branch (or merge a PR), which will autom
 ## Troubleshooting
 
 ### Still Getting startup_failure?
-- **Verify Environment Name**: Ensure you added deployment secrets to the `Production` Environment (capital P), NOT to repository secrets
+- **Verify Secret Locations**: 
+  - Vercel secrets (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID) must be in **Repository Secrets**
+  - Supabase/Stripe public keys should be in BOTH **Repository Secrets** AND **Production Environment**
+  - Supabase/Stripe private keys should be in **Production Environment** only
 - Double-check all secret names are **exactly** as shown (case-sensitive)
 - Ensure no extra spaces in secret values
 - Verify you have admin access to the repository
 - For mobile builds, verify EXPO_TOKEN is valid (check at https://expo.dev)
-- Check that the workflow file has `environment: Production` in the deploy job
+- Check that the workflow file has `environment: Production` in the deploy job (for production deployments)
 
 ### Workflow starts but fails during build?
 - Good news: secrets are working!
@@ -426,7 +463,9 @@ Use this checklist to verify setup:
 - [ ] Collected Vercel token, org ID, and project ID
 - [ ] Collected all Supabase config values from Dashboard
 - [ ] Got Stripe publishable key and pricing table ID
-- [ ] Added all 13 deployment secrets to GitHub Production environment
+- [ ] Added Vercel secrets (3) to GitHub Repository Secrets
+- [ ] Added Supabase/Stripe public keys (4) to BOTH Repository Secrets AND Production Environment
+- [ ] Added Supabase/Stripe private keys (5) to Production Environment only
 
 ### Mobile Build Setup (if deploying mobile app)
 - [ ] Created Expo account at https://expo.dev
@@ -449,36 +488,55 @@ Use this checklist to verify setup:
 
 ### GitHub Actions Secrets (Required for CI/CD)
 
-| Secret Name | Used By | Source | Sensitive | Example Format |
-|------------|---------|--------|-----------|----------------|
-| **VERCEL_TOKEN** | vercel-deploy.yml, preview-deploy.yml | Vercel Dashboard | ✅ Yes | `ABCxyz123...` |
-| **VERCEL_ORG_ID** | vercel-deploy.yml, preview-deploy.yml | Vercel Project Settings | ⚠️ ID | `team_abc123` |
-| **VERCEL_PROJECT_ID** | vercel-deploy.yml, preview-deploy.yml | Vercel Project Settings | ⚠️ ID | `prj_abc123xyz` |
-| **NEXT_PUBLIC_SUPABASE_URL** | All workflows | Supabase Dashboard | ❌ No | `https://abc.supabase.co` |
-| **NEXT_PUBLIC_SUPABASE_ANON_KEY** | All workflows | Supabase Dashboard | ❌ No | `eyJhbGc...` |
-| **SUPABASE_SERVICE_ROLE_KEY** | Backend API | Supabase Dashboard | ✅ Yes | `eyJhbGc...` |
-| **SUPABASE_PROJECT_REF** | vercel-deploy.yml (migrations) | Supabase Dashboard URL | ⚠️ ID | `abcdefghijk` |
-| **SUPABASE_DB_PASSWORD** | vercel-deploy.yml (migrations) | Supabase setup | ✅ Yes | `yourpassword` |
-| **NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** | vercel-deploy.yml, preview-deploy.yml | Stripe Dashboard | ❌ No | `pk_live_...` or `pk_test_...` |
-| **NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID** | vercel-deploy.yml, preview-deploy.yml | Stripe Dashboard | ❌ No | `prctbl_...` |
-| **STRIPE_SECRET_KEY** | Backend API | Stripe Dashboard | ✅ Yes | `sk_live_...` or `sk_test_...` |
-| **STRIPE_WEBHOOK_SECRET** | Backend API | Stripe Dashboard | ✅ Yes | `whsec_...` |
-| **NEXT_PUBLIC_APP_URL** | vercel-deploy.yml | Your Domain | ❌ No | `https://savr.cam` |
-| **EXPO_TOKEN** | mobile-build.yml | Expo Dashboard | ✅ Yes | `abc123...` |
-| **EXPO_PUBLIC_GOOGLE_CLIENT_ID** | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
-| **EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID** | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
-| **EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID** | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
-| **GOOGLE_PLAY_SERVICE_ACCOUNT_KEY** | mobile-build.yml (submit) | Google Play Console | ✅ Yes | `{"type":"service_account",...}` |
+| Secret Name | Location | Used By | Source | Sensitive | Example Format |
+|------------|----------|---------|--------|-----------|----------------|
+| **VERCEL_TOKEN** | Repository | vercel-deploy.yml, preview-deploy.yml | Vercel Dashboard | ✅ Yes | `ABCxyz123...` |
+| **VERCEL_ORG_ID** | Repository | vercel-deploy.yml, preview-deploy.yml | Vercel Project Settings | ⚠️ ID | `team_abc123` |
+| **VERCEL_PROJECT_ID** | Repository | vercel-deploy.yml, preview-deploy.yml | Vercel Project Settings | ⚠️ ID | `prj_abc123xyz` |
+| **NEXT_PUBLIC_SUPABASE_URL** | Both* | All workflows | Supabase Dashboard | ❌ No | `https://abc.supabase.co` |
+| **NEXT_PUBLIC_SUPABASE_ANON_KEY** | Both* | All workflows | Supabase Dashboard | ❌ No | `eyJhbGc...` |
+| **SUPABASE_SERVICE_ROLE_KEY** | Environment | Backend API | Supabase Dashboard | ✅ Yes | `eyJhbGc...` |
+| **SUPABASE_PROJECT_REF** | Environment | vercel-deploy.yml (migrations) | Supabase Dashboard URL | ⚠️ ID | `abcdefghijk` |
+| **SUPABASE_DB_PASSWORD** | Environment | vercel-deploy.yml (migrations) | Supabase setup | ✅ Yes | `yourpassword` |
+| **NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** | Both* | vercel-deploy.yml, preview-deploy.yml | Stripe Dashboard | ❌ No | `pk_live_...` or `pk_test_...` |
+| **NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID** | Both* | vercel-deploy.yml, preview-deploy.yml | Stripe Dashboard | ❌ No | `prctbl_...` |
+| **STRIPE_SECRET_KEY** | Environment | Backend API | Stripe Dashboard | ✅ Yes | `sk_live_...` or `sk_test_...` |
+| **STRIPE_WEBHOOK_SECRET** | Environment | Backend API | Stripe Dashboard | ✅ Yes | `whsec_...` |
+| **NEXT_PUBLIC_APP_URL** | Environment | vercel-deploy.yml | Your Domain | ❌ No | `https://savr.cam` |
+| **EXPO_TOKEN** | Repository | mobile-build.yml | Expo Dashboard | ✅ Yes | `abc123...` |
+| **EXPO_PUBLIC_GOOGLE_CLIENT_ID** | Repository | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
+| **EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID** | Repository | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
+| **EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID** | Repository | mobile-build.yml | Google Cloud Console | ❌ No | `*.apps.googleusercontent.com` |
+| **GOOGLE_PLAY_SERVICE_ACCOUNT_KEY** | Repository | mobile-build.yml (submit) | Google Play Console | ✅ Yes | `{"type":"service_account",...}` |
 
 **Total: 18 GitHub Secrets Required**
+
+*Both = Repository Secrets AND Production Environment (needed by different workflows)
+
+### Secret Location Summary
+
+**Repository Secrets (12 total):**
+- VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+- NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+- NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID
+- EXPO_TOKEN, EXPO_PUBLIC_GOOGLE_CLIENT_ID, EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+- GOOGLE_PLAY_SERVICE_ACCOUNT_KEY
+
+**Production Environment Secrets (10 total):**
+- NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY (duplicates)
+- SUPABASE_SERVICE_ROLE_KEY, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD
+- NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID (duplicates)
+- STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+- NEXT_PUBLIC_APP_URL
 
 ### Workflow-Specific Secret Mapping
 
 **vercel-deploy.yml** (Web App Production Deployment):
-- Requires 13 secrets: Vercel (3), Supabase (5), Stripe (4), App URL (1)
+- Uses Production Environment secrets (10): Supabase (5), Stripe (4), App URL (1)
+- Uses Repository secrets (3): Vercel (3)
 
 **preview-deploy.yml** (Web App Preview Deployment):
-- Requires 8 secrets: Vercel (3), Supabase (2), Stripe (2), preview URL (1)
+- Uses Repository secrets only (7): Vercel (3), Supabase (2), Stripe (2)
 
 **mobile-build.yml** (Mobile App Build & Submit):
 - Requires 8 secrets for builds: EXPO_TOKEN + Supabase (2) + Google OAuth (3)
