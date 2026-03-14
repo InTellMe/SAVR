@@ -29,7 +29,15 @@ function getOpenAI(): OpenAI {
   return openaiInstance;
 }
 
-const visionClient = new vision.ImageAnnotatorClient();
+// Lazy initialization to avoid instantiation (and Google Cloud credential lookup) during build
+let visionClientInstance: InstanceType<typeof vision.ImageAnnotatorClient> | null = null;
+
+function getVisionClient(): InstanceType<typeof vision.ImageAnnotatorClient> {
+  if (!visionClientInstance) {
+    visionClientInstance = new vision.ImageAnnotatorClient();
+  }
+  return visionClientInstance;
+}
 
 function isRetryableOpenAIError(error: unknown): boolean {
   const errorWithStatus = error as { status?: number; response?: { status?: number } };
@@ -162,7 +170,7 @@ Only return the JSON array, no other text.`,
 }
 
 async function extractWithGoogleVision(imageUrl: string): Promise<ExtractedIngredient[]> {
-  const [result] = await visionClient.labelDetection(imageUrl);
+  const [result] = await getVisionClient().labelDetection(imageUrl);
   const labels = result.labelAnnotations || [];
 
   // Use GPT-4 to process Google Vision labels into structured ingredients

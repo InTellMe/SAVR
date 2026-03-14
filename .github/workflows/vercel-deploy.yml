@@ -46,13 +46,11 @@ jobs:
       - name: Pull Vercel Environment Information
         id: vercel_pull
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: web
         continue-on-error: true
 
       - name: Build Project Artifacts
         if: steps.vercel_pull.outcome == 'success'
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: web
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -63,7 +61,6 @@ jobs:
       - name: Deploy Project Artifacts to Vercel
         if: steps.vercel_pull.outcome == 'success'
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: web
 
       - name: Run Database Migrations
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
