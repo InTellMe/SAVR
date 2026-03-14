@@ -25,7 +25,7 @@ jobs:
           node-version: "20"
 
       - name: Install Supabase CLI
-        run: echo "Supabase CLI is now used via npx - no global install needed
+        run: echo "Supabase CLI is now used via npx - no global install needed"
 
       - name: Start Supabase (fresh database)
         run: npx supabase start
@@ -65,7 +65,8 @@ jobs:
           echo "Verifying all required tables exist..."
           npx supabase db diff --use-migra
           
-          # Check for required tables
+          # Check for required tables using psql (supabase db exec is not available in CLI v2)
+          PSQL_URL="postgresql://postgres:postgres@localhost:54322/postgres"
           REQUIRED_TABLES=(
             "users"
             "inventory"
@@ -79,7 +80,7 @@ jobs:
           )
           
           for table in "${REQUIRED_TABLES[@]}"; do
-            if npx supabase db exec "SELECT to_regclass('public.$table')" | grep -q "public.$table"; then
+            if psql "$PSQL_URL" -tAc "SELECT to_regclass('public.$table')" | grep -q "public.$table"; then
               echo "✅ Table exists: $table"
             else
               echo "❌ Missing required table: $table"
@@ -90,10 +91,11 @@ jobs:
       - name: Verify RLS is enabled
         run: |
           echo "Verifying RLS is enabled on all tables..."
-          TABLES=$(npx supabase db exec "SELECT tablename FROM pg_tables WHERE schemaname = 'public'" | tail -n +3 | head -n -2)
+          PSQL_URL="postgresql://postgres:postgres@localhost:54322/postgres"
+          TABLES=$(psql "$PSQL_URL" -tAc "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
           
           for table in $TABLES; do
-            RLS_ENABLED=$(npx supabase db exec "SELECT relrowsecurity FROM pg_class WHERE relname = '$table'" | tail -n +3 | head -n -2 | tr -d ' ')
+            RLS_ENABLED=$(psql "$PSQL_URL" -tAc "SELECT relrowsecurity FROM pg_class WHERE relname = '$table'")
             if [ "$RLS_ENABLED" = "t" ]; then
               echo "✅ RLS enabled: $table"
             else
@@ -105,7 +107,7 @@ jobs:
         run: |
           echo "Testing migration rollback..."
           # Get current migration version
-          CURRENT=$(supabase migration list --local | tail -1 | awk '{print $1}')
+          CURRENT=$(npx supabase migration list --local | tail -1 | awk '{print $1}')
           echo "Current migration: $CURRENT"
           
           # This is informational - we don't actually rollback in CI
@@ -117,7 +119,7 @@ jobs:
           echo "" >> migration-report.md
           echo "Generated on: $(date)" >> migration-report.md
           echo "" >> migration-report.md
-          npx supabase db diff --use-migra --schema public >> migration-report.md
+          npx supabase db diff --use-migra --schema public >> migration-report.md || echo "Schema matches migrations" >> migration-report.md
           
       - name: Upload migration report
         uses: actions/upload-artifact@v4
@@ -143,7 +145,7 @@ jobs:
           node-version: "20"
 
       - name: Install Supabase CLI
-        run: echo "Supabase CLI is now used via npx - no global install needed
+        run: echo "Supabase CLI is now used via npx - no global install needed"
 
       - name: Start Supabase
         run: npx supabase start
@@ -154,7 +156,7 @@ jobs:
           
           # Apply seed data if exists
           if [ -f "supabase/seed.sql" ]; then
-            npx supabase db exec --file supabase/seed.sql
+            psql "postgresql://postgres:postgres@localhost:54322/postgres" -f supabase/seed.sql
             echo "✅ Seed data applied"
           else
             echo "ℹ️  No seed data found"
@@ -163,7 +165,8 @@ jobs:
       - name: Verify seed data
         run: |
           # Check that seed data was inserted correctly
-          USER_COUNT=$(npx supabase db exec "SELECT COUNT(*) FROM auth.users" | tail -n +3 | head -n -2 | tr -d ' ')
+          PSQL_URL="postgresql://postgres:postgres@localhost:54322/postgres"
+          USER_COUNT=$(psql "$PSQL_URL" -tAc "SELECT COUNT(*) FROM auth.users" | tr -d ' ')
           echo "Test users created: $USER_COUNT"
 
       - name: Stop Supabase

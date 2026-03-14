@@ -30,26 +30,14 @@ From your Supabase project dashboard:
 
 ## 3. Run Database Migrations
 
-The SQL migrations in `/supabase/migrations/` need to be applied to your database.
+The schema for the entire application is defined in a single migration file at
+`/supabase/migrations/20260220000000_initial_schema.sql`.
 
 ### Option A: Using Supabase Dashboard
 
 1. Go to **SQL Editor** in your Supabase dashboard
-2. Run each migration file in order:
-   - `20260220000001_create_users.sql`
-   - `20260220000002_create_inventory.sql`
-   - `20260220000003_create_recipes.sql`
-   - `20260220000004_create_meal_plans.sql`
-   - `20260220000005_create_grocery_lists.sql`
-   - `20260220000006_create_chat_history.sql`
-   - `20260220000007_create_shared_recipes.sql`
-   - `20260220000008_create_transfer_sessions.sql`
-   - `20260220000009_create_data_consent.sql`
-   - `20260220000010_create_images.sql`
-   - `20260220000011_add_user_preferences.sql`
-   - `20260220000012_create_storage_buckets_and_policies.sql`
-   - `20260220000013_create_annotations_and_categories.sql`
-   - `20260220000014_update_transfer_sessions_schema.sql`
+2. Open and run the migration file:
+   - `20260220000000_initial_schema.sql`
 
 ### Option B: Using Supabase CLI (Recommended)
 
@@ -69,74 +57,12 @@ supabase db push
 
 ## 4. Configure Storage Buckets
 
-Create storage buckets for file uploads:
+Storage buckets are created automatically by the migration script. No manual setup is needed.
 
-1. Go to **Storage** in Supabase dashboard
-2. Create the following buckets:
-   - `recipe-images` (Public)
-   - `inventory-images` (Private - RLS)
-   - `labeling-images` (Private - RLS)
+The migration creates the following buckets with appropriate RLS policies:
 
-### Bucket Policies
-
-For each bucket, set up policies:
-
-#### recipe-images (Public)
-```sql
--- Allow authenticated users to upload
-create policy "Authenticated users can upload recipe images"
-on storage.objects for insert
-to authenticated
-with check (bucket_id = 'recipe-images');
-
--- Allow public read access
-create policy "Public can view recipe images"
-on storage.objects for select
-to public
-using (bucket_id = 'recipe-images');
-
--- Allow users to delete their own images
-create policy "Users can delete own recipe images"
-on storage.objects for delete
-to authenticated
-using (bucket_id = 'recipe-images' and auth.uid()::text = (storage.foldername(name))[1]);
-```
-
-#### inventory-images (Private)
-```sql
--- Allow authenticated users to upload to their folder
-create policy "Users can upload inventory images"
-on storage.objects for insert
-to authenticated
-with check (bucket_id = 'inventory-images' and auth.uid()::text = (storage.foldername(name))[1]);
-
--- Allow users to read their own images
-create policy "Users can view own inventory images"
-on storage.objects for select
-to authenticated
-using (bucket_id = 'inventory-images' and auth.uid()::text = (storage.foldername(name))[1]);
-
--- Allow users to delete their own images
-create policy "Users can delete own inventory images"
-on storage.objects for delete
-to authenticated
-using (bucket_id = 'inventory-images' and auth.uid()::text = (storage.foldername(name))[1]);
-```
-
-#### labeling-images (Private)
-```sql
--- Allow authenticated users to upload
-create policy "Users can upload labeling images"
-on storage.objects for insert
-to authenticated
-with check (bucket_id = 'labeling-images');
-
--- Allow authenticated users to read
-create policy "Users can view labeling images"
-on storage.objects for select
-to authenticated
-using (bucket_id = 'labeling-images');
-```
+- `recipe-images` (Public read, users write to their own folder)
+- `inventory-images` (Private, users access their own folder only)
 
 ## 5. Configure Authentication
 
