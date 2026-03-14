@@ -29,23 +29,27 @@ jobs:
         run: npm install -g vercel@latest
 
       - name: Validate Vercel Secrets
+        id: validate_secrets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID_VAL: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID_VAL: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
-            echo "::error::VERCEL_TOKEN is not set. Please configure it in GitHub repository secrets."
-            exit 1
+          missing=()
+          [ -z "$VERCEL_TOKEN" ] && missing+=("VERCEL_TOKEN")
+          [ -z "$VERCEL_ORG_ID_VAL" ] && missing+=("VERCEL_ORG_ID")
+          [ -z "$VERCEL_PROJECT_ID_VAL" ] && missing+=("VERCEL_PROJECT_ID")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::warning::Missing Vercel secrets: ${missing[*]}. Preview deployment will be skipped."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "✅ All required Vercel secrets are configured"
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
-          if [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then
-            echo "::error::VERCEL_ORG_ID is not set. Please configure it in GitHub repository secrets."
-            exit 1
-          fi
-          if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
-            echo "::error::VERCEL_PROJECT_ID is not set. Please configure it in GitHub repository secrets."
-            exit 1
-          fi
-          echo "✅ All required Vercel secrets are configured"
 
       - name: Pull Vercel Environment Information
         id: vercel_pull
+        if: steps.validate_secrets.outputs.configured == 'true'
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: web
         continue-on-error: true
