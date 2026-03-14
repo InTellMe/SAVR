@@ -3,8 +3,6 @@ name: Vercel Deployment
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
