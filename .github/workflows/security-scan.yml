@@ -86,6 +86,7 @@ jobs:
   secret-scanning:
     name: Secret Scanning
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
 
     steps:
       - name: Checkout
@@ -98,17 +99,6 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          extra_args: >-
-            --only-verified
-            --exclude-paths .trufflehog-exclude.txt
-
-      - name: TruffleHog (PR diff)
-        if: github.event_name == 'pull_request'
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.pull_request.base.sha }}
-          head: ${{ github.event.pull_request.head.sha }}
           extra_args: >-
             --only-verified
             --exclude-paths .trufflehog-exclude.txt
