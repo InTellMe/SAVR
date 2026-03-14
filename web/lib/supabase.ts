@@ -27,9 +27,9 @@ if (isProduction && isServerSide && !hasRealSupabaseConfig) {
   );
 }
 
-// CLIENT-SIDE RUNTIME CHECK: Prevent app from running with dummy config in production browser
+// CLIENT-SIDE RUNTIME CHECK: Warn if running with dummy config in production browser
 if (isProduction && !isServerSide && !hasRealSupabaseConfig) {
-  throw new Error(
+  console.error(
     '\n\n' +
     '═'.repeat(80) + '\n' +
     '❌ SUPABASE RUNTIME ERROR: Production app running with invalid Supabase credentials\n' +
@@ -43,7 +43,7 @@ if (isProduction && !isServerSide && !hasRealSupabaseConfig) {
   );
 }
 
-// Allow dummy config in development and during CI/test builds where envs may be intentionally dummy.
+// Allow dummy config in development, server-side, CI/test builds where envs may be intentionally dummy.
 const isCI = process.env.CI === 'true';
 const isTestEnv = process.env.NODE_ENV === 'test';
 const ALLOW_DUMMY_CONFIG = isDevelopment || isServerSide || isCI || isTestEnv;
@@ -58,6 +58,12 @@ const getSupabaseConfigValue = (
   }
 
   if (ALLOW_DUMMY_CONFIG) {
+    return fallback;
+  }
+
+  // In production client-side with missing config, use fallback so the module still loads.
+  // The error has already been logged above; throwing here would crash the module on import.
+  if (!hasRealSupabaseConfig) {
     return fallback;
   }
 
