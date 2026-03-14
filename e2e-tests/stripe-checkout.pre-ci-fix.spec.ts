@@ -11,10 +11,10 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL?.trim() || 'http://localhost:3000';
-const TEST_EMAIL = process.env.E2E_STRIPE_TEST_EMAIL?.trim();
-const TEST_PASSWORD = process.env.E2E_STRIPE_TEST_PASSWORD?.trim();
-const COUPON_CODE = process.env.E2E_STRIPE_COUPON_CODE?.trim();
+const TEST_EMAIL = 'info@intellmeai.com';
+const TEST_PASSWORD = 'Testing123!';
+const COUPON_CODE = 'GOOSE7';
+const BASE_URL = 'https://savr.cam';
 
 // Test data for billing address
 const BILLING_INFO = {
@@ -28,11 +28,6 @@ const BILLING_INFO = {
 
 test.describe('Stripe Subscription Flow with 100% Coupon', () => {
   test('should complete checkout and show Pro status', async ({ page }) => {
-    test.skip(
-      !TEST_EMAIL || !TEST_PASSWORD || !COUPON_CODE,
-      'Skipping: set E2E_STRIPE_TEST_EMAIL/E2E_STRIPE_TEST_PASSWORD/E2E_STRIPE_COUPON_CODE to enable Stripe live checkout E2E'
-    );
-
     // Set longer timeout for the entire test
     test.setTimeout(120000); // 2 minutes
 
@@ -48,7 +43,7 @@ test.describe('Stripe Subscription Flow with 100% Coupon', () => {
     
     // Wait for successful login
     await page.waitForLoadState('networkidle');
-    await expect(page).toHaveURL(/localhost|savr\.cam/, { timeout: 10000 });
+    await expect(page).toHaveURL(/savr.cam/, { timeout: 10000 });
 
     console.log('Step 3: Navigate to pricing page');
     await page.goto(`${BASE_URL}/pricing`);
@@ -161,7 +156,7 @@ test.describe('Stripe Subscription Flow with 100% Coupon', () => {
 
     console.log('Step 6: Wait for redirect back to SAVR');
     // Wait for redirect back to our site
-    await page.waitForURL(/localhost|savr\.cam/, { timeout: 30000 });
+    await page.waitForURL(/savr.cam/, { timeout: 30000 });
     await page.waitForLoadState('networkidle');
 
     console.log('Step 7: Navigate to settings to check subscription status');
