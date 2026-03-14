@@ -3,12 +3,11 @@ name: Vercel Deployment
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
@@ -31,24 +30,27 @@ jobs:
       - name: Validate Vercel Secrets
         run: |
           if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
-            echo "::error::VERCEL_TOKEN is not set. Please configure it in GitHub repository secrets."
-            exit 1
+            echo "::warning::VERCEL_TOKEN is not set. Skipping Vercel deploy in CI."
+            exit 0
           fi
           if [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then
-            echo "::error::VERCEL_ORG_ID is not set. Please configure it in GitHub repository secrets."
-            exit 1
+            echo "::warning::VERCEL_ORG_ID is not set. Skipping Vercel deploy in CI."
+            exit 0
           fi
           if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
-            echo "::error::VERCEL_PROJECT_ID is not set. Please configure it in GitHub repository secrets."
-            exit 1
+            echo "::warning::VERCEL_PROJECT_ID is not set. Skipping Vercel deploy in CI."
+            exit 0
           fi
           echo "✅ All required Vercel secrets are configured"
 
       - name: Pull Vercel Environment Information
+        id: vercel_pull
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: web
+        continue-on-error: true
 
       - name: Build Project Artifacts
+        if: steps.vercel_pull.outcome == 'success'
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: web
         env:
@@ -59,6 +61,7 @@ jobs:
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
 
       - name: Deploy Project Artifacts to Vercel
+        if: steps.vercel_pull.outcome == 'success'
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: web
 

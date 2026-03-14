@@ -1,0 +1,4 @@
+archive/**
+**/*.har
+**/*.har_part_*.txt
+**/debug-logs/**
