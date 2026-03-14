@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint"
   },
+  "overrides": {
+    "@tootallnate/once": "^3.0.1"
+  },
   "dependencies": {
     "@google-cloud/vision": "^5.3.4",
     "@stripe/stripe-js": "^8.7.0",
@@ -24,12 +27,13 @@
     "stripe": "^20.3.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^4.1.1",
-    "eslint-config-next": "^0.2.4",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.0.0",
     "tailwindcss": "^4",
     "typescript": "5.9.3"
   }
